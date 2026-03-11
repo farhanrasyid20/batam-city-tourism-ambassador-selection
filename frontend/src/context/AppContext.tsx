@@ -84,6 +84,42 @@ export type FeedbackEntry = {
   status: "baru" | "ditinjau" | "selesai";
 };
 
+export type ResourceDocument = {
+  linkUrl: string;
+  fileName: string;
+  fileDataUrl: string;
+  fileMimeType: string;
+};
+
+export type ResourceImage = {
+  imageUrl: string;
+  imageName: string;
+  caption: string;
+};
+
+export type ParticipantResources = {
+  guideDocument: ResourceDocument;
+  submissionDocument: ResourceDocument;
+  formS1Document: ResourceDocument;
+  formS2Document: ResourceDocument;
+  formS3Document: ResourceDocument;
+  formS4Document: ResourceDocument;
+  hardcopyGuide: string;
+  closeUpPhotoGuide: string;
+  fullBodyPhotoGuide: string;
+  twibbonDocument: ResourceDocument;
+  twibbonOpenLink: string;
+  whatsappGroupLink: string;
+  twibbonThumbnail: ResourceImage;
+  whatsappThumbnail: ResourceImage;
+  closeUpExamples: ResourceImage[];
+  fullBodyExamples: ResourceImage[];
+  instagramMentions: string;
+  hashtagList: string;
+  postingInstruction: string;
+  additionalNote: string;
+};
+
 type AppContextType = {
   user: AuthUser | null;
   login: (email: string, password: string, role: Role) => boolean;
@@ -133,9 +169,49 @@ type AppContextType = {
     category: FeedbackCategory;
     message: string;
   }) => void;
+
+  participantResources: ParticipantResources;
+  setParticipantResources: React.Dispatch<React.SetStateAction<ParticipantResources>>;
 };
 
 const AppContext = createContext<AppContextType | null>(null);
+
+const emptyResourceDocument: ResourceDocument = {
+  linkUrl: "",
+  fileName: "",
+  fileDataUrl: "",
+  fileMimeType: "",
+};
+
+const emptyResourceImage: ResourceImage = {
+  imageUrl: "",
+  imageName: "",
+  caption: "",
+};
+
+const defaultParticipantResources: ParticipantResources = {
+  guideDocument: { ...emptyResourceDocument },
+  submissionDocument: { ...emptyResourceDocument },
+  formS1Document: { ...emptyResourceDocument },
+  formS2Document: { ...emptyResourceDocument },
+  formS3Document: { ...emptyResourceDocument },
+  formS4Document: { ...emptyResourceDocument },
+  hardcopyGuide: "",
+  closeUpPhotoGuide: "",
+  fullBodyPhotoGuide: "",
+  twibbonDocument: { ...emptyResourceDocument },
+  twibbonOpenLink: "",
+  whatsappGroupLink: "",
+  twibbonThumbnail: { ...emptyResourceImage, caption: "Thumbnail Twibbon" },
+  whatsappThumbnail: { ...emptyResourceImage, caption: "Thumbnail Grup WhatsApp" },
+  closeUpExamples: [],
+  fullBodyExamples: [],
+  instagramMentions: "@dutawisatakotabatam, @batamtourism.official",
+  hashtagList: "#encikpuanbatam\n#dutawisatakotabatam\n#pemilihandutawisatakotabatam2026",
+  postingInstruction:
+    "Wajib posting twibbon di Instagram dan mention akun resmi yang telah ditentukan oleh panitia.",
+  additionalNote: "",
+};
 
 function toInstagramHandle(raw: string) {
   return raw.replace("@", "").trim();
@@ -213,6 +289,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [judgeWinnerList, setJudgeWinnerList] = useState<JudgeWinnerItem[]>([]);
   const [judgeWinnersPublished, setJudgeWinnersPublished] = useState<boolean>(false);
   const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
+  const [participantResources, setParticipantResources] =
+    useState<ParticipantResources>(defaultParticipantResources);
 
   const [passwordStore, setPasswordStore] = useState<Record<string, string>>({
     "admin@dutawisatabatam.id": "admin123",
@@ -441,6 +519,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       feedbackList,
       setFeedbackList,
       addFeedbackEntry,
+
+      participantResources,
+      setParticipantResources,
     }),
     [
       user,
@@ -463,6 +544,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       judgeWinnersPublished,
       feedbackList,
       addFeedbackEntry,
+      participantResources,
     ]
   );
 

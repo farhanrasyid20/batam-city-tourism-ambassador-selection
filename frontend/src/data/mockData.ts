@@ -48,6 +48,7 @@ export interface NewsItem {
   image: string;     // cover
   date: string;      // yyyy-mm-dd
   category: string;
+  contentHtml?: string; // rich content from TinyMCE
 
   // short preview for card list
   excerpt: string;

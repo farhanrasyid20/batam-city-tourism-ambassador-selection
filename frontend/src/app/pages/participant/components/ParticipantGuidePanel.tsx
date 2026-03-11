@@ -1,28 +1,132 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { BookOpen, Download, ExternalLink, FileText, Hash, MessageCircle, Phone } from "lucide-react";
+import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
-import { hashtags, officialLinks, resourceDownloads } from "./documentUploadConfig";
+import { hashtags, officialLinks } from "./documentUploadConfig";
 
-const closeUpExamples = [
+const fallbackCloseUpExamples = [
   { src: "/participant-resources/photo-examples/closeup-1.jpg", label: "Close Up Putra" },
   { src: "/participant-resources/photo-examples/closeup-2.jpg", label: "Close Up Putri Hijab" },
   { src: "/participant-resources/photo-examples/closeup-3.jpg", label: "Close Up Putri Non-Hijab" },
 ];
 
-const fullBodyExamples = [
+const fallbackFullBodyExamples = [
   { src: "/participant-resources/photo-examples/fullbody-1.jpg", label: "Full Body Putra" },
   { src: "/participant-resources/photo-examples/fullbody-2.jpg", label: "Full Body Putri Hijab" },
   { src: "/participant-resources/photo-examples/fullbody-3.jpg", label: "Full Body Putri Non-Hijab" },
 ];
 
+function resolveDocumentHref(fileDataUrl: string, linkUrl: string, fallbackHref: string) {
+  if (fileDataUrl) return fileDataUrl;
+  if (linkUrl) return linkUrl;
+  return fallbackHref;
+}
+
 export default function ParticipantGuidePanel() {
+  const { participantResources } = useApp();
+
+  const resourceItems = [
+    {
+      title: "Buku Panduan Duta Wisata 2026",
+      href: resolveDocumentHref(
+        participantResources.guideDocument.fileDataUrl,
+        participantResources.guideDocument.linkUrl,
+        "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf"
+      ),
+      note: "Wajib dibaca sebelum isi biodata dan upload berkas.",
+    },
+    {
+      title: "Form S-01",
+      href: resolveDocumentHref(
+        participantResources.formS1Document.fileDataUrl,
+        participantResources.formS1Document.linkUrl,
+        "/participant-resources/S-01-Formulir-Pendaftaran-Encik-Puan-Batam-2026.pdf"
+      ),
+      note: "Formulir pendaftaran peserta.",
+    },
+    {
+      title: "Form S-02",
+      href: resolveDocumentHref(
+        participantResources.formS2Document.fileDataUrl,
+        participantResources.formS2Document.linkUrl,
+        "/participant-resources/S-02-Surat-Izin-Orang-Tua-Encik-Puan-Batam-2026.pdf"
+      ),
+      note: "Surat izin orang tua / wali.",
+    },
+    {
+      title: "Form S-03",
+      href: resolveDocumentHref(
+        participantResources.formS3Document.fileDataUrl,
+        participantResources.formS3Document.linkUrl,
+        "/participant-resources/S-03-Pernyataan-Bersedia-Menjadi-Duta-Wisata-2026.pdf"
+      ),
+      note: "Surat pernyataan bersedia.",
+    },
+    {
+      title: "Form S-04",
+      href: resolveDocumentHref(
+        participantResources.formS4Document.fileDataUrl,
+        participantResources.formS4Document.linkUrl,
+        "/participant-resources/S-04-Kesanggupan-Mengikuti-Rangkaian-Kegiatan-2026.pdf"
+      ),
+      note: "Surat kesanggupan ikut seluruh tahapan.",
+    },
+    {
+      title: "Berkas Online",
+      href: resolveDocumentHref(
+        participantResources.submissionDocument.fileDataUrl,
+        participantResources.submissionDocument.linkUrl,
+        officialLinks.forms
+      ),
+      note: "Akses berkas online resmi dari panitia.",
+    },
+  ];
+
+  const closeUpExamples =
+    participantResources.closeUpExamples.filter((item) => item.imageUrl).length > 0
+      ? participantResources.closeUpExamples
+          .filter((item) => item.imageUrl)
+          .map((item, index) => ({
+            src: item.imageUrl,
+            label: item.caption || `Close Up ${index + 1}`,
+          }))
+      : fallbackCloseUpExamples;
+
+  const fullBodyExamples =
+    participantResources.fullBodyExamples.filter((item) => item.imageUrl).length > 0
+      ? participantResources.fullBodyExamples
+          .filter((item) => item.imageUrl)
+          .map((item, index) => ({
+            src: item.imageUrl,
+            label: item.caption || `Full Body ${index + 1}`,
+          }))
+      : fallbackFullBodyExamples;
+
+  const twibbonThumbnail =
+    participantResources.twibbonThumbnail.imageUrl || "/participant-resources/twibbon-duwis-2026.png";
+  const whatsappThumbnail =
+    participantResources.whatsappThumbnail.imageUrl || "/participant-resources/qr-grup-wa-dutawisata-2026.jpg";
+  const twibbonOpenLink = participantResources.twibbonOpenLink || officialLinks.forms;
+  const twibbonDownloadLink = resolveDocumentHref(
+    participantResources.twibbonDocument.fileDataUrl,
+    participantResources.twibbonDocument.linkUrl,
+    twibbonThumbnail
+  );
+  const guideLink = participantResources.guideDocument.linkUrl || officialLinks.guide;
+  const formsLink = participantResources.submissionDocument.linkUrl || officialLinks.forms;
+  const whatsappGroupLink = participantResources.whatsappGroupLink || officialLinks.waGroup;
+  const mentionText = participantResources.instagramMentions || "@dutawisatakotabatam, @batamtourism.official";
+  const hashtagItems =
+    participantResources.hashtagList.trim().length > 0
+      ? participantResources.hashtagList.split("\n").map((item) => item.trim()).filter(Boolean)
+      : hashtags;
+
   return (
     <div className="space-y-6 mb-6">
-      {/* Intro section untuk ringkasan alur pendaftaran */}
       <GoldCard glow>
         <h2 className="text-sm sm:text-base font-bold mb-3" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
           PENDAFTARAN PEMILIHAN DUTA WISATA ENCIK & PUAN KOTA BATAM 2026
@@ -33,7 +137,6 @@ export default function ParticipantGuidePanel() {
         </p>
       </GoldCard>
 
-      {/* Section unduhan seluruh dokumen resmi peserta */}
       <GoldCard>
         <div className="flex items-center gap-2 mb-4">
           <Download size={16} style={{ color: "#C8A24D" }} />
@@ -42,7 +145,7 @@ export default function ParticipantGuidePanel() {
           </h3>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {resourceDownloads.map((item) => (
+          {resourceItems.map((item) => (
             <a
               key={item.title}
               href={item.href}
@@ -64,20 +167,24 @@ export default function ParticipantGuidePanel() {
           ))}
         </div>
         <div className="mt-4 space-y-1">
-          <Link href={officialLinks.guide} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs mr-4" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
+          <Link href={guideLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs mr-4" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
             <BookOpen size={12} /> Link panduan online <ExternalLink size={12} />
           </Link>
-          <Link href={officialLinks.forms} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
+          <Link href={formsLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
             <FileText size={12} /> Link berkas online <ExternalLink size={12} />
           </Link>
         </div>
       </GoldCard>
 
-      {/* Section langkah pengisian dokumen hard copy */}
       <GoldCard>
         <h3 className="text-sm font-bold mb-3" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
           Tata Cara Pengisian Berkas Hard Copy
         </h3>
+        {participantResources.hardcopyGuide ? (
+          <p className="text-xs sm:text-sm mb-3" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", whiteSpace: "pre-line" }}>
+            {participantResources.hardcopyGuide}
+          </p>
+        ) : null}
         <ol className="space-y-2 list-decimal pl-4 text-xs sm:text-sm" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
           <li>Unduh file Form S-01, S-02, S-03, dan S-04.</li>
           <li>Cetak semua form.</li>
@@ -88,7 +195,6 @@ export default function ParticipantGuidePanel() {
       </GoldCard>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Contoh visual foto close up dan full body */}
         <GoldCard>
           <h3 className="text-sm font-bold mb-3" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
             Contoh Foto Close Up & Full Body
@@ -96,22 +202,20 @@ export default function ParticipantGuidePanel() {
           <p className="text-xs mb-3" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
             Gunakan latar putih polos, pakaian formal hitam, dan pencahayaan jelas.
           </p>
+          {participantResources.closeUpPhotoGuide ? (
+            <p className="text-xs mb-3" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", whiteSpace: "pre-line" }}>
+              {participantResources.closeUpPhotoGuide}
+            </p>
+          ) : null}
           <div className="space-y-4">
             <div>
               <p className="text-xs mb-2" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)", fontWeight: 600 }}>
-                Contoh Close Up (3 Foto)
+                Contoh Close Up
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {closeUpExamples.map((item) => (
                   <div key={item.src} className="rounded-xl overflow-hidden border" style={{ borderColor: "rgba(200,162,77,0.3)" }}>
-                    <NextImage
-                      src={item.src}
-                      alt={item.label}
-                      width={500}
-                      height={700}
-                      className="w-full h-auto"
-                      unoptimized
-                    />
+                    <NextImage src={item.src} alt={item.label} width={500} height={700} className="w-full h-auto" unoptimized />
                     <p className="text-[11px] px-2 py-1 text-center" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", background: "rgba(0,0,0,0.35)" }}>
                       {item.label}
                     </p>
@@ -119,22 +223,19 @@ export default function ParticipantGuidePanel() {
                 ))}
               </div>
             </div>
-
+            {participantResources.fullBodyPhotoGuide ? (
+              <p className="text-xs mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", whiteSpace: "pre-line" }}>
+                {participantResources.fullBodyPhotoGuide}
+              </p>
+            ) : null}
             <div>
               <p className="text-xs mb-2" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)", fontWeight: 600 }}>
-                Contoh Full Body (3 Foto)
+                Contoh Full Body
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {fullBodyExamples.map((item) => (
                   <div key={item.src} className="rounded-xl overflow-hidden border" style={{ borderColor: "rgba(200,162,77,0.3)" }}>
-                    <NextImage
-                      src={item.src}
-                      alt={item.label}
-                      width={500}
-                      height={700}
-                      className="w-full h-auto"
-                      unoptimized
-                    />
+                    <NextImage src={item.src} alt={item.label} width={500} height={700} className="w-full h-auto" unoptimized />
                     <p className="text-[11px] px-2 py-1 text-center" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", background: "rgba(0,0,0,0.35)" }}>
                       {item.label}
                     </p>
@@ -145,32 +246,33 @@ export default function ParticipantGuidePanel() {
           </div>
         </GoldCard>
 
-        {/* Twibbon, QR grup WA, dan hashtag resmi publikasi */}
         <GoldCard>
           <h3 className="text-sm font-bold mb-3" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
             Twibbon & Grup WhatsApp Peserta
           </h3>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <NextImage
-              src="/participant-resources/twibbon-duwis-2026.png"
+              src={twibbonThumbnail}
               alt="Twibbon Duta Wisata 2026"
               width={400}
               height={400}
               className="w-full h-auto rounded-xl border"
               style={{ borderColor: "rgba(200,162,77,0.3)" }}
+              unoptimized
             />
             <NextImage
-              src="/participant-resources/qr-grup-wa-dutawisata-2026.jpg"
-              alt="QR Grup WA Peserta"
+              src={whatsappThumbnail}
+              alt="Thumbnail Grup WA Peserta"
               width={400}
               height={640}
               className="w-full h-auto rounded-xl border"
               style={{ borderColor: "rgba(200,162,77,0.3)" }}
+              unoptimized
             />
           </div>
           <div className="flex flex-wrap gap-2 mb-3">
             <a
-              href="/participant-resources/twibbon-duwis-2026.png"
+              href={twibbonDownloadLink}
               download
               className="inline-flex items-center gap-1 text-xs px-3 py-2 rounded-lg"
               style={{
@@ -183,7 +285,7 @@ export default function ParticipantGuidePanel() {
               <Download size={12} /> Unduh Twibbon
             </a>
             <Link
-              href={officialLinks.forms}
+              href={twibbonOpenLink}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-xs px-3 py-2 rounded-lg"
@@ -197,23 +299,23 @@ export default function ParticipantGuidePanel() {
             </Link>
           </div>
           <p className="text-xs mb-2" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-            Wajib posting twibbon di Instagram dan mention <strong>@dutawisatakotabatam</strong> serta <strong>@batamtourism.official</strong>.
+            {participantResources.postingInstruction || "Wajib posting twibbon di Instagram dan mention akun resmi."}{" "}
+            <strong>{mentionText}</strong>.
           </p>
           <div className="flex flex-wrap gap-2 mb-3">
-            {hashtags.map((tag) => (
+            {hashtagItems.map((tag) => (
               <span key={tag} className="text-xs px-2 py-1 rounded-full" style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
                 <Hash size={10} className="inline mr-1" />
                 {tag}
               </span>
             ))}
           </div>
-          <Link href={officialLinks.waGroup} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
+          <Link href={whatsappGroupLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
             <MessageCircle size={12} /> Join Group WhatsApp Peserta <ExternalLink size={12} />
           </Link>
         </GoldCard>
       </div>
 
-      {/* Kontak admin resmi untuk bantuan peserta */}
       <GoldCard>
         <h3 className="text-sm font-bold mb-3" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
           Kontak Admin
@@ -226,5 +328,3 @@ export default function ParticipantGuidePanel() {
     </div>
   );
 }
-
-

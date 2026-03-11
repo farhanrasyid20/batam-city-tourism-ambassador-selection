@@ -8,14 +8,6 @@ import { useApp } from "../../../../context/AppContext";
 import type { Score, StageStatus } from "../../../../data/mockData";
 import { criteriaList } from "../../../../data/mockData";
 
-const emptyScore = (): Score => ({
-  tourismKnowledge: 0,
-  publicSpeaking: 0,
-  leadership: 0,
-  workProgram: 0,
-  english: 0,
-});
-
 const stageStatusMap: Record<string, StageStatus[]> = {
   Audition: ["Audition", "Verified", "PreCamp", "Camp", "GrandFinal", "Winner"],
   "Pre-Camp": ["PreCamp", "Camp", "GrandFinal", "Winner"],
@@ -23,13 +15,15 @@ const stageStatusMap: Record<string, StageStatus[]> = {
   "Grand Final": ["GrandFinal", "Winner"],
 };
 
+type ScoreInputState = Partial<Record<keyof Score, string>>;
+
 export default function JudgeScoringPage() {
   const { user, judgeList, participantList, scoreList, setScoreList } = useApp();
   const judgeInfo = judgeList.find((judge) => judge.id === user?.judgeId) ?? judgeList[0];
   const assignedStages = judgeInfo?.stages?.length ? judgeInfo.stages : ["Grand Final"];
 
   const [activeStage, setActiveStage] = useState<string>(assignedStages[0] ?? "Grand Final");
-  const [scores, setScores] = useState<Record<string, Score>>({});
+  const [scoreInputs, setScoreInputs] = useState<Record<string, ScoreInputState>>({});
   const [activeParticipantId, setActiveParticipantId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
@@ -52,7 +46,20 @@ export default function JudgeScoringPage() {
     return map;
   }, [activeStage, judgeInfo?.id, scoreList]);
 
-  const getScore = (participantId: string): Score => scores[participantId] ?? emptyScore();
+  const getScoreInputValue = (participantId: string, key: keyof Score) => {
+    return scoreInputs[participantId]?.[key] ?? "";
+  };
+
+  const getScore = (participantId: string): Score => {
+    const inputs = scoreInputs[participantId] ?? {};
+    return {
+      tourismKnowledge: Number.parseInt(inputs.tourismKnowledge ?? "", 10) || 0,
+      publicSpeaking: Number.parseInt(inputs.publicSpeaking ?? "", 10) || 0,
+      leadership: Number.parseInt(inputs.leadership ?? "", 10) || 0,
+      workProgram: Number.parseInt(inputs.workProgram ?? "", 10) || 0,
+      english: Number.parseInt(inputs.english ?? "", 10) || 0,
+    };
+  };
 
   const calculateTotal = (score: Score): number => {
     let total = 0;
@@ -67,12 +74,28 @@ export default function JudgeScoringPage() {
     return Object.values(score).every((value) => value > 0);
   };
 
-  const updateScore = (participantId: string, key: keyof Score, value: number) => {
-    setScores((prev) => ({
+  const updateScore = (participantId: string, key: keyof Score, rawValue: string) => {
+    if (rawValue === "") {
+      setScoreInputs((prev) => ({
+        ...prev,
+        [participantId]: {
+          ...(prev[participantId] ?? {}),
+          [key]: "",
+        },
+      }));
+      return;
+    }
+
+    const parsedValue = Number.parseInt(rawValue, 10);
+    if (Number.isNaN(parsedValue)) return;
+
+    const nextValue = String(Math.min(100, Math.max(0, parsedValue)));
+
+    setScoreInputs((prev) => ({
       ...prev,
       [participantId]: {
-        ...getScore(participantId),
-        [key]: Math.min(100, Math.max(1, value)),
+        ...(prev[participantId] ?? {}),
+        [key]: nextValue,
       },
     }));
   };
@@ -268,12 +291,12 @@ export default function JudgeScoringPage() {
                             type="number"
                             min={1}
                             max={100}
-                            value={score[criterion.key] || ""}
+                            value={getScoreInputValue(activeParticipantId, criterion.key)}
                             onChange={(event) =>
                               updateScore(
                                 activeParticipantId,
                                 criterion.key,
-                                Number.parseInt(event.target.value, 10) || 0
+                                event.target.value
                               )
                             }
                             placeholder="0"
