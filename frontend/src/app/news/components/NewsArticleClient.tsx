@@ -19,7 +19,21 @@ function Paragraph({ text }: { text: string }) {
   );
 }
 
-export default function NewsArticleClient({ body }: { body: NewsBlock[] }) {
+type NewsArticleClientProps = {
+  body: NewsBlock[];
+  contentHtml?: string;
+};
+
+export default function NewsArticleClient({ body, contentHtml }: NewsArticleClientProps) {
+  if (contentHtml?.trim()) {
+    return (
+      <div
+        className="news-reader-content"
+        dangerouslySetInnerHTML={{ __html: contentHtml }}
+      />
+    );
+  }
+
   return (
     <div>
       {body.map((block, idx) => {

@@ -119,58 +119,7 @@ export default function NewsDetailPage() {
 
           <div className="w-full h-px mb-8" style={{ background: "rgba(200,162,77,0.15)" }} />
 
-          {news.contentHtml ? (
-            <>
-              <style>{`
-                .news-html-content {
-                  color: #BDBDBD;
-                  font-family: var(--font-poppins);
-                  font-size: 0.95rem;
-                  line-height: 1.9;
-                }
-                .news-html-content h1,
-                .news-html-content h2,
-                .news-html-content h3 {
-                  color: #F5E6C8;
-                  font-family: var(--font-cinzel);
-                  font-weight: 700;
-                  margin-top: 1.5rem;
-                  margin-bottom: 0.75rem;
-                }
-                .news-html-content p { margin-bottom: 1rem; }
-                .news-html-content ul,
-                .news-html-content ol { margin: 0 0 1rem 1.25rem; }
-                .news-html-content li { margin-bottom: 0.5rem; }
-                .news-html-content a { color: #D4AF37; }
-                .news-html-content blockquote {
-                  margin: 1.5rem 0;
-                  padding: 1rem 1.25rem;
-                  border-radius: 1rem;
-                  border: 1px solid rgba(200,162,77,0.25);
-                  background: #141414;
-                  color: #F5E6C8;
-                  font-style: italic;
-                }
-                .news-html-content img {
-                  border-radius: 1rem;
-                  border: 1px solid rgba(200,162,77,0.2);
-                  margin: 1rem 0;
-                }
-                .news-html-content figure { margin: 1.5rem 0; }
-                .news-html-content figcaption {
-                  font-size: 0.75rem;
-                  color: #BDBDBD;
-                  margin-top: 0.5rem;
-                }
-              `}</style>
-              <div
-                className="news-html-content"
-                dangerouslySetInnerHTML={{ __html: news.contentHtml }}
-              />
-            </>
-          ) : (
-            <NewsArticleClient body={articleBody} />
-          )}
+          <NewsArticleClient body={articleBody} contentHtml={news.contentHtml} />
         </div>
       </div>
     </article>
