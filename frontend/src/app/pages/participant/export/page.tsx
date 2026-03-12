@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import NextImage from "next/image";
+import { pdf } from "@react-pdf/renderer";
 import { Download, FileText } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
-import { GoldButton } from "../../../../components/ui/GoldButton";
 import GoldCard from "../../../../components/dashboard/GoldCard";
+import { GoldButton } from "../../../../components/ui/GoldButton";
 import type { StageStatus } from "../../../../data/mockData";
+import ParticipantPdfDocument from "../components/ParticipantPdfDocument";
 
 const statusLabel: Record<StageStatus, string> = {
   Pending: "Menunggu Verifikasi",
@@ -21,15 +23,19 @@ const statusLabel: Record<StageStatus, string> = {
 };
 
 export default function ExportPDFPage() {
-  // Ambil data peserta aktif dan state proses cetak PDF.
   const { currentParticipant, participantList, user } = useApp();
   const [printing, setPrinting] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
 
   const participant = currentParticipant ?? participantList[0] ?? null;
 
-  // Ringkasan berkas untuk ditampilkan di surat PDF.
-  const berkasWajib = useMemo(
+  const canDownloadPdf = Boolean(
+    participant &&
+      ["Verified", "Audition", "Top20", "PreCamp", "Camp", "GrandFinal", "Winner"].includes(
+        participant.status
+      )
+  );
+
+  const documentItems = useMemo(
     () => [
       { label: "KTP", done: Boolean(participant?.nationalId) },
       { label: "Foto Close Up", done: Boolean(participant?.photo) },
@@ -42,20 +48,18 @@ export default function ExportPDFPage() {
     [participant]
   );
 
-  const doneCount = berkasWajib.filter((b) => b.done).length;
+  const doneCount = documentItems.filter((item) => item.done).length;
 
-  // Normalisasi teks pendidikan agar lebih rapi di output PDF.
   const educationDisplay = useMemo(() => {
     const raw = participant?.education?.trim();
     if (!raw) return "-";
-    const parts = raw.split(" - ").map((p) => p.trim()).filter(Boolean);
+    const parts = raw.split(" - ").map((item) => item.trim()).filter(Boolean);
     if (parts.length >= 2 && parts[parts.length - 1] === parts[parts.length - 2]) {
       parts.pop();
     }
     return parts.join(" - ");
   }, [participant?.education]);
 
-  // Tanggal cetak dipakai satu kali saat render.
   const printedDate = useMemo(
     () =>
       new Date().toLocaleDateString("id-ID", {
@@ -66,215 +70,263 @@ export default function ExportPDFPage() {
     []
   );
 
-  // Trigger print browser untuk generate PDF.
-  const handlePrint = async () => {
-    if (!printRef.current) return;
+  const assetBaseUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return window.location.origin;
+  }, []);
+
+  const previewPhoto = participant?.photo || "/logo.png";
+
+  const handleGeneratePdf = async () => {
+    if (!participant || !canDownloadPdf) return;
+
     setPrinting(true);
-    await new Promise((r) => setTimeout(r, 350));
-    window.print();
-    setPrinting(false);
+
+    try {
+      const resolvedPhoto = participant.photo
+        ? participant.photo.startsWith("http")
+          ? participant.photo
+          : `${assetBaseUrl}${participant.photo}`
+        : `${assetBaseUrl}/logo.png`;
+
+      const blob = await pdf(
+        <ParticipantPdfDocument
+          participant={{
+            ...participant,
+            email: participant.email || user?.email || "-",
+            photo: resolvedPhoto,
+          }}
+          printedDate={printedDate}
+          educationDisplay={educationDisplay}
+          documentItems={documentItems}
+          doneCount={doneCount}
+          statusLabel={statusLabel}
+          logoSrc={`${assetBaseUrl}/logo.png`}
+        />
+      ).toBlob();
+
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `biodata-${participant.number || "peserta"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } finally {
+      setPrinting(false);
+    }
   };
 
   return (
     <div className="w-full">
-      {/* Header halaman export */}
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div>
-          <h1 style={{ fontFamily: "var(--font-cinzel)", color: "#C8A24D", fontSize: "1.5rem", fontWeight: 700 }}>
+          <h1
+            style={{
+              fontFamily: "var(--font-cinzel)",
+              color: "#C8A24D",
+              fontSize: "1.5rem",
+              fontWeight: 700,
+            }}
+          >
             Export PDF Biodata
           </h1>
-          <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-            Generate dan unduh PDF biodata pendaftaran Anda
+          <p
+            className="text-sm mt-1"
+            style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
+          >
+            Tinjau biodata peserta terlebih dahulu sebelum mengunduh PDF.
           </p>
         </div>
-        <GoldButton variant="primary" onClick={handlePrint} disabled={printing || !participant}>
+        <GoldButton
+          variant="primary"
+          onClick={handleGeneratePdf}
+          disabled={printing || !participant || !canDownloadPdf}
+        >
           <Download size={16} />
           {printing ? "Memproses..." : "Download PDF"}
         </GoldButton>
       </div>
 
-      {/* Card info format dokumen PDF */}
       <GoldCard className="mb-6">
         <div className="flex items-start gap-3">
           <FileText size={16} style={{ color: "#C8A24D", marginTop: 1 }} />
           <div>
-            <p className="text-sm font-semibold mb-1" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
+            <p
+              className="text-sm font-semibold mb-1"
+              style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
+            >
               Format PDF Biodata
             </p>
-            <p className="text-xs leading-relaxed" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-              PDF biodata berisi informasi lengkap peserta termasuk foto, data diri, status berkas, dan status seleksi.
-              File ini dapat digunakan untuk keperluan filter administrasi oleh panitia.
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
+            >
+              PDF hanya bisa diunduh setelah peserta berhasil diverifikasi panitia.
+              Dokumen yang dihasilkan hanya berisi ringkasan biodata peserta.
             </p>
           </div>
         </div>
       </GoldCard>
 
-      {/* Area konten yang akan dicetak menjadi PDF */}
-      <div ref={printRef}>
-        <div
-          className="rounded-2xl overflow-hidden print:shadow-none"
-          style={{
-            background: "#0F0F0F",
-            border: "1px solid rgba(200,162,77,0.4)",
-            boxShadow: "0 0 40px rgba(200,162,77,0.1)",
-          }}
-        >
-          {/* Header surat */}
+      {!canDownloadPdf ? (
+        <GoldCard className="mb-6">
+          <p className="text-sm" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+            PDF belum dapat diunduh. Status peserta harus sudah{" "}
+            <strong style={{ color: "#C8A24D" }}>terverifikasi</strong>.
+          </p>
+        </GoldCard>
+      ) : null}
+
+      {participant ? (
+        <GoldCard glow>
           <div
-            className="p-6"
+            className="rounded-2xl overflow-hidden"
             style={{
-              background: "linear-gradient(135deg, #1A1A1A, #0F0F0F)",
-              borderBottom: "2px solid rgba(200,162,77,0.4)",
+              background: "#0F0F0F",
+              border: "1px solid rgba(200,162,77,0.35)",
             }}
           >
-            <div className="flex items-center gap-4">
-              <NextImage
-                src="/logo.png"
-                alt="Logo"
-                width={56}
-                height={56}
-                className="w-14 h-14 object-contain"
-                style={{ filter: "drop-shadow(0 0 10px rgba(200,162,77,0.5))" }}
-              />
-              <div>
-                <h2 style={{ fontFamily: "var(--font-cinzel)", color: "#C8A24D", fontSize: "0.85rem", fontWeight: 700, letterSpacing: "0.1em" }}>
-                  PEMILIHAN DUTA WISATA KOTA BATAM
-                </h2>
-                <p style={{ fontFamily: "var(--font-cinzel)", color: "#F5D06F", fontSize: "0.75rem", letterSpacing: "0.12em" }}>
-                  ENCIK & PUAN - 2026
-                </p>
-                <p style={{ fontFamily: "var(--font-poppins)", color: "#888", fontSize: "0.65rem" }}>
-                  Dinas Kebudayaan dan Pariwisata Kota Batam
-                </p>
-              </div>
-              <div className="ml-auto text-right">
-                <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-                  Nomor Peserta
-                </p>
-                <p style={{ fontFamily: "var(--font-cinzel)", color: "#C8A24D", fontSize: "1.1rem", fontWeight: 700 }}>
-                  {participant?.number || "-"}
-                </p>
+            <div
+              className="p-5"
+              style={{
+                background: "linear-gradient(135deg, #1A1A1A, #101010)",
+                borderBottom: "1px solid rgba(200,162,77,0.25)",
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <NextImage
+                  src="/logo.png"
+                  alt="Logo"
+                  width={48}
+                  height={48}
+                  className="w-12 h-12 object-contain"
+                />
+                <div className="flex-1 min-w-0">
+                  <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}>
+                    PEMILIHAN DUTA WISATA KOTA BATAM
+                  </p>
+                  <p className="text-xs" style={{ color: "#E7D3A0", fontFamily: "var(--font-cinzel)" }}>
+                    ENCIK & PUAN - 2026
+                  </p>
+                  <p className="text-[11px]" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
+                    Dinas Kebudayaan dan Pariwisata Kota Batam
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px]" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
+                    Nomor Peserta
+                  </p>
+                  <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "1.1rem" }}>
+                    {participant.number || "-"}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Isi utama surat */}
-          <div className="p-6">
-            <div className="grid sm:grid-cols-3 gap-6 mb-6">
-              <div className="flex justify-center">
-                <div className="relative">
+            <div className="p-5">
+              <div className="grid md:grid-cols-[120px_1fr] gap-5 mb-5">
+                <div>
                   <NextImage
-                    src={participant?.photo || "/logo.png"}
+                    src={previewPhoto}
                     alt="Foto Peserta"
-                    width={128}
-                    height={160}
+                    width={120}
+                    height={145}
                     unoptimized
-                    className="w-32 h-40 object-cover rounded-xl"
-                    style={{ border: "3px solid rgba(200,162,77,0.5)" }}
+                    className="w-[120px] h-[145px] object-cover rounded-xl"
+                    style={{ border: "2px solid rgba(200,162,77,0.45)" }}
                   />
-                  <div
-                    className="absolute -bottom-3 -right-3 w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{ background: "#1A1A1A", border: "2px solid rgba(200,162,77,0.4)" }}
+                </div>
+
+                <div>
+                  <h2
+                    className="mb-3"
+                    style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)", fontSize: "1.1rem", fontWeight: 700 }}
                   >
-                    <div className="grid grid-cols-3 gap-0.5">
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="w-2.5 h-2.5 rounded-sm"
-                          style={{ background: [0, 2, 4, 6, 8].includes(i) ? "#C8A24D" : "#333" }}
-                        />
-                      ))}
-                    </div>
+                    {participant.name || user?.name || "Nama Peserta"}
+                  </h2>
+
+                  <div className="space-y-2">
+                    {[
+                      ["Kategori", participant.gender === "Encik" ? "ENCIK (Putra)" : "PUAN (Putri)"],
+                      ["NIK", participant.nationalId || "-"],
+                      [
+                        "TTL",
+                        participant.birthDate
+                          ? `${participant.birthPlace || "-"}, ${participant.birthDate}`
+                          : "-",
+                      ],
+                      ["Tinggi Badan", participant.heightCm ? `${participant.heightCm} cm` : "-"],
+                      ["Pendidikan", educationDisplay],
+                      ["Instagram", participant.instagram || "-"],
+                      ["Email", participant.email || user?.email || "-"],
+                    ].map(([label, value]) => (
+                      <div key={String(label)} className="grid grid-cols-[96px_12px_1fr] text-xs">
+                        <span style={{ color: "#D9D9D9", fontFamily: "var(--font-poppins)", fontWeight: 600 }}>
+                          {label}
+                        </span>
+                        <span style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>:</span>
+                        <span style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>{value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              <div className="sm:col-span-2">
-                <h3 style={{ fontFamily: "var(--font-cinzel)", color: "#F5E6C8", fontSize: "1rem", fontWeight: 700, marginBottom: 16 }}>
-                  {participant?.name || user?.name || "Nama Peserta"}
-                </h3>
-
-                <div className="space-y-2">
-                  {[
-                    { label: "Kategori", value: participant?.gender === "Encik" ? "ENCIK (Putra)" : "PUAN (Putri)" },
-                    { label: "NIK", value: participant?.nationalId || "-" },
-                    {
-                      label: "TTL",
-                      value: participant?.birthDate ? `${participant?.birthPlace || "-"}, ${participant.birthDate}` : "-",
-                    },
-                    { label: "Tinggi Badan", value: participant?.heightCm ? `${participant.heightCm} cm` : "-" },
-                    { label: "Pendidikan", value: educationDisplay },
-                    { label: "Instagram", value: participant?.instagram || "-" },
-                    { label: "Email", value: participant?.email || user?.email || "-" },
-                  ].map((d) => (
-                    <div key={d.label} className="flex gap-3 text-xs">
-                      <span style={{ color: "#888", fontFamily: "var(--font-poppins)", minWidth: 90 }}>{d.label}</span>
-                      <span style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>: {d.value}</span>
-                    </div>
+              <div className="mb-5">
+                <p
+                  className="mb-3 text-sm"
+                  style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
+                >
+                  STATUS BERKAS ({doneCount}/{documentItems.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {documentItems.map((item) => (
+                    <span
+                      key={item.label}
+                      className="text-xs px-2.5 py-1 rounded-full"
+                      style={{
+                        border: `1px solid ${item.done ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.28)"}`,
+                        background: item.done ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.06)",
+                        color: item.done ? "#22c55e" : "#ef4444",
+                        fontFamily: "var(--font-poppins)",
+                      }}
+                    >
+                      {item.done ? "OK" : "X"} {item.label}
+                    </span>
                   ))}
                 </div>
               </div>
-            </div>
 
-            {/* Status checklist dokumen */}
-            <div className="mb-5">
-              <p className="text-xs font-bold mb-3" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-                STATUS BERKAS ({doneCount}/{berkasWajib.length})
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {berkasWajib.map((b) => (
-                  <span
-                    key={b.label}
-                    className="text-xs px-2.5 py-1 rounded-full"
-                    style={{
-                      background: b.done ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.1)",
-                      border: `1px solid ${b.done ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.3)"}`,
-                      color: b.done ? "#22c55e" : "#ef4444",
-                      fontFamily: "var(--font-poppins)",
-                    }}
-                  >
-                    {b.done ? "✓" : "✗"} {b.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Ringkasan status seleksi saat ini */}
-            <div
-              className="flex items-center justify-between p-4 rounded-xl"
-              style={{ background: "rgba(200,162,77,0.08)", border: "1px solid rgba(200,162,77,0.25)" }}
-            >
-              <div>
-                <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-                  Status Seleksi Saat Ini
-                </p>
-                <p className="text-sm font-bold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-                  {participant ? statusLabel[participant.status] : "Menunggu Verifikasi"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-                  Dicetak pada
-                </p>
-                <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                  {printedDate}
-                </p>
+              <div
+                className="rounded-xl p-4 flex items-center justify-between gap-4"
+                style={{
+                  background: "rgba(200,162,77,0.08)",
+                  border: "1px solid rgba(200,162,77,0.25)",
+                }}
+              >
+                <div>
+                  <p className="text-[11px]" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
+                    Status Seleksi Saat Ini
+                  </p>
+                  <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}>
+                    {statusLabel[participant.status] || "Menunggu Verifikasi"}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px]" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
+                    Dicetak pada
+                  </p>
+                  <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                    {printedDate}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Footer surat */}
-          <div
-            className="px-6 py-4"
-            style={{ borderTop: "1px solid rgba(200,162,77,0.2)", background: "rgba(200,162,77,0.03)" }}
-          >
-            <p className="text-xs text-center" style={{ color: "#555", fontFamily: "var(--font-poppins)" }}>
-              Dokumen ini digenerate secara otomatis oleh Sistem Pemilihan Duta Wisata Kota Batam 2026
-            </p>
-          </div>
-        </div>
-      </div>
+        </GoldCard>
+      ) : null}
     </div>
   );
 }
-
