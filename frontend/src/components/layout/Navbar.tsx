@@ -47,14 +47,13 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20">
-          {/* Logo */}
           <Link
             href="/"
             className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none min-w-0"
             onClick={() => setMenuOpen(false)}
           >
             <Image
-              src="/logo.png"
+              src="/logo1.png"
               alt="Duta Wisata Batam"
               width={48}
               height={48}
@@ -85,7 +84,6 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Nav */}
           <div className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => (
               <Link
@@ -104,7 +102,6 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* CTA Buttons */}
           <div className="hidden lg:flex items-center gap-3">
             <Link href="/auth/login" onClick={() => setMenuOpen(false)}>
               <GoldButton variant="outline" size="sm">
@@ -118,7 +115,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Mobile toggle */}
           <button
             className="lg:hidden p-2 rounded-lg"
             style={{ color: "#C8A24D", background: "rgba(200,162,77,0.1)" }}
@@ -130,7 +126,6 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {menuOpen && (
           <div
             className="lg:hidden py-4 border-t"
@@ -174,5 +169,3 @@ export default function Navbar() {
     </nav>
   );
 }
-
-

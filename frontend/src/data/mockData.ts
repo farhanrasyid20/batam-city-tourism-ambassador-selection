@@ -1,4 +1,4 @@
-// =============================================
+﻿// =============================================
 // TYPES & INTERFACES (ENGLISH KEYS)
 // =============================================
 
@@ -73,6 +73,25 @@ export interface ParticipantScore {
   submittedAt: string; // ISO datetime
 }
 
+export type ParticipantVerificationIssueTarget =
+  | "identityCard"
+  | "closeUpPhoto"
+  | "fullBodyPhoto"
+  | "formS01"
+  | "formS02"
+  | "formS03"
+  | "formS04"
+  | "instagram"
+  | "phone"
+  | "education";
+
+export interface ParticipantVerificationIssue {
+  id: string;
+  target: ParticipantVerificationIssueTarget;
+  status: "revision_required";
+  message: string;
+}
+
 export interface Participant {
   id: string;
   number: string; // ex: ECK-001
@@ -93,6 +112,7 @@ export interface Participant {
   status: StageStatus;
   submittedToAdmin?: boolean;
   rejectionReason?: string;
+  verificationIssues?: ParticipantVerificationIssue[];
   agreementNoAgency?: "yes" | "no";
   agencyName?: string;
   agreementParentPermission?: "yes" | "no";
@@ -157,15 +177,19 @@ export const criteriaList: CriteriaItem[] = [
 ];
 
 export const schedule: ScheduleItem[] = [
-  { activity: "Online Registration", date: "1 Februari – 1 April 2026", status: "active" },
-  { activity: "Technical Meeting", date: "2 April 2026", status: "upcoming" },
-  { activity: "Audition", date: "4 April 2026", status: "upcoming" },
-  { activity: "Pre-Camp", date: "6 – 17 April 2026", status: "upcoming" },
-  { activity: "Camp", date: "22 – 24 April 2026", status: "upcoming" },
+  { activity: "Pendaftaran Online", date: "1 Februari - 1 April 2026", status: "active" },
+  { activity: "Pertemuan Teknis", date: "2 April 2026", status: "upcoming" },
+  { activity: "Audisi", date: "4 April 2026", status: "upcoming" },
+  { activity: "Karantina", date: "22 April - 24 April 2026", status: "upcoming" },
   { activity: "Grand Final", date: "25 April 2026", status: "upcoming" },
 ];
 
 export const winnerCategories: WinnerCategory[] = [
+  {
+    title: "Encik & Puan Duta Wisata Kota Batam 2026",
+    description:
+      "Pasangan utama Duta Wisata Kota Batam 2026 yang ditetapkan sebagai representasi resmi pariwisata Kota Batam selama masa jabatan.",
+  },
   {
     title: "Encik Duta Wisata Kota Batam 2026",
     description:
@@ -202,7 +226,7 @@ export const statusLabelsId: Record<StageStatus, string> = {
   Pending: "Menunggu Verifikasi",
   Verified: "Terverifikasi",
   Rejected: "Ditolak",
-  Audition: "Lolos Administrasi – Audisi",
+  Audition: "Lolos Administrasi â€“ Audisi",
   Top20: "Top 20",
   PreCamp: "Pra-Karantina",
   Camp: "Karantina",
@@ -240,7 +264,7 @@ export const mockNews: NewsItem[] = [
       {
         type: "paragraph",
         text:
-          "BATAM — Dinas Kebudayaan dan Pariwisata (Disbudpar) Kota Batam resmi membuka pendaftaran Pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Pendaftaran dilakukan secara online melalui platform resmi panitia.",
+          "BATAM â€” Dinas Kebudayaan dan Pariwisata (Disbudpar) Kota Batam resmi membuka pendaftaran Pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Pendaftaran dilakukan secara online melalui platform resmi panitia.",
       },
       {
         type: "paragraph",
@@ -251,11 +275,11 @@ export const mockNews: NewsItem[] = [
       {
         type: "list",
         items: [
-          "Pendaftaran online: 1 Februari – 1 April 2026",
+          "Pendaftaran online: 1 Februari â€“ 1 April 2026",
           "Technical meeting: 2 April 2026",
           "Audisi: 4 April 2026",
-          "Pra-karantina: 6 – 17 April 2026",
-          "Karantina: 22 – 24 April 2026",
+          "Pra-karantina: 6 â€“ 17 April 2026",
+          "Karantina: 22 â€“ 24 April 2026",
           "Grand final: 25 April 2026",
         ],
       },
@@ -485,6 +509,21 @@ export const mockParticipants: Participant[] = [
     email: "encik.firdaus@email.com",
     photo: "/vote-candidates/encik1.jpg",
     status: "GrandFinal",
+    submittedToAdmin: true,
+    verificationIssues: [
+      {
+        id: "issue-form-s04",
+        target: "formS04",
+        status: "revision_required",
+        message: "Formulir S-04 salah, wajib upload ulang dokumen yang benar dan sudah ditandatangani.",
+      },
+      {
+        id: "issue-closeup",
+        target: "closeUpPhoto",
+        status: "revision_required",
+        message: "Foto close up belum sesuai panduan. Mohon upload ulang dengan latar putih polos dan pakaian formal.",
+      },
+    ],
     registeredAt: "2026-02-10",
     scores: [],
     likes: 4200,
@@ -1001,5 +1040,7 @@ export function getAverageScore(participantId: string, stage: string): number {
   const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
   return Math.round(avg * 100) / 100;
 }
+
+
 
 

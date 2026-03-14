@@ -174,7 +174,7 @@ export default function Hero() {
             }}
           >
             <Image
-              src="/logo.png"
+              src="/logo1.png"
               alt="Logo Duta Wisata Batam 2026"
               width={240}
               height={240}

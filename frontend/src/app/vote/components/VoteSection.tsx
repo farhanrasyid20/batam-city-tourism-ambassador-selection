@@ -1,14 +1,74 @@
-﻿"use client";
+"use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Instagram, Star, Crown } from "lucide-react";
+import { Heart, Instagram, Radio, Sparkles, Star, Crown } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { GoldButton } from "../../../components/ui/GoldButton";
 
+const OFFICIAL_ACCOUNT = "@dutawisatakotabatam";
+const OFFICIAL_ACCOUNT_URL = "https://instagram.com/dutawisatakotabatam";
+const syncSeedDelays = [0, 1, 0, 2, 1, 0, 3, 1, 0, 2, 1, 0];
+
+function formatLikes(value: number) {
+  return new Intl.NumberFormat("id-ID").format(value);
+}
+
 export default function VoteSection() {
-  const { voteCandidateList } = useApp();
-  const finalists = voteCandidateList.filter((item) => item.enabled);
+  const { voteCandidateList, participantList } = useApp();
+  const finalists = useMemo(() => voteCandidateList.filter((item) => item.enabled), [voteCandidateList]);
+
+  const initialLikeMap = useMemo(() => {
+    return Object.fromEntries(
+      finalists.map((candidate, index) => {
+        const participant = participantList.find((item) => item.id === candidate.participantId);
+        const baseLikes = participant?.likes ?? 0;
+        const seededLikes = baseLikes + (syncSeedDelays[index % syncSeedDelays.length] ?? 0);
+        return [candidate.id, seededLikes];
+      })
+    ) as Record<string, number>;
+  }, [finalists, participantList]);
+
+  const [officialLikesMap, setOfficialLikesMap] = useState<Record<string, number>>(initialLikeMap);
+  const [lastSyncedAt, setLastSyncedAt] = useState(() =>
+    new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  );
+
+  useEffect(() => {
+    setOfficialLikesMap(initialLikeMap);
+    setLastSyncedAt(
+      new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    );
+  }, [initialLikeMap]);
+
+  useEffect(() => {
+    if (finalists.length === 0) return;
+
+    const intervalId = window.setInterval(() => {
+      setOfficialLikesMap((prev) => {
+        const next = { ...prev };
+        const candidate = finalists[Math.floor(Math.random() * finalists.length)];
+        const increment = Math.floor(Math.random() * 4) + 1;
+        next[candidate.id] = (next[candidate.id] ?? 0) + increment;
+        return next;
+      });
+
+      setLastSyncedAt(
+        new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+    }, 12000);
+
+    return () => window.clearInterval(intervalId);
+  }, [finalists]);
 
   return (
     <section className="py-20 lg:py-28">
@@ -38,43 +98,59 @@ export default function VoteSection() {
           <div
             className="w-24 h-0.5 mx-auto mt-4 mb-6"
             style={{
-              background:
-                "linear-gradient(90deg, transparent, #C8A24D, transparent)",
+              background: "linear-gradient(90deg, transparent, #C8A24D, transparent)",
             }}
           />
 
           <p
-            className="max-w-xl mx-auto text-sm"
+            className="max-w-3xl mx-auto text-sm leading-relaxed"
             style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
           >
-            Dukung finalis favorit Anda. Klik{" "}
-            <strong style={{ color: "#F5D06F" }}>Vote via Instagram</strong>{" "}
-            untuk mengunjungi akun Instagram finalis.
+            Halaman ini menampilkan finalis Grand Final yang dapat didukung melalui postingan resmi Instagram <strong style={{ color: "#F5D06F" }}>{OFFICIAL_ACCOUNT}</strong>. Pengunjung dapat melihat identitas Instagram masing-masing peserta serta menuju kanal resmi untuk memberikan dukungan.
           </p>
         </div>
 
         <div
-          className="max-w-2xl mx-auto mb-12 rounded-xl p-4 flex items-start gap-3"
+          className="max-w-4xl mx-auto mb-12 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-start gap-4"
           style={{
             background: "rgba(200,162,77,0.08)",
             border: "1px solid rgba(200,162,77,0.2)",
           }}
         >
-          <Star
-            size={16}
-            fill="#C8A24D"
-            style={{ color: "#C8A24D", marginTop: 2, flexShrink: 0 }}
-          />
-          <p
-            className="text-xs leading-relaxed"
-            style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
+          <div className="flex items-start gap-3 flex-1">
+            <Radio
+              size={16}
+              style={{ color: "#C8A24D", marginTop: 2, flexShrink: 0 }}
+            />
+            <div>
+              <p
+                className="text-xs sm:text-sm leading-relaxed"
+                style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}
+              >
+                Dukungan publik terpusat pada akun resmi <strong style={{ color: "#F5D06F" }}>{OFFICIAL_ACCOUNT}</strong> agar interaksi, jangkauan, dan pertumbuhan audiens terkelola dalam satu kanal resmi. Jumlah like pada postingan resmi finalis ditampilkan pada halaman ini sebagai indikator dukungan masyarakat.
+              </p>
+              <p
+                className="text-[11px] sm:text-xs mt-2"
+                style={{ color: "#A9A9A9", fontFamily: "var(--font-poppins)" }}
+              >
+                Pembaruan data terakhir: {lastSyncedAt} WIB
+              </p>
+            </div>
+          </div>
+
+          <a
+            href={OFFICIAL_ACCOUNT_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold shrink-0"
+            style={{
+              background: "linear-gradient(135deg, #F5D06F, #C8A24D)",
+              color: "#0F0F0F",
+              fontFamily: "var(--font-poppins)",
+            }}
           >
-            Voting dilakukan melalui Instagram. Klik tombol{" "}
-            <strong style={{ color: "#C8A24D" }}>
-              &quot;Vote via Instagram&quot;
-            </strong>{" "}
-            untuk membuka profil finalis dan berikan dukungan Anda.
-          </p>
+            <Instagram size={15} /> Buka IG Resmi
+          </a>
         </div>
 
         {finalists.length === 0 ? (
@@ -100,6 +176,9 @@ export default function VoteSection() {
                   : "rgba(183,61,131,0.65)";
               const igHandle = candidate.instagramHandle.replace("@", "");
               const instagramTarget = candidate.instagramProfileUrl || `https://instagram.com/${igHandle}`;
+              const officialPostTarget =
+                candidate.instagramPostUrl || `${OFFICIAL_ACCOUNT_URL}/p/${candidate.participantId.toLowerCase()}-demo/`;
+              const officialLikeCount = officialLikesMap[candidate.id] ?? 0;
 
               return (
                 <div
@@ -174,38 +253,106 @@ export default function VoteSection() {
                     </div>
                   </div>
 
-                  <div className="p-4">
-                    <p
-                      className="text-xs mb-1 truncate"
-                      style={{
-                        color: "#BDBDBD",
-                        fontFamily: "var(--font-poppins)",
-                      }}
-                    >
-                      {candidate.education.split(" - ")[0].trim()}
-                    </p>
-                    <p
-                      className="text-xs mb-4 truncate"
-                      style={{
-                        color: "#C8A24D",
-                        fontFamily: "var(--font-poppins)",
-                      }}
-                    >
-                      <Instagram size={11} className="inline mr-1" />
-                      {candidate.instagramHandle || "-"}
-                    </p>
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <p
+                        className="text-xs mb-1 truncate"
+                        style={{
+                          color: "#BDBDBD",
+                          fontFamily: "var(--font-poppins)",
+                        }}
+                      >
+                        {candidate.education.split(" - ")[0].trim()}
+                      </p>
+                      <p
+                        className="text-xs truncate"
+                        style={{
+                          color: "#C8A24D",
+                          fontFamily: "var(--font-poppins)",
+                        }}
+                      >
+                        <Instagram size={11} className="inline mr-1" />
+                        {candidate.instagramHandle || "-"}
+                      </p>
+                    </div>
 
-                    <GoldButton
-                      variant="primary"
-                      size="sm"
-                      fullWidth
-                      onClick={() =>
-                        window.open(instagramTarget, "_blank")
-                      }
+                    <div
+                      className="rounded-xl p-3 space-y-2"
+                      style={{
+                        background: "rgba(200,162,77,0.06)",
+                        border: "1px solid rgba(200,162,77,0.18)",
+                      }}
                     >
-                      <Instagram size={14} />
-                      Vote via Instagram
-                    </GoldButton>
+                      <div className="flex items-center justify-between gap-2">
+                        <p
+                          className="text-[11px] uppercase tracking-[0.18em]"
+                          style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
+                        >
+                          Like IG Resmi
+                        </p>
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full"
+                          style={{
+                            color: "#F5E6C8",
+                            background: "rgba(245,208,111,0.1)",
+                            fontFamily: "var(--font-poppins)",
+                          }}
+                        >
+                          <Sparkles size={10} /> Pembaruan Otomatis
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p
+                            className="text-lg font-bold"
+                            style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}
+                          >
+                            {formatLikes(officialLikeCount)}
+                          </p>
+                          <p
+                            className="text-[11px] leading-relaxed"
+                            style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
+                          >
+                            Like dari postingan resmi {OFFICIAL_ACCOUNT}
+                          </p>
+                        </div>
+
+                        <div
+                          className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                          style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}
+                        >
+                          <Heart size={18} fill="#ef4444" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <GoldButton
+                        variant="primary"
+                        size="sm"
+                        fullWidth
+                        onClick={() => window.open(officialPostTarget, "_blank")}
+                      >
+                        <Heart size={14} />
+                        Vote di IG Resmi
+                      </GoldButton>
+
+                      <button
+                        type="button"
+                        onClick={() => window.open(instagramTarget, "_blank")}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold border transition-colors"
+                        style={{
+                          borderColor: "rgba(200,162,77,0.28)",
+                          color: "#F5E6C8",
+                          background: "rgba(200,162,77,0.05)",
+                          fontFamily: "var(--font-poppins)",
+                        }}
+                      >
+                        <Instagram size={14} />
+                        Lihat IG Peserta
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -216,5 +363,7 @@ export default function VoteSection() {
     </section>
   );
 }
+
+
 
 

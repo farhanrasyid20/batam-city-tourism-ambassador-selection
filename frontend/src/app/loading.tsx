@@ -1,4 +1,4 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 
 export default function Loading() {
   return (
@@ -8,7 +8,7 @@ export default function Loading() {
     >
       <div className="flex flex-col items-center gap-4">
         <Image
-          src="/logo.png"
+          src="/logo1.png"
           alt="Loading Duta Wisata Batam"
           width={96}
           height={96}

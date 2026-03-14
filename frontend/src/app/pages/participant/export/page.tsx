@@ -75,7 +75,7 @@ export default function ExportPDFPage() {
     return window.location.origin;
   }, []);
 
-  const previewPhoto = participant?.photo || "/logo.png";
+  const previewPhoto = participant?.photo || "/logo1.png";
 
   const handleGeneratePdf = async () => {
     if (!participant || !canDownloadPdf) return;
@@ -87,7 +87,7 @@ export default function ExportPDFPage() {
         ? participant.photo.startsWith("http")
           ? participant.photo
           : `${assetBaseUrl}${participant.photo}`
-        : `${assetBaseUrl}/logo.png`;
+        : `${assetBaseUrl}/logo1.png`;
 
       const blob = await pdf(
         <ParticipantPdfDocument
@@ -101,7 +101,7 @@ export default function ExportPDFPage() {
           documentItems={documentItems}
           doneCount={doneCount}
           statusLabel={statusLabel}
-          logoSrc={`${assetBaseUrl}/logo.png`}
+          logoSrc={`${assetBaseUrl}/logo1.png`}
         />
       ).toBlob();
 
@@ -197,7 +197,7 @@ export default function ExportPDFPage() {
             >
               <div className="flex items-center gap-4">
                 <NextImage
-                  src="/logo.png"
+                  src="/logo1.png"
                   alt="Logo"
                   width={48}
                   height={48}

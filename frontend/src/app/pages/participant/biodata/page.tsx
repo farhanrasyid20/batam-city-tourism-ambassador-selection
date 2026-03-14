@@ -17,6 +17,8 @@ type FormState = {
   heightCm: string;
   educationInstitution: string;
   educationMajor: string;
+  email: string;
+  phone: string;
   instagram: string;
   vision: string;
   mission: string;
@@ -24,7 +26,7 @@ type FormState = {
   achievement: string;
   introVideoUrl: string;
   profilePhoto: string;
-  educationCategory: "SMA" | "SMK" | "MA" | "Kampus";
+  educationCategory: "SMA" | "SMK" | "MA" | "Kuliah";
   educationDegree: string;
   agreementNoAgency: "" | "yes" | "no";
   agencyName: string;
@@ -47,7 +49,7 @@ const inputStyle: React.CSSProperties = {
 export default function BiodataPage() {
   // Ambil data peserta aktif dan state form biodata.
   const router = useRouter();
-  const { currentParticipant, setCurrentParticipant, participantList, setParticipantList } = useApp();
+  const { currentParticipant, setCurrentParticipant, participantList, setParticipantList, user } = useApp();
   const participant = currentParticipant ?? participantList[0] ?? null;
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -56,7 +58,7 @@ export default function BiodataPage() {
   const institutionRef = useRef<HTMLDivElement | null>(null);
   const majorRef = useRef<HTMLDivElement | null>(null);
 
-  // Data referensi pendidikan per kategori (SMA/SMK/MA/Kampus).
+  // Data referensi pendidikan per kategori (SMA/SMK/MA/Kuliah).
   const educationData = {
     SMA: {
       institutions: [
@@ -142,7 +144,7 @@ export default function BiodataPage() {
       ],
       majors: ["MIPA", "IPS", "Bahasa", "Keagamaan", "Ilmu Keagamaan Islam"],
     },
-    Kampus: {
+    Kuliah: {
       institutions: [
         "Politeknik Negeri Batam",
         "Universitas Batam",
@@ -163,23 +165,23 @@ export default function BiodataPage() {
         "Teknik Industri",
         "Bahasa Inggris",
       ],
-      degrees: ["D3", "D4", "S1", "S2", "S3", "Profesi"],
+      degrees: ["D1", "D2", "D3", "D4", "S1", "S2", "S3", "Profesi"],
     },
   } as const;
 
   const isEducationCategory = (value: string | undefined): value is EducationCategory =>
-    value === "SMA" || value === "SMK" || value === "MA" || value === "Kampus";
+    value === "SMA" || value === "SMK" || value === "MA" || value === "Kuliah";
 
   // Parsing string pendidikan lama ke format field terpisah.
   const parseEducation = (value: string | undefined) => {
     if (!value) return { institution: "", major: "" };
-    const normalized = value.replace(" – ", " - ").replace(" | ", " - ");
+    const normalized = value.replace(" ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ ", " - ").replace(" | ", " - ");
     const parts = normalized.split(" - ");
     const rawCategory = parts[0]?.trim();
     return {
       institution: parts[1]?.trim() ?? parts[0]?.trim() ?? "",
       major: parts.slice(2).join(" - ").trim() || parts.slice(1).join(" - ").trim(),
-      category: isEducationCategory(rawCategory) ? rawCategory : undefined,
+      category: rawCategory === "Kampus" ? "Kuliah" : isEducationCategory(rawCategory) ? rawCategory : undefined,
     };
   };
 
@@ -195,8 +197,10 @@ export default function BiodataPage() {
     heightCm: participant?.heightCm ? String(participant.heightCm) : "",
     educationInstitution: parsedEducation.institution,
     educationMajor: parsedEducation.major,
-    educationCategory: parsedEducation.category ?? "Kampus",
+    educationCategory: parsedEducation.category ?? "Kuliah",
     educationDegree: "",
+    email: participant?.email ?? user?.email ?? "",
+    phone: participant?.phone ?? "",
     instagram: participant?.instagram ?? "",
     vision: "",
     mission: "",
@@ -222,6 +226,8 @@ export default function BiodataPage() {
       form.birthDate,
       form.heightCm,
       form.educationInstitution,
+      form.email,
+      form.phone,
       form.instagram,
       form.vision,
       form.mission,
@@ -238,10 +244,10 @@ export default function BiodataPage() {
   }, [form]);
 
   // Opsi dropdown yang berubah sesuai kategori pendidikan.
-  const selectedEducation = educationData[form.educationCategory] ?? educationData.Kampus;
+  const selectedEducation = educationData[form.educationCategory] ?? educationData.Kuliah;
   const institutionOptions = selectedEducation.institutions;
   const majorOptions = selectedEducation.majors;
-  const degreeOptions = form.educationCategory === "Kampus" ? educationData.Kampus.degrees : [];
+  const degreeOptions = form.educationCategory === "Kuliah" ? educationData.Kuliah.degrees : [];
 
   const institutionKeyword = form.educationInstitution.toLowerCase().trim();
   const filteredInstitutions = institutionKeyword
@@ -277,7 +283,7 @@ export default function BiodataPage() {
   const buildEducationValue = () =>
     form.educationInstitution.trim()
       ? form.educationMajor.trim()
-        ? form.educationCategory === "Kampus" && form.educationDegree.trim()
+        ? form.educationCategory === "Kuliah" && form.educationDegree.trim()
           ? `${form.educationCategory} - ${form.educationInstitution.trim()} - ${form.educationDegree.trim()} - ${form.educationMajor.trim()}`
           : `${form.educationCategory} - ${form.educationInstitution.trim()} - ${form.educationMajor.trim()}`
         : form.educationInstitution.trim()
@@ -304,6 +310,8 @@ export default function BiodataPage() {
       birthDate: form.birthDate,
       heightCm: normalizedHeight,
       education: educationValue,
+      email: participant.email || form.email,
+      phone: form.phone,
       instagram: form.instagram,
       photo: form.profilePhoto || participant.photo,
       agreementNoAgency: form.agreementNoAgency || undefined,
@@ -332,6 +340,8 @@ export default function BiodataPage() {
     placeholder,
     required = false,
     hint,
+    readOnly = false,
+    disabled = false,
   }: {
     label: string;
     name: keyof FormState;
@@ -339,6 +349,8 @@ export default function BiodataPage() {
     placeholder?: string;
     required?: boolean;
     hint?: string;
+    readOnly?: boolean;
+    disabled?: boolean;
   }) => (
     <div>
       <label
@@ -352,10 +364,25 @@ export default function BiodataPage() {
         value={form[name]}
         onChange={(e) => updateFormField(name, e.target.value)}
         placeholder={placeholder}
+        readOnly={readOnly}
+        disabled={disabled}
         className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-        style={inputStyle}
-        onFocus={(e) => (e.target.style.borderColor = "rgba(200,162,77,0.6)")}
-        onBlur={(e) => (e.target.style.borderColor = "rgba(200,162,77,0.25)")}
+        style={{
+          ...inputStyle,
+          opacity: disabled ? 0.72 : 1,
+          cursor: readOnly || disabled ? "not-allowed" : "text",
+          background: readOnly || disabled ? "#161616" : inputStyle.background,
+        }}
+        onFocus={(e) => {
+          if (!readOnly && !disabled) {
+            e.target.style.borderColor = "rgba(200,162,77,0.6)";
+          }
+        }}
+        onBlur={(e) => {
+          if (!readOnly && !disabled) {
+            e.target.style.borderColor = "rgba(200,162,77,0.25)";
+          }
+        }}
       />
       {hint ? (
         <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
@@ -539,7 +566,7 @@ export default function BiodataPage() {
                 style={{ background: "#111", border: "1px solid rgba(200,162,77,0.25)" }}
               >
                 <NextImage
-                  src={form.profilePhoto || "/logo.png"}
+                  src={form.profilePhoto || "/encik-puan-logo-2026.png"}
                   alt="Preview foto profil"
                   width={64}
                   height={64}
@@ -623,7 +650,7 @@ export default function BiodataPage() {
                   <select
                     value={form.educationCategory}
                     onChange={(e) => {
-                      const category = e.target.value as "SMA" | "SMK" | "MA" | "Kampus";
+                      const category = e.target.value as "SMA" | "SMK" | "MA" | "Kuliah";
                       setForm((prev) => ({
                         ...prev,
                         educationCategory: category,
@@ -640,12 +667,12 @@ export default function BiodataPage() {
                     <option value="SMA">SMA</option>
                     <option value="SMK">SMK</option>
                     <option value="MA">MA / MAN (Sekolah Agama)</option>
-                    <option value="Kampus">Kampus</option>
+                    <option value="Kuliah">Kuliah</option>
                   </select>
                 </div>
                 <div className="relative" ref={institutionRef}>
                   <p className="text-[11px] mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                    Instansi (Sekolah/Kampus)
+                    Instansi (Sekolah/Kampus/Perguruan Tinggi)
                   </p>
                   <input
                     type="text"
@@ -696,7 +723,7 @@ export default function BiodataPage() {
                     </div>
                   ) : null}
                 </div>
-                {form.educationCategory === "Kampus" ? (
+                {form.educationCategory === "Kuliah" ? (
                   <div>
                     <p className="text-[11px] mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                       Jenjang
@@ -717,7 +744,7 @@ export default function BiodataPage() {
                   </div>
                 ) : null}
                 <div
-                  className={`relative ${form.educationCategory === "Kampus" ? "" : "sm:col-span-2"}`}
+                  className={`relative ${form.educationCategory === "Kuliah" ? "" : "sm:col-span-2"}`}
                   ref={majorRef}
                 >
                   <p className="text-[11px] mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
@@ -792,13 +819,31 @@ export default function BiodataPage() {
           >
             MEDIA SOSIAL
           </h2>
+          <div className="space-y-4">
+            {renderInputField({
+              label: "Email Terdaftar",
+              name: "email",
+              placeholder: "Email terdaftar",
+              required: true,
+              readOnly: true,
+              disabled: true,
+              hint: "Email mengikuti data registrasi dan tidak dapat diubah di halaman biodata.",
+            })}
           {renderInputField({
-            label: "Username Instagram",
-            name: "instagram",
-            placeholder: "@username (akun harus public)",
+            label: "No. HP / WA",
+            name: "phone",
+            placeholder: "08xxxxxxxxxx",
             required: true,
-            hint: "Akun Instagram wajib tidak di-private sesuai ketentuan.",
+            hint: "Masukkan nomor HP aktif yang dapat dihubungi panitia.",
           })}
+            {renderInputField({
+              label: "Link Instagram",
+              name: "instagram",
+              placeholder: "https://instagram.com/username",
+              required: true,
+              hint: "Masukkan link profil Instagram yang aktif dan tidak di-private sesuai ketentuan.",
+            })}
+          </div>
         </GoldCard>
 
         {/* Section visi, misi, pengalaman */}

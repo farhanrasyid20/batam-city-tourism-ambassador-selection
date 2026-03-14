@@ -68,7 +68,7 @@ export default function AdminParticipantsPage() {
             <Search
               size={14}
               className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: "#D4AF37" }}
+              style={{ color: "#D4AF37", textAlign: "right", maxWidth: "160px", wordBreak: "break-word" }}
             />
             <input
               type="text"
@@ -314,11 +314,11 @@ export default function AdminParticipantsPage() {
                   <span style={{ color: "#888" }}>Instagram</span>
                   {selectedParticipant.instagram ? (
                     <a
-                      href={`https://instagram.com/${selectedParticipant.instagram.replace("@", "")}`}
+                      href={selectedParticipant.instagram.startsWith("http") ? selectedParticipant.instagram : `https://instagram.com/${selectedParticipant.instagram.replace("@", "")}`}
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-1"
-                      style={{ color: "#D4AF37" }}
+                      style={{ color: "#D4AF37", textAlign: "right", maxWidth: "160px", wordBreak: "break-word" }}
                     >
                       <Instagram size={11} />
                       {selectedParticipant.instagram}

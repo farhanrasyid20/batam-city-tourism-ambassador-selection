@@ -11,6 +11,9 @@ type DocumentUploadCardProps = {
   done: boolean;
   uploading: boolean;
   uploaded?: UploadFileInfo | null;
+  revisionRequired?: boolean;
+  resubmitted?: boolean;
+  reviewNote?: string;
   onFileChange: (key: string, event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
@@ -19,30 +22,83 @@ export default function DocumentUploadCard({
   done,
   uploading,
   uploaded,
+  revisionRequired = false,
+  resubmitted = false,
+  reviewNote,
   onFileChange,
 }: DocumentUploadCardProps) {
   // Ikon menyesuaikan tipe dokumen (file umum atau image).
   const icon = item.icon === "image" ? <ImageIcon size={20} /> : <FileText size={20} />;
+  const pendingReview = resubmitted || (revisionRequired && Boolean(uploaded));
+  const isProblem = revisionRequired || (!done && item.required);
+  const cardBorder = pendingReview
+    ? "rgba(245,208,111,0.4)"
+    : revisionRequired
+    ? "rgba(239,68,68,0.4)"
+    : done
+    ? "rgba(34,197,94,0.35)"
+    : item.required
+    ? "rgba(239,68,68,0.25)"
+    : "rgba(200,162,77,0.2)";
+  const iconBackground = pendingReview
+    ? "rgba(245,208,111,0.14)"
+    : revisionRequired
+    ? "rgba(239,68,68,0.14)"
+    : done
+    ? "rgba(34,197,94,0.15)"
+    : item.required
+    ? "rgba(239,68,68,0.1)"
+    : "rgba(200,162,77,0.1)";
+  const iconColor = pendingReview
+    ? "#F5D06F"
+    : revisionRequired
+    ? "#ef4444"
+    : done
+    ? "#22c55e"
+    : item.required
+    ? "#ef4444"
+    : "#C8A24D";
+  const badgeBackground = pendingReview
+    ? "rgba(245,208,111,0.14)"
+    : revisionRequired
+    ? "rgba(239,68,68,0.14)"
+    : item.required
+    ? "rgba(239,68,68,0.1)"
+    : "rgba(200,162,77,0.1)";
+  const badgeColor = pendingReview ? "#F5D06F" : revisionRequired ? "#ef4444" : item.required ? "#ef4444" : "#C8A24D";
+  const actionBackground = pendingReview
+    ? "rgba(245,208,111,0.1)"
+    : revisionRequired
+    ? "rgba(239,68,68,0.1)"
+    : done
+    ? "rgba(34,197,94,0.1)"
+    : "linear-gradient(135deg, rgba(245,208,111,0.15), rgba(200,162,77,0.15))";
+  const actionBorder = pendingReview
+    ? "1px solid rgba(245,208,111,0.3)"
+    : revisionRequired
+    ? "1px solid rgba(239,68,68,0.3)"
+    : done
+    ? "1px solid rgba(34,197,94,0.3)"
+    : "1px solid rgba(200,162,77,0.3)";
+  const actionColor = pendingReview ? "#F5D06F" : revisionRequired ? "#ef4444" : done ? "#22c55e" : "#C8A24D";
 
   return (
     <div
       className="rounded-2xl p-5"
       style={{
         background: "#1A1A1A",
-        border: `1px solid ${
-          done ? "rgba(34,197,94,0.35)" : item.required ? "rgba(239,68,68,0.25)" : "rgba(200,162,77,0.2)"
-        }`,
+        border: `1px solid ${cardBorder}`,
       }}
     >
       <div className="flex items-start gap-4">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
           style={{
-            background: done ? "rgba(34,197,94,0.15)" : item.required ? "rgba(239,68,68,0.1)" : "rgba(200,162,77,0.1)",
-            color: done ? "#22c55e" : item.required ? "#ef4444" : "#C8A24D",
+            background: iconBackground,
+            color: iconColor,
           }}
         >
-          {done ? <CheckCircle size={20} /> : item.required ? <AlertCircle size={20} /> : icon}
+          {pendingReview ? <Upload size={20} /> : revisionRequired ? <AlertCircle size={20} /> : done ? <CheckCircle size={20} /> : item.required ? <AlertCircle size={20} /> : icon}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -54,12 +110,12 @@ export default function DocumentUploadCard({
             <span
               className="text-xs px-2 py-0.5 rounded-full"
               style={{
-                background: item.required ? "rgba(239,68,68,0.1)" : "rgba(200,162,77,0.1)",
-                color: item.required ? "#ef4444" : "#C8A24D",
+                background: badgeBackground,
+                color: badgeColor,
                 fontFamily: "var(--font-poppins)",
               }}
             >
-              {item.required ? "Wajib" : "Opsional"}
+              {pendingReview ? "Menunggu Verifikasi Ulang" : revisionRequired ? "Perlu Revisi" : item.required ? "Wajib" : "Opsional"}
             </span>
           </div>
 
@@ -69,6 +125,25 @@ export default function DocumentUploadCard({
           <p className="text-xs" style={{ color: "#666", fontFamily: "var(--font-poppins)" }}>
             Format: {item.accept} | Maks: {item.maxSize}
           </p>
+
+          {reviewNote ? (
+            <div
+              className="mt-3 rounded-xl px-3 py-2"
+              style={{
+                background: pendingReview ? "rgba(245,208,111,0.08)" : "rgba(239,68,68,0.08)",
+                border: pendingReview ? "1px solid rgba(245,208,111,0.2)" : "1px solid rgba(239,68,68,0.2)",
+              }}
+            >
+              <p className="text-[11px] font-semibold" style={{ color: pendingReview ? "#F5D06F" : "#ef4444", fontFamily: "var(--font-poppins)" }}>
+                {pendingReview ? "Sedang Diverifikasi Ulang" : "Catatan Admin"}
+              </p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: pendingReview ? "#F5E6C8" : "#F2C3C3", fontFamily: "var(--font-poppins)" }}>
+                {pendingReview
+                  ? "File pengganti sudah diupload. Mohon tunggu pengecekan ulang dari admin panitia."
+                  : reviewNote}
+              </p>
+            </div>
+          ) : null}
 
           {item.templatePath ? (
             <Link
@@ -96,7 +171,7 @@ export default function DocumentUploadCard({
                 />
               ) : null}
               <div>
-                <p className="text-xs font-medium truncate max-w-48" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
+                <p className="text-xs font-medium truncate max-w-48" style={{ color: pendingReview ? "#F5D06F" : "#22c55e", fontFamily: "var(--font-poppins)" }}>
                   {uploaded.name}
                 </p>
                 <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
@@ -108,11 +183,21 @@ export default function DocumentUploadCard({
 
           {/* Kondisi sudah pernah terupload (dari data yang sudah tersimpan) */}
           {done && !uploaded ? (
-            <div className="mt-2 flex items-center gap-2">
-              <CheckCircle size={12} style={{ color: "#22c55e" }} />
-              <span className="text-xs" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
-                Berkas sudah terupload
-              </span>
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={12} style={{ color: "#22c55e" }} />
+                <span className="text-xs" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
+                  Berkas sebelumnya sudah terupload
+                </span>
+              </div>
+              {revisionRequired ? (
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={12} style={{ color: "#ef4444" }} />
+                  <span className="text-xs" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
+                    Admin meminta upload ulang berkas ini
+                  </span>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -130,11 +215,9 @@ export default function DocumentUploadCard({
             <div
               className="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
               style={{
-                background: done
-                  ? "rgba(34,197,94,0.1)"
-                  : "linear-gradient(135deg, rgba(245,208,111,0.15), rgba(200,162,77,0.15))",
-                border: done ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(200,162,77,0.3)",
-                color: done ? "#22c55e" : "#C8A24D",
+                background: actionBackground,
+                border: actionBorder,
+                color: actionColor,
                 fontFamily: "var(--font-poppins)",
                 cursor: uploading ? "not-allowed" : "pointer",
               }}
@@ -146,8 +229,8 @@ export default function DocumentUploadCard({
                 </>
               ) : done ? (
                 <>
-                  <CheckCircle size={12} />
-                  Re-upload
+                  {pendingReview ? <Upload size={12} /> : revisionRequired ? <AlertCircle size={12} /> : <CheckCircle size={12} />}
+                  {pendingReview ? "Sedang Diproses" : revisionRequired ? "Upload Ulang" : "Re-upload"}
                 </>
               ) : (
                 <>

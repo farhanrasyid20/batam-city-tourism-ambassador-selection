@@ -19,7 +19,7 @@ export const metadata = {
   title: "Duta Wisata Kota Batam",
   description: "Platform Digital Pemilihan Encik & Puan Kota Batam",
   icons: {
-    icon: "/logo.png",
+    icon: "/logo1.png",
   },
 };
 

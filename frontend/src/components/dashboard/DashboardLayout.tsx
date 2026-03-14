@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, ChevronRight, PanelLeft, PanelRight, ChevronDown, KeyRound, UserCircle2 } from "lucide-react";
+import { LogOut, Menu, ChevronRight, PanelLeft, PanelRight, ChevronDown, KeyRound, UserCircle2, Bell, AlertCircle, CheckCircle2, Clock3 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 
 type NavItem = {
@@ -30,10 +30,48 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const notificationMenuRef = useRef<HTMLDivElement | null>(null);
   const participant = currentParticipant ?? participantList[0] ?? null;
   const profilePhoto = role === "participant" ? participant?.photo : undefined;
+  const verificationIssues = participant?.verificationIssues ?? [];
+  const participantNotifications =
+    role === "participant" && participant
+      ? [
+          verificationIssues.length > 0
+            ? {
+                id: "revision-note",
+                title: "Perlu Revisi Berkas",
+                message: `${verificationIssues.length} item memerlukan perbaikan. Buka halaman dokumen untuk melihat catatan admin dan upload ulang.`,
+                color: "#ef4444",
+                icon: <AlertCircle size={14} />,
+                href: "/pages/participant/dokumen",
+              }
+            : null,
+          participant.submittedToAdmin && participant.status === "Pending"
+            ? {
+                id: "pending-review",
+                title: "Menunggu Verifikasi",
+                message: "Berkas Anda sudah dikirim dan sedang ditinjau oleh admin panitia.",
+                color: "#C8A24D",
+                icon: <Clock3 size={14} />,
+                href: "/pages/participant/status",
+              }
+            : null,
+          participant.status === "Verified"
+            ? {
+                id: "verified",
+                title: "Berkas Terverifikasi",
+                message: "Administrasi Anda dinyatakan lengkap. Silakan pantau tahap seleksi berikutnya.",
+                color: "#22c55e",
+                icon: <CheckCircle2 size={14} />,
+                href: "/pages/participant/status",
+              }
+            : null,
+        ].filter(Boolean)
+      : [];
 
   const roleColors = {
     participant: "#C8A24D",
@@ -56,6 +94,9 @@ export default function DashboardLayout({
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setProfileMenuOpen(false);
+      }
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(event.target as Node)) {
+        setNotificationMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -95,7 +136,7 @@ export default function DashboardLayout({
       <div className="p-6 border-b" style={{ borderColor: "rgba(200,162,77,0.2)" }}>
         <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"}`}>
           <Image
-            src="/logo.png"
+            src="/logo1.png"
             alt="Logo Duta Wisata Batam"
             width={40}
             height={40}
@@ -366,6 +407,87 @@ export default function DashboardLayout({
           </div>
           <div className="hidden lg:block" />
           <div className="flex items-center gap-3">
+            {role === "participant" ? (
+              <div className="relative" ref={notificationMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setNotificationMenuOpen((prev) => !prev)}
+                  className="relative flex items-center justify-center rounded-xl w-10 h-10"
+                  style={{
+                    background: "rgba(200,162,77,0.08)",
+                    border: "1px solid rgba(200,162,77,0.22)",
+                    color: "#F5E6C8",
+                  }}
+                  title="Notifikasi"
+                >
+                  <Bell size={17} style={{ color: "#C8A24D" }} />
+                  {participantNotifications.length > 0 ? (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] flex items-center justify-center font-bold"
+                      style={{
+                        background: "#ef4444",
+                        color: "#fff",
+                        fontFamily: "var(--font-poppins)",
+                      }}
+                    >
+                      {participantNotifications.length}
+                    </span>
+                  ) : null}
+                </button>
+
+                {notificationMenuOpen ? (
+                  <div
+                    className="absolute right-0 mt-2 w-80 rounded-xl overflow-hidden z-50"
+                    style={{
+                      background: "#141414",
+                      border: "1px solid rgba(200,162,77,0.24)",
+                      boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    <div className="px-3 py-2 border-b" style={{ borderColor: "rgba(200,162,77,0.16)" }}>
+                      <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                        Notifikasi Peserta
+                      </p>
+                    </div>
+                    {participantNotifications.length > 0 ? (
+                      participantNotifications.map((notification) => (
+                        <button
+                          key={notification.id}
+                          type="button"
+                          onClick={() => {
+                            router.push(notification.href);
+                            setNotificationMenuOpen(false);
+                          }}
+                          className="w-full px-3 py-3 text-left border-b last:border-b-0"
+                          style={{
+                            borderColor: "rgba(200,162,77,0.12)",
+                            background: "transparent",
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span style={{ color: notification.color, marginTop: 1 }}>{notification.icon}</span>
+                            <div>
+                              <p className="text-xs font-semibold" style={{ color: notification.color, fontFamily: "var(--font-poppins)" }}>
+                                {notification.title}
+                              </p>
+                              <p className="text-[11px] mt-1 leading-relaxed" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                                {notification.message}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4">
+                        <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Belum ada notifikasi baru untuk akun peserta Anda.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="relative" ref={profileMenuRef}>
               <button
                 type="button"

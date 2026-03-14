@@ -20,10 +20,39 @@ export default function ParticipantDocumentsPage() {
 
   // State lokal upload dokumen pada halaman ini.
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadFileInfo | null>>({});
+  const [resubmittedKeys, setResubmittedKeys] = useState<string[]>([]);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState("");
   const [noticeType, setNoticeType] = useState<"success" | "error">("success");
   const allDocuments: DocumentItem[] = [...requiredDocuments, ...optionalDocuments];
+  const verificationIssues = participant?.verificationIssues ?? [];
+  const revisionStorageKey = participant ? `participant-revision-uploads:${participant.id}` : "";
+  const documentIssueMap = verificationIssues.reduce<Record<string, string>>((acc, issue) => {
+    acc[issue.target] = issue.message;
+    return acc;
+  }, {});
+  const revisedIssueCount = verificationIssues.filter((issue) => resubmittedKeys.includes(issue.target)).length;
+  const allIssuesReuploaded = verificationIssues.length > 0 && revisedIssueCount === verificationIssues.length;
+
+  useEffect(() => {
+    if (!revisionStorageKey || typeof window === "undefined") {
+      setResubmittedKeys([]);
+      return;
+    }
+
+    const saved = window.localStorage.getItem(revisionStorageKey);
+    if (!saved) {
+      setResubmittedKeys([]);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(saved);
+      setResubmittedKeys(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setResubmittedKeys([]);
+    }
+  }, [revisionStorageKey]);
 
   // Menentukan dokumen sudah lengkap berdasarkan data profil peserta.
   const inferredDoneFromProfile = (key: string) => {
@@ -71,6 +100,15 @@ export default function ParticipantDocumentsPage() {
       ...prev,
       [key]: { name: file.name, size: formattedSize, preview: previewUrl },
     }));
+
+    if (documentIssueMap[key] && revisionStorageKey && typeof window !== "undefined") {
+      setResubmittedKeys((prev) => {
+        const next = prev.includes(key) ? prev : [...prev, key];
+        window.localStorage.setItem(revisionStorageKey, JSON.stringify(next));
+        return next;
+      });
+    }
+
     setNoticeType("success");
     setNoticeMessage(`Berkas ${file.name} berhasil diupload.`);
   };
@@ -116,6 +154,79 @@ export default function ParticipantDocumentsPage() {
 
       {/* Panduan lengkap sebelum peserta upload dokumen */}
       <ParticipantGuidePanel />
+
+      {verificationIssues.length > 0 ? (
+        <GoldCard className="mb-6">
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: allIssuesReuploaded ? "rgba(245,208,111,0.08)" : "rgba(239,68,68,0.08)",
+              border: allIssuesReuploaded
+                ? "1px solid rgba(245,208,111,0.25)"
+                : "1px solid rgba(239,68,68,0.25)",
+            }}
+          >
+            <div className="flex items-start gap-3">
+              {allIssuesReuploaded ? (
+                <CheckCircle size={18} style={{ color: "#F5D06F", marginTop: 2 }} />
+              ) : (
+                <AlertCircle size={18} style={{ color: "#ef4444", marginTop: 2 }} />
+              )}
+              <div className="flex-1">
+                <p
+                  className="text-sm font-semibold"
+                  style={{
+                    color: allIssuesReuploaded ? "#F5D06F" : "#ef4444",
+                    fontFamily: "var(--font-cinzel)",
+                  }}
+                >
+                  {allIssuesReuploaded ? "Perbaikan Dokumen Sedang Diproses" : "Ada Berkas yang Perlu Revisi"}
+                </p>
+                <p
+                  className="text-xs mt-1 leading-relaxed"
+                  style={{
+                    color: allIssuesReuploaded ? "#F5E6C8" : "#F2C3C3",
+                    fontFamily: "var(--font-poppins)",
+                  }}
+                >
+                  {allIssuesReuploaded
+                    ? "Dokumen pengganti sudah Anda upload. Perbaikan sedang ditinjau kembali oleh panitia. Jika diminta, Anda tetap dapat mengganti file sekali lagi sebelum hasil verifikasi ulang keluar."
+                    : "Panitia memberikan catatan pada beberapa berkas Anda. Silakan cek item yang bertanda Perlu Revisi lalu upload ulang dokumen yang diminta."}
+                </p>
+                <div className="mt-3 space-y-2">
+                  {verificationIssues.map((issue, index) => (
+                    <div
+                      key={issue.id}
+                      className="rounded-xl px-3 py-2"
+                      style={{
+                        background: "rgba(15,15,15,0.35)",
+                        border: resubmittedKeys.includes(issue.target)
+                          ? "1px solid rgba(245,208,111,0.18)"
+                          : "1px solid rgba(239,68,68,0.16)",
+                      }}
+                    >
+                      <p className="text-[11px] font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                        {index + 1}. {allDocuments.find((doc) => doc.key === issue.target)?.label ?? issue.target}
+                      </p>
+                      <p
+                        className="text-xs mt-1"
+                        style={{
+                          color: resubmittedKeys.includes(issue.target) ? "#F5E6C8" : "#F2C3C3",
+                          fontFamily: "var(--font-poppins)",
+                        }}
+                      >
+                        {resubmittedKeys.includes(issue.target)
+                          ? "Berkas pengganti sudah diupload dan sedang menunggu verifikasi ulang panitia."
+                          : issue.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </GoldCard>
+      ) : null}
 
       {/* Card progress upload dokumen wajib */}
       <GoldCard className="mb-6">
@@ -163,6 +274,9 @@ export default function ParticipantDocumentsPage() {
               done={isDone(item.key)}
               uploading={uploadingKey === item.key}
               uploaded={uploadedFiles[item.key]}
+              revisionRequired={Boolean(documentIssueMap[item.key])}
+              resubmitted={resubmittedKeys.includes(item.key)}
+              reviewNote={documentIssueMap[item.key]}
               onFileChange={handleFileChange}
             />
           ))}
@@ -185,6 +299,9 @@ export default function ParticipantDocumentsPage() {
               done={isDone(item.key)}
               uploading={uploadingKey === item.key}
               uploaded={uploadedFiles[item.key]}
+              revisionRequired={Boolean(documentIssueMap[item.key])}
+              resubmitted={resubmittedKeys.includes(item.key)}
+              reviewNote={documentIssueMap[item.key]}
               onFileChange={handleFileChange}
             />
           ))}

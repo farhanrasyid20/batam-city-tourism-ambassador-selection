@@ -15,7 +15,6 @@ const stageOrder: StageStatus[] = [
   "Verified",
   "Audition",
   "Top20",
-  "PreCamp",
   "Camp",
   "GrandFinal",
   "Winner",
@@ -28,7 +27,7 @@ const statusDisplayMap: Record<StageStatus, string> = {
   Rejected: "Ditolak",
   Audition: "Audition",
   Top20: "Top 20",
-  PreCamp: "Pra-Karantina",
+  PreCamp: "Karantina",
   Camp: "Karantina",
   GrandFinal: "Grand Final",
   Winner: "Pemenang",
@@ -45,11 +44,6 @@ const timelineStages = [
     id: "audition",
     label: "Tahap Audition",
     description: "Penilaian awal oleh dewan juri berdasarkan presentasi dan wawancara singkat.",
-  },
-  {
-    id: "pre_camp",
-    label: "Tahap Pra-Karantina",
-    description: "Seleksi lanjutan sebelum masuk masa karantina utama.",
   },
   {
     id: "camp",
@@ -123,14 +117,8 @@ export default function ParticipantStatusPage() {
       return "pending";
     }
 
-    if (stageId === "pre_camp") {
-      if (currentStatus === "PreCamp") return "active";
-      if (["Camp", "GrandFinal", "Winner"].includes(currentStatus)) return "done";
-      return "pending";
-    }
-
     if (stageId === "camp") {
-      if (currentStatus === "Camp") return "active";
+      if (currentStatus === "PreCamp" || currentStatus === "Camp") return "active";
       if (["GrandFinal", "Winner"].includes(currentStatus)) return "done";
       return "pending";
     }

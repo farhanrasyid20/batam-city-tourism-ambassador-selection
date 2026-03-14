@@ -13,11 +13,11 @@ import {
   type Participant,
   type Judge,
   type NewsItem,
-  type ScoreRecord, // ✅ INI YANG BENAR (bukan Score)
+  type ScoreRecord, // Ã¢Å“â€¦ INI YANG BENAR (bukan Score)
   mockParticipants,
   mockJudges,
   mockNews,
-  mockScores, // ✅ ini harus ScoreRecord[]
+  mockScores, // Ã¢Å“â€¦ ini harus ScoreRecord[]
 } from "../data/mockData";
 import { faqItems, type FAQItem } from "../data/faqData";
 
@@ -137,7 +137,7 @@ type AppContextType = {
   newsList: NewsItem[];
   setNewsList: React.Dispatch<React.SetStateAction<NewsItem[]>>;
 
-  scoreList: ScoreRecord[]; // ✅ INI YANG BENAR
+  scoreList: ScoreRecord[]; // Ã¢Å“â€¦ INI YANG BENAR
   setScoreList: React.Dispatch<React.SetStateAction<ScoreRecord[]>>;
 
   currentParticipant: Participant | null;
@@ -213,15 +213,45 @@ const defaultParticipantResources: ParticipantResources = {
   additionalNote: "",
 };
 
-function toInstagramHandle(raw: string) {
-  return raw.replace("@", "").trim();
+function normalizeInstagram(raw: string) {
+  const value = raw.trim();
+  if (!value) {
+    return {
+      handle: "",
+      profileUrl: "",
+      originalValue: "",
+    };
+  }
+
+  const normalizedValue = value.replace(/^https?:\/\/www\./i, "https://");
+  const isUrl = /^https?:\/\//i.test(normalizedValue);
+
+  if (isUrl) {
+    const withoutQuery = normalizedValue.split("?")[0].replace(/\/+$/, "");
+    const handleSegment = withoutQuery.split("/").filter(Boolean).pop() ?? "";
+    const handle = handleSegment.replace("@", "").trim();
+
+    return {
+      handle: handle ? `@${handle}` : "",
+      profileUrl: normalizedValue,
+      originalValue: value,
+    };
+  }
+
+  const handle = value.replace("@", "").trim();
+
+  return {
+    handle: handle ? `@${handle}` : "",
+    profileUrl: handle ? `https://instagram.com/${handle}` : "",
+    originalValue: value,
+  };
 }
 
 function buildVoteCandidates(participants: Participant[]): VotePublicCandidate[] {
   return participants
     .filter((participant) => participant.status === "GrandFinal" || participant.status === "Winner")
     .map((participant) => {
-      const handle = toInstagramHandle(participant.instagram);
+      const instagram = normalizeInstagram(participant.instagram);
       return {
         id: `vc-${participant.id}`,
         participantId: participant.id,
@@ -230,8 +260,8 @@ function buildVoteCandidates(participants: Participant[]): VotePublicCandidate[]
         gender: participant.gender,
         education: participant.education,
         photo: participant.photo,
-        instagramHandle: handle ? `@${handle}` : "",
-        instagramProfileUrl: handle ? `https://instagram.com/${handle}` : "",
+        instagramHandle: instagram.handle,
+        instagramProfileUrl: instagram.profileUrl,
         instagramPostUrl: "",
         enabled: true,
       };
@@ -272,7 +302,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [newsList, setNewsList] = useState<NewsItem[]>(mockNews);
 
-  // ✅ mockScores itu array ScoreRecord, bukan Score
+  // Ã¢Å“â€¦ mockScores itu array ScoreRecord, bukan Score
   const [scoreList, setScoreList] = useState<ScoreRecord[]>(mockScores);
 
   const [currentParticipant, setCurrentParticipant] =
@@ -410,18 +440,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return true;
       }
 
-      // ✅ create demo participant session (HARUS sesuai type Participant)
+      // Ã¢Å“â€¦ create demo participant session (HARUS sesuai type Participant)
       const newParticipant: Participant = {
         id: "P_DEMO",
         number: `P-${Math.floor(Math.random() * 900 + 100)}`,
         name: "Demo Participant",
 
-        gender: "Encik", // ✅ HARUS "Encik" / "Puan", BUKAN "Male"
+        gender: "Encik", // Ã¢Å“â€¦ HARUS "Encik" / "Puan", BUKAN "Male"
 
         nationalId: "",
         birthPlace: "",
         birthDate: "",
-        heightCm: 0, // ✅ field bener: heightCm (bukan height)
+        heightCm: 0, // Ã¢Å“â€¦ field bener: heightCm (bukan height)
         education: "",
         instagram: "",
         phone: "",
@@ -433,7 +463,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: "Pending",
         registeredAt: new Date().toISOString().slice(0, 10),
 
-        scores: [], // ✅ WAJIB ada (sesuai interface Participant)
+        scores: [], // Ã¢Å“â€¦ WAJIB ada (sesuai interface Participant)
       };
 
       setUser({

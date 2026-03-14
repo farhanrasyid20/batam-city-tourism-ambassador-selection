@@ -131,7 +131,7 @@ export default function RegisterPage() {
         >
           <div className="text-center mb-8">
             <Image
-              src="/logo.png"
+              src="/logo1.png"
               alt="Logo"
               width={64}
               height={64}

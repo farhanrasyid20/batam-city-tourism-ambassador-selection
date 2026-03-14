@@ -14,7 +14,7 @@ import {
   BookOpenCheck,
   Send,
   ShieldCheck,
-  LockKeyhole,
+  X,
 } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
 import { statusLabelsId } from "../../../../data/mockData";
@@ -27,7 +27,8 @@ function toPercent(filled: number, total: number) {
 }
 
 function getStageIndex(status: string): number {
-  const order = ["Verified", "Audition", "PreCamp", "Camp", "GrandFinal", "Winner"];
+  if (status === "PreCamp") return 2;
+  const order = ["Verified", "Audition", "Camp", "GrandFinal", "Winner"];
   return order.findIndex((s) => s === status);
 }
 
@@ -37,9 +38,16 @@ export default function ParticipantDashboardPage() {
   const { user, currentParticipant, participantList, setCurrentParticipant, setParticipantList } = useApp();
   const [submitInfo, setSubmitInfo] = useState("");
   const [submitInfoType, setSubmitInfoType] = useState<"success" | "error">("error");
+  const [dismissedAlertId, setDismissedAlertId] = useState("");
+  const [resubmittedKeys, setResubmittedKeys] = useState<string[]>([]);
 
   // Peserta aktif, fallback ke data pertama untuk mode demo.
   const participant = currentParticipant ?? participantList[0] ?? null;
+  const verificationIssues = participant?.verificationIssues ?? [];
+  const revisionStorageKey = participant ? `participant-revision-uploads:${participant.id}` : "";
+  const revisedIssueCount = verificationIssues.filter((issue) => resubmittedKeys.includes(issue.target)).length;
+  const hasVerificationIssues = verificationIssues.length > 0;
+  const allRevisionItemsReady = hasVerificationIssues && revisedIssueCount === verificationIssues.length;
 
   // Mapping tampilan status seleksi ke warna/icon.
   const statusConfig = useMemo(
@@ -69,11 +77,12 @@ export default function ParticipantDashboardPage() {
   const requiredDocuments = participant
     ? [
         { label: "KTP / NIK", done: Boolean(participant.nationalId) },
-        { label: "Foto Profil", done: Boolean(participant.photo) },
-        { label: "Data Pendidikan", done: Boolean(participant.education) },
-        { label: "Kontak Telepon", done: Boolean(participant.phone) },
-        { label: "Instagram", done: Boolean(participant.instagram) },
-        { label: "Data Kelahiran", done: Boolean(participant.birthDate && participant.birthPlace) },
+        { label: "Foto Close Up", done: Boolean(participant.photo) },
+        { label: "Foto Full Body", done: Boolean(participant.photo) },
+        { label: "Formulir S-01", done: Boolean(participant.education) },
+        { label: "Formulir S-02", done: Boolean(participant.instagram) },
+        { label: "Formulir S-03", done: Boolean(participant.phone) },
+        { label: "Formulir S-04", done: Boolean(participant.birthDate && participant.birthPlace) },
       ]
     : [];
 
@@ -106,8 +115,11 @@ export default function ParticipantDashboardPage() {
   const profileProgress = toPercent(filledProfile, profileFields.length);
   const overallProgress = Math.round((profileProgress + documentProgress) / 2);
   const alreadySubmitted = Boolean(participant?.submittedToAdmin);
-  const canSubmitToAdmin =
+  const canSubmitFresh =
     Boolean(participant) && profileProgress === 100 && documentProgress === 100 && !alreadySubmitted;
+  const canResubmitToAdmin =
+    Boolean(participant) && profileProgress === 100 && documentProgress === 100 && allRevisionItemsReady;
+  const canSubmitToAdmin = hasVerificationIssues ? canResubmitToAdmin : canSubmitFresh;
 
   const statusValue = participant?.status ?? "Pending";
   const statusInfo = statusConfig[statusValue];
@@ -117,11 +129,79 @@ export default function ParticipantDashboardPage() {
   const stages = [
     { label: "Administrasi", index: 0 },
     { label: "Audisi", index: 1 },
-    { label: "Pra-Karantina", index: 2 },
-    { label: "Karantina", index: 3 },
-    { label: "Grand Final", index: 4 },
-    { label: "Juara", index: 5 },
+    { label: "Karantina", index: 2 },
+    { label: "Grand Final", index: 3 },
+    { label: "Juara", index: 4 },
   ];
+
+  const participantAlert = participant
+    ? verificationIssues.length > 0
+      ? {
+          id: allRevisionItemsReady ? "revision-ready" : "revision-note",
+          title: allRevisionItemsReady ? "Perbaikan Siap Dikirim Ulang" : "Perlu Revisi Berkas",
+          message: allRevisionItemsReady
+            ? "Semua dokumen yang diminta sudah diupload ulang. Anda bisa mengirim kembali perbaikan ke admin untuk verifikasi ulang."
+            : `${verificationIssues.length} berkas memerlukan perbaikan. Silakan buka halaman dokumen untuk melihat catatan admin dan upload ulang file yang diminta.`,
+          actionLabel: allRevisionItemsReady ? "Kirim Ulang Sekarang" : "Perbaiki Berkas",
+          actionHref: "/pages/participant/dokumen",
+          color: allRevisionItemsReady ? "#F5D06F" : "#ef4444",
+          background: allRevisionItemsReady ? "rgba(245,208,111,0.08)" : "rgba(239,68,68,0.08)",
+          border: allRevisionItemsReady ? "rgba(245,208,111,0.3)" : "rgba(239,68,68,0.3)",
+        }
+      : participant.submittedToAdmin && participant.status === "Pending"
+      ? {
+          id: "pending-review",
+          title: "Menunggu Verifikasi Admin",
+          message: "Data dan berkas Anda sudah dikirim. Mohon tunggu proses verifikasi dari panitia.",
+          actionLabel: "Lihat Status",
+          actionHref: "/pages/participant/status",
+          color: "#C8A24D",
+          background: "rgba(200,162,77,0.08)",
+          border: "rgba(200,162,77,0.28)",
+        }
+      : participant.status === "Verified"
+      ? {
+          id: "verified",
+          title: "Administrasi Terverifikasi",
+          message: "Berkas Anda telah dinyatakan lengkap. Silakan pantau perkembangan tahapan seleksi berikutnya.",
+          actionLabel: "Pantau Seleksi",
+          actionHref: "/pages/participant/status",
+          color: "#22c55e",
+          background: "rgba(34,197,94,0.08)",
+          border: "rgba(34,197,94,0.28)",
+        }
+      : null
+    : null;
+
+  useEffect(() => {
+    if (!revisionStorageKey || typeof window === "undefined") {
+      setResubmittedKeys([]);
+      return;
+    }
+
+    const syncFromStorage = () => {
+      const saved = window.localStorage.getItem(revisionStorageKey);
+      if (!saved) {
+        setResubmittedKeys([]);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(saved);
+        setResubmittedKeys(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setResubmittedKeys([]);
+      }
+    };
+
+    syncFromStorage();
+    window.addEventListener("focus", syncFromStorage);
+    return () => window.removeEventListener("focus", syncFromStorage);
+  }, [revisionStorageKey]);
+
+  useEffect(() => {
+    setDismissedAlertId("");
+  }, [participantAlert?.id]);
 
   // Panduan penggunaan dashboard untuk peserta baru.
   const usageGuide = [
@@ -140,11 +220,20 @@ export default function ParticipantDashboardPage() {
       icon: <Upload size={16} />,
     },
     {
-      title: "Kirim ke Admin",
-      description: "Jika biodata dan berkas sudah 100%, kirim data untuk proses verifikasi panitia.",
-      cta: "Kirim Sekarang",
+      title: hasVerificationIssues ? "Kirim Ulang Perbaikan" : "Kirim ke Admin",
+      description: hasVerificationIssues
+        ? "Setelah semua berkas revisi diupload ulang, kirim kembali perbaikan agar panitia dapat memverifikasi ulang data Anda."
+        : "Jika biodata dan berkas sudah 100%, kirim data untuk proses verifikasi panitia.",
+      cta: hasVerificationIssues ? "Kirim Ulang" : "Kirim Sekarang",
       onClick: handleSubmitToAdmin,
       icon: <Send size={16} />,
+    },
+    {
+      title: "Perbaikan Dokumen",
+      description: "Jika admin memberi catatan revisi, buka halaman dokumen lalu upload ulang hanya file yang diminta.",
+      cta: "Cek Dokumen",
+      onClick: () => router.push("/pages/participant/dokumen"),
+      icon: <AlertCircle size={16} />,
     },
     {
       title: "Pantau Status Seleksi",
@@ -160,13 +249,6 @@ export default function ParticipantDashboardPage() {
       onClick: () => router.push("/pages/participant/export"),
       icon: <FileText size={16} />,
     },
-    {
-      title: "Ubah Password",
-      description: "Perbarui password akun secara berkala agar akun Anda lebih aman.",
-      cta: "Ubah Password",
-      onClick: () => router.push("/pages/participant/change-password"),
-      icon: <LockKeyhole size={16} />,
-    },
   ];
 
   // Toast submit admin akan hilang otomatis.
@@ -178,7 +260,13 @@ export default function ParticipantDashboardPage() {
 
   // Kirim data peserta ke admin jika semua syarat lengkap.
   function handleSubmitToAdmin() {
-    if (alreadySubmitted) {
+    if (hasVerificationIssues && !allRevisionItemsReady) {
+      setSubmitInfoType("error");
+      setSubmitInfo("Upload ulang semua berkas revisi yang diminta sebelum mengirim kembali ke admin.");
+      return;
+    }
+
+    if (alreadySubmitted && !hasVerificationIssues) {
       setSubmitInfoType("success");
       setSubmitInfo("Anda sudah mengirim data Anda. Mohon tunggu verifikasi admin.");
       return;
@@ -201,7 +289,11 @@ export default function ParticipantDashboardPage() {
       prev.map((item) => (item.id === updatedParticipant.id ? updatedParticipant : item))
     );
     setSubmitInfoType("success");
-    setSubmitInfo("Data berhasil dikirim ke admin. Silakan tunggu proses verifikasi.");
+    setSubmitInfo(
+      hasVerificationIssues
+        ? "Perbaikan berhasil dikirim kembali ke admin. Mohon tunggu verifikasi ulang panitia."
+        : "Data berhasil dikirim ke admin. Silakan tunggu proses verifikasi."
+    );
   }
 
   return (
@@ -264,6 +356,59 @@ export default function ParticipantDashboardPage() {
             >
               {participant.gender === "Encik" ? "ENCIK" : "PUAN"}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {participantAlert && dismissedAlertId !== participantAlert.id ? (
+        <div
+          className="mb-6 rounded-2xl p-4"
+          style={{
+            background: participantAlert.background,
+            border: `1px solid ${participantAlert.border}`,
+          }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <p
+                className="text-sm font-bold"
+                style={{ color: participantAlert.color, fontFamily: "var(--font-cinzel)" }}
+              >
+                {participantAlert.title}
+              </p>
+              <p
+                className="text-sm mt-1 leading-relaxed"
+                style={{ color: "#E5E5E5", fontFamily: "var(--font-poppins)" }}
+              >
+                {participantAlert.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push(participantAlert.actionHref)}
+                className="mt-3 px-4 py-2 rounded-xl text-xs font-semibold"
+                style={{
+                  background: "rgba(15,15,15,0.5)",
+                  border: `1px solid ${participantAlert.border}`,
+                  color: participantAlert.color,
+                  fontFamily: "var(--font-poppins)",
+                }}
+              >
+                {participantAlert.actionLabel}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDismissedAlertId(participantAlert.id)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: "rgba(0,0,0,0.18)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "#BDBDBD",
+              }}
+              title="Tutup notifikasi"
+            >
+              <X size={14} />
+            </button>
           </div>
         </div>
       ) : null}
@@ -431,18 +576,30 @@ export default function ParticipantDashboardPage() {
               Isi Biodata
             </GoldButton>
             <GoldButton variant="outline" size="sm" onClick={() => router.push("/pages/participant/dokumen")}>
-              Upload Berkas
+              {hasVerificationIssues ? "Perbaiki Berkas" : "Upload Berkas"}
             </GoldButton>
             <GoldButton variant="primary" size="sm" onClick={handleSubmitToAdmin} disabled={!canSubmitToAdmin}>
-              Kirim Seleksi Admin
+              {hasVerificationIssues ? "Kirim Ulang ke Admin" : "Kirim Seleksi Admin"}
             </GoldButton>
           </div>
-          {!canSubmitToAdmin && !alreadySubmitted ? (
+          {!canSubmitToAdmin && !alreadySubmitted && !hasVerificationIssues ? (
             <p className="mt-2 text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
               Tombol aktif jika Biodata 100% dan Upload Berkas Wajib 100%.
             </p>
           ) : null}
-          {alreadySubmitted ? (
+          {hasVerificationIssues ? (
+            <p
+              className="mt-2 text-xs"
+              style={{
+                color: allRevisionItemsReady ? "#F5D06F" : "#BDBDBD",
+                fontFamily: "var(--font-poppins)",
+              }}
+            >
+              {allRevisionItemsReady
+                ? "Semua dokumen revisi sudah diupload ulang. Silakan kirim kembali perbaikan ke admin."
+                : `Masih ada ${verificationIssues.length - revisedIssueCount} dokumen revisi yang perlu diupload ulang sebelum bisa kirim kembali.`}
+            </p>
+          ) : alreadySubmitted ? (
             <p className="mt-2 text-xs" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
               Data sudah dikirim ke admin dan sedang menunggu verifikasi.
             </p>

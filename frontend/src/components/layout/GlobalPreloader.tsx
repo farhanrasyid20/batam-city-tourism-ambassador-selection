@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -40,7 +40,7 @@ export default function GlobalPreloader() {
     >
       <div className="flex flex-col items-center gap-4">
         <Image
-          src="/logo.png"
+          src="/logo1.png"
           alt="Loading Duta Wisata Batam"
           width={96}
           height={96}

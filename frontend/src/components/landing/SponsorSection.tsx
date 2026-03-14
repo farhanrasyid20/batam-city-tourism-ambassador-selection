@@ -1,7 +1,7 @@
 ﻿import Image from "next/image";
 
 const partnerLogos = [
-  { id: "logo-site", src: "/logo.png", alt: "Duta Wisata Batam" },
+  { id: "logo-site", src: "/logo1.png", alt: "Duta Wisata Batam" },
   { id: "batam", src: "/partners/dinas_kebudayaan.png", alt: "Dinas Pariwisata Kota Batam" },
   { id: "vbi", src: "/partners/vbi.png", alt: "Visit Batam Indonesia" },
   { id: "bbi", src: "/partners/bbi.png", alt: "Bangga Buatan Indonesia" },
