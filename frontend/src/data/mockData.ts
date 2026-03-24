@@ -1,4 +1,4 @@
-﻿// =============================================
+// =============================================
 // TYPES & INTERFACES (ENGLISH KEYS)
 // =============================================
 
@@ -17,12 +17,15 @@ export type StageStatus =
 
 export type ScheduleStatus = "active" | "upcoming" | "done";
 
-export type CriteriaKey =
-  | "tourismKnowledge"
-  | "publicSpeaking"
-  | "leadership"
-  | "workProgram"
-  | "english";
+export type CriteriaKey = string;
+
+export type JudgeType = "main" | "mentor";
+export type VerificationStatus = "Pending" | "NeedsRevision" | "Verified" | "Rejected";
+export type SelectionStageKey = "Verification" | "Audition" | "Camp" | "Grand Final" | "Final Result";
+export type ScoreStageKey = "Audition" | "Camp" | "Grand Final";
+export type AdminScoreStage = ScoreStageKey | "Final Result";
+export type ScoreType = "official" | "mentor_observation";
+export type ScoreVisibility = "panel" | "private" | "main_judges";
 
 export interface CriteriaItem {
   key: CriteriaKey;
@@ -57,13 +60,7 @@ export interface NewsItem {
   body: NewsBlock[];
 }
 
-export interface Score {
-  tourismKnowledge: number;
-  publicSpeaking: number;
-  leadership: number;
-  workProgram: number;
-  english: number;
-}
+export type Score = Record<string, number>;
 
 export interface ParticipantScore {
   judgeId: string;
@@ -92,6 +89,22 @@ export interface ParticipantVerificationIssue {
   message: string;
 }
 
+export interface ParticipantReviewItem {
+  id: string;
+  scope: "biodata" | "document";
+  target: string;
+  label: string;
+  status: "ok" | "revision_required";
+  note: string;
+}
+
+export interface ParticipantDocumentItem {
+  key: string;
+  label: string;
+  status: "missing" | "submitted" | "revision_required" | "verified";
+  note?: string;
+}
+
 export interface Participant {
   id: string;
   number: string; // ex: ECK-001
@@ -110,6 +123,12 @@ export interface Participant {
 
   photo: string;
   status: StageStatus;
+  verificationStatus?: VerificationStatus;
+  selectionStage?: SelectionStageKey;
+  adminVerificationNote?: string;
+  adminRevisionNote?: string;
+  reviewItems?: ParticipantReviewItem[];
+  documents?: ParticipantDocumentItem[];
   submittedToAdmin?: boolean;
   rejectionReason?: string;
   verificationIssues?: ParticipantVerificationIssue[];
@@ -132,7 +151,9 @@ export interface Judge {
   title: string;
   organization: string;
   stages: string[];
+  assignedStages?: ScoreStageKey[];
   avatar: string;
+  judgeType?: JudgeType;
 }
 
 export interface ScheduleItem {
@@ -148,8 +169,13 @@ export interface ScoreRecord {
   judgeId: string;
   judgeName: string;
   stage: string;
+  stageKey?: ScoreStageKey;
+  judgeRole?: JudgeType;
+  scoreType?: ScoreType;
+  visibility?: ScoreVisibility;
   score: Score;
   totalScore: number;
+  note?: string;
   submittedAt: string;
 }
 
@@ -162,18 +188,272 @@ const malePhoto =
 const femalePhoto =
   "https://images.unsplash.com/photo-1642629428997-422b3181aedd?w=400&q=80";
 
-export const stages = ["Audition", "Pre-Camp", "Camp", "Grand Final"];
+export const stages: ScoreStageKey[] = ["Audition", "Camp", "Grand Final"];
+export const selectionStages: SelectionStageKey[] = [
+  "Verification",
+  "Audition",
+  "Camp",
+  "Grand Final",
+  "Final Result",
+];
+export const verificationStatusLabels: Record<VerificationStatus, string> = {
+  Pending: "Pending",
+  NeedsRevision: "Perlu Perbaikan",
+  Verified: "Terverifikasi",
+  Rejected: "Ditolak",
+};
+export const selectionStageLabels: Record<SelectionStageKey, string> = {
+  Verification: "Verifikasi",
+  Audition: "Audisi",
+  Camp: "Karantina",
+  "Grand Final": "Grand Final",
+  "Final Result": "Nilai Akhir",
+};
 
-export const criteriaList: CriteriaItem[] = [
-  {
-    key: "tourismKnowledge",
-    label: "Pengetahuan Pariwisata & Kebudayaan",
-    weight: 25,
-  },
-  { key: "publicSpeaking", label: "Public Speaking & Kepribadian", weight: 25 },
-  { key: "leadership", label: "Jiwa Kepemimpinan & Kemitraan", weight: 20 },
-  { key: "workProgram", label: "Program Kerja", weight: 15 },
-  { key: "english", label: "Bahasa Inggris (Aktif & Pasif)", weight: 15 },
+export const stageCriteriaMap: Record<string, CriteriaItem[]> = {
+  Audition: [
+    { key: "auditionAppearanceGrooming", label: "Penampilan & kerapian", weight: 10 },
+    { key: "auditionConfidenceBodyLanguage", label: "Kepercayaan diri & bahasa tubuh", weight: 10 },
+    { key: "auditionEthicsPersonality", label: "Etika, sikap & kepribadian", weight: 10 },
+    { key: "auditionBatamTourismKnowledge", label: "Pengetahuan pariwisata Kota Batam", weight: 10 },
+    { key: "auditionMalayCultureWisdom", label: "Budaya lokal & kearifan Melayu", weight: 10 },
+    { key: "auditionCommunicationPublicSpeaking", label: "Kemampuan komunikasi & public speaking", weight: 10 },
+    { key: "auditionIdeaDeliveryAnswering", label: "Cara menyampaikan ide & menjawab pertanyaan", weight: 10 },
+    { key: "auditionForeignLanguage", label: "Penguasaan bahasa asing (jika ada)", weight: 10 },
+    { key: "auditionSupportingTalent", label: "Bakat pendukung (seni, konten, dll.)", weight: 10 },
+    { key: "auditionVisionMotivationCommitment", label: "Visi, motivasi & komitmen sebagai Duta Wisata", weight: 10 },
+  ],
+  Camp: [
+    { key: "campDisciplinePunctuality", label: "Disiplin & ketepatan waktu", weight: 20 },
+    { key: "campAttitudeEthics", label: "Sikap & etika", weight: 20 },
+    { key: "campTeamwork", label: "Kerja sama & teamwork", weight: 20 },
+    { key: "campActivenessInitiative", label: "Keaktifan & inisiatif", weight: 20 },
+    { key: "campTaskResponsibility", label: "Tanggung jawab tugas", weight: 20 },
+  ],
+  "Grand Final": [
+    { key: "grandFinalAppearancePersonality", label: "Penampilan & kepribadian", weight: 20 },
+    { key: "grandFinalTourismCultureInsight", label: "Wawasan pariwisata & budaya", weight: 20 },
+    { key: "grandFinalCommunicationPublicSpeaking", label: "Komunikasi & public speaking", weight: 20 },
+    { key: "grandFinalIntelligenceAttitude", label: "Intelegensi & sikap", weight: 20 },
+    { key: "grandFinalDutaPotential", label: "Potensi duta wisata", weight: 20 },
+  ],
+};
+
+export const criteriaList: CriteriaItem[] = stageCriteriaMap["Grand Final"];
+
+export function normalizeStageName(stageName: string) {
+  return stageName.toLowerCase().replace(/[\s-]/g, "");
+}
+
+export function getStageCriteria(stageName: string): CriteriaItem[] {
+  const normalizedTarget = normalizeStageName(stageName);
+  const matchedKey = Object.keys(stageCriteriaMap).find(
+    (key) => normalizeStageName(key) == normalizedTarget
+  );
+
+  return matchedKey ? stageCriteriaMap[matchedKey] : stageCriteriaMap["Grand Final"];
+}
+
+export function calculateStageTotal(score: Score, stageName: string): number {
+  const activeCriteria = getStageCriteria(stageName);
+  const total = activeCriteria.reduce((sum, criteria) => {
+    const value = score[criteria.key] ?? 0;
+    return sum + (value * criteria.weight) / 100;
+  }, 0);
+
+  return Math.round(total * 100) / 100;
+}
+
+export function getParticipantVerificationStatus(participant: Participant): VerificationStatus {
+  return participant.verificationStatus ?? legacyStageToVerificationStatus(participant.status);
+}
+
+export function getParticipantSelectionStage(participant: Participant): SelectionStageKey {
+  return participant.selectionStage ?? legacyStageToSelectionStage(participant.status);
+}
+
+export function isParticipantEligibleForScoreStage(participant: Participant, stageName: ScoreStageKey): boolean {
+  const selectionStage = getParticipantSelectionStage(participant);
+
+  if (stageName === "Audition") {
+    return selectionStage === "Audition" || selectionStage === "Camp" || selectionStage === "Grand Final" || selectionStage === "Final Result";
+  }
+
+  if (stageName === "Camp") {
+    return selectionStage === "Camp" || selectionStage === "Grand Final" || selectionStage === "Final Result";
+  }
+
+  return selectionStage === "Grand Final" || selectionStage === "Final Result";
+}
+
+export function getStageScoreRecords(
+  scoreList: ScoreRecord[],
+  participantId: string,
+  stageName: ScoreStageKey,
+  options?: { judgeRole?: JudgeType; scoreType?: ScoreType }
+) {
+  return scoreList.filter((record) => {
+    const sameParticipant = record.participantId === participantId;
+    const sameStage = (record.stageKey ?? record.stage) === stageName;
+    const sameRole = !options?.judgeRole || (record.judgeRole ?? "main") === options.judgeRole;
+    const sameType = !options?.scoreType || (record.scoreType ?? "official") === options.scoreType;
+    return sameParticipant && sameStage && sameRole && sameType;
+  });
+}
+
+export function getAverageStageScore(
+  scoreList: ScoreRecord[],
+  participantId: string,
+  stageName: ScoreStageKey,
+  options?: { judgeRole?: JudgeType; scoreType?: ScoreType }
+) {
+  const records = getStageScoreRecords(scoreList, participantId, stageName, options);
+  if (records.length === 0) return 0;
+  const total = records.reduce((sum, record) => sum + record.totalScore, 0) / records.length;
+  return Math.round(total * 100) / 100;
+}
+
+export function calculateFinalWeightedScore(campScore: number, grandFinalScore: number) {
+  return Math.round(((campScore * 0.3) + (grandFinalScore * 0.7)) * 100) / 100;
+}
+
+export const adminScoreStageLabels: Record<AdminScoreStage, string> = {
+  Audition: "Audisi",
+  Camp: "Karantina",
+  "Grand Final": "Grand Final",
+  "Final Result": "Nilai Akhir",
+};
+
+export function getAdminScoreStageLabel(stage: AdminScoreStage) {
+  return adminScoreStageLabels[stage];
+}
+
+export function sortScoreStages(stageList: ScoreStageKey[]) {
+  return [...stageList].sort((a, b) => stages.indexOf(a) - stages.indexOf(b));
+}
+
+export function getJudgeAssignedStages(judge?: Pick<Judge, "assignedStages" | "stages"> | null) {
+  const source = judge?.assignedStages ?? (judge?.stages as ScoreStageKey[] | undefined) ?? [];
+  const filtered = source.filter(
+    (stage): stage is ScoreStageKey => stage === "Audition" || stage === "Camp" || stage === "Grand Final"
+  );
+
+  return sortScoreStages(Array.from(new Set(filtered)));
+}
+
+export function normalizeJudgeAssignment(assignedStages: ScoreStageKey[], judgeType: JudgeType) {
+  const normalizedStages = sortScoreStages(Array.from(new Set(assignedStages)));
+  const normalizedJudgeType = judgeType === "mentor" && normalizedStages.length === 1 && normalizedStages[0] === "Camp"
+    ? "mentor"
+    : "main";
+
+  return {
+    assignedStages: normalizedJudgeType === "mentor" ? ["Camp"] : normalizedStages,
+    judgeType: normalizedJudgeType,
+  } as { assignedStages: ScoreStageKey[]; judgeType: JudgeType };
+}
+
+export function getStageCriteriaAverages(
+  scoreList: ScoreRecord[],
+  participantId: string,
+  stageName: ScoreStageKey,
+  options?: { judgeRole?: JudgeType; scoreType?: ScoreType }
+) {
+  const criteria = getStageCriteria(stageName);
+  const stageRecords = getStageScoreRecords(scoreList, participantId, stageName, options);
+
+  return criteria.map((criterion) => {
+    if (stageRecords.length === 0) return 0;
+    const average =
+      stageRecords.reduce((sum, record) => sum + (record.score[criterion.key] ?? 0), 0) / stageRecords.length;
+    return Math.round(average * 100) / 100;
+  });
+}
+
+export function getParticipantAdminStageScore(
+  scoreList: ScoreRecord[],
+  participantId: string,
+  stage: AdminScoreStage
+) {
+  if (stage === "Final Result") {
+    const campScore = getAverageStageScore(scoreList, participantId, "Camp", {
+      judgeRole: "main",
+      scoreType: "official",
+    });
+    const grandFinalScore = getAverageStageScore(scoreList, participantId, "Grand Final", {
+      judgeRole: "main",
+      scoreType: "official",
+    });
+
+    return calculateFinalWeightedScore(campScore, grandFinalScore);
+  }
+
+  return getAverageStageScore(scoreList, participantId, stage, {
+    judgeRole: "main",
+    scoreType: "official",
+  });
+}
+
+function legacyStageToVerificationStatus(status: StageStatus): VerificationStatus {
+  if (status === "Rejected") return "Rejected";
+  if (status === "Verified" || status === "Audition" || status === "Top20" || status === "PreCamp" || status === "Camp" || status === "GrandFinal" || status === "Winner") {
+    return "Verified";
+  }
+  return "Pending";
+}
+
+function legacyStageToSelectionStage(status: StageStatus): SelectionStageKey {
+  if (status === "GrandFinal") return "Grand Final";
+  if (status === "Winner") return "Final Result";
+  if (status === "Camp" || status === "PreCamp" || status === "Top20") return "Camp";
+  if (status === "Audition" || status === "Verified") return "Audition";
+  return "Verification";
+}
+
+function buildParticipantReviewItems(issues?: ParticipantVerificationIssue[]): ParticipantReviewItem[] {
+  if (!issues?.length) return [];
+
+  return issues.map((issue) => ({
+    id: issue.id,
+    scope: issue.target === "instagram" || issue.target === "phone" || issue.target === "education" ? "biodata" : "document",
+    target: issue.target,
+    label: reviewTargetLabels[issue.target] ?? issue.target,
+    status: "revision_required",
+    note: issue.message,
+  }));
+}
+
+function buildParticipantDocuments(issues?: ParticipantVerificationIssue[]): ParticipantDocumentItem[] {
+  const issueMap = new Map((issues ?? []).map((issue) => [issue.target, issue.message]));
+  return documentBlueprint.map((item) => ({
+    key: item.key,
+    label: item.label,
+    status: issueMap.has(item.target) ? "revision_required" : "submitted",
+    note: issueMap.get(item.target),
+  }));
+}
+
+const reviewTargetLabels: Record<ParticipantVerificationIssueTarget, string> = {
+  identityCard: "KTP",
+  closeUpPhoto: "Foto Close Up",
+  fullBodyPhoto: "Foto Full Body",
+  formS01: "Form S-01",
+  formS02: "Form S-02",
+  formS03: "Form S-03",
+  formS04: "Form S-04",
+  instagram: "Instagram",
+  phone: "Nomor Telepon",
+  education: "Pendidikan",
+};
+
+const documentBlueprint: Array<{ key: string; label: string; target: ParticipantVerificationIssueTarget }> = [
+  { key: "guide-form", label: "Panduan / Form Resmi", target: "formS01" },
+  { key: "close-up", label: "Foto Close Up", target: "closeUpPhoto" },
+  { key: "full-body", label: "Foto Full Body", target: "fullBodyPhoto" },
+  { key: "form-s1", label: "Form S-01", target: "formS01" },
+  { key: "form-s2", label: "Form S-02", target: "formS02" },
+  { key: "form-s3", label: "Form S-03", target: "formS03" },
+  { key: "form-s4", label: "Form S-04", target: "formS04" },
 ];
 
 export const schedule: ScheduleItem[] = [
@@ -226,7 +506,7 @@ export const statusLabelsId: Record<StageStatus, string> = {
   Pending: "Menunggu Verifikasi",
   Verified: "Terverifikasi",
   Rejected: "Ditolak",
-  Audition: "Lolos Administrasi â€“ Audisi",
+  Audition: "Lolos Administrasi – Audisi",
   Top20: "Top 20",
   PreCamp: "Pra-Karantina",
   Camp: "Karantina",
@@ -264,7 +544,7 @@ export const mockNews: NewsItem[] = [
       {
         type: "paragraph",
         text:
-          "BATAM â€” Dinas Kebudayaan dan Pariwisata (Disbudpar) Kota Batam resmi membuka pendaftaran Pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Pendaftaran dilakukan secara online melalui platform resmi panitia.",
+          "BATAM — Dinas Kebudayaan dan Pariwisata (Disbudpar) Kota Batam resmi membuka pendaftaran Pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Pendaftaran dilakukan secara online melalui platform resmi panitia.",
       },
       {
         type: "paragraph",
@@ -275,11 +555,11 @@ export const mockNews: NewsItem[] = [
       {
         type: "list",
         items: [
-          "Pendaftaran online: 1 Februari â€“ 1 April 2026",
+          "Pendaftaran online: 1 Februari – 1 April 2026",
           "Technical meeting: 2 April 2026",
           "Audisi: 4 April 2026",
-          "Pra-karantina: 6 â€“ 17 April 2026",
-          "Karantina: 22 â€“ 24 April 2026",
+          "Pra-karantina: 6 – 17 April 2026",
+          "Karantina: 22 – 24 April 2026",
           "Grand final: 25 April 2026",
         ],
       },
@@ -889,7 +1169,36 @@ export const mockParticipants: Participant[] = [
     scores: [],
     likes: 2950,
   },
-];
+].map((participant) => {
+  const verificationStatus =
+    participant.status === "Rejected"
+      ? "Rejected"
+      : participant.verificationIssues?.length
+      ? "NeedsRevision"
+      : participant.status === "Pending"
+      ? "Pending"
+      : "Verified";
+
+  return {
+    ...participant,
+    verificationStatus,
+    selectionStage: legacyStageToSelectionStage(participant.status),
+    adminVerificationNote:
+      verificationStatus === "NeedsRevision"
+        ? "Masih ada item yang perlu diperbaiki sebelum verifikasi diselesaikan."
+        : verificationStatus === "Verified"
+        ? "Berkas administrasi telah diverifikasi dan peserta dapat lanjut ke tahap seleksi berikutnya."
+        : verificationStatus === "Rejected"
+        ? participant.rejectionReason ?? "Peserta tidak memenuhi syarat administrasi."
+        : "Berkas sedang menunggu pemeriksaan admin.",
+    adminRevisionNote:
+      verificationStatus === "NeedsRevision"
+        ? "Periksa catatan per item dan lakukan upload/perbaikan pada bagian yang diminta."
+        : "",
+    reviewItems: buildParticipantReviewItems(participant.verificationIssues),
+    documents: buildParticipantDocuments(participant.verificationIssues),
+  } satisfies Participant;
+});
 
 // =============================================
 // MOCK JUDGES (ENGLISH KEYS)
@@ -900,30 +1209,66 @@ export const mockJudges: Judge[] = [
     id: "J001",
     name: "Dr. Hj. Siti Rahayu, M.Par",
     email: "juri1@dutawisatabatam.id",
-    title: "Kepala Dinas Kebudayaan & Pariwisata",
-    organization: "Pemko Batam",
-    stages: ["Audition", "Pre-Camp"],
+    title: "Ketua Dewan Juri",
+    organization: "Disbudpar Kota Batam",
+    stages: ["Audition", "Camp", "Grand Final"],
     avatar: femalePhoto,
+    judgeType: "main",
   },
   {
     id: "J002",
     name: "Bpk. Hendri Kusuma, S.Par",
     email: "juri2@dutawisatabatam.id",
-    title: "Akademisi Pariwisata",
+    title: "Juri Utama Pariwisata",
     organization: "Politeknik Negeri Batam",
-    stages: ["Audition", "Camp"],
+    stages: ["Audition", "Camp", "Grand Final"],
     avatar: malePhoto,
+    judgeType: "main",
   },
   {
     id: "J003",
     name: "Ibu Dewi Sartika, M.M",
     email: "juri3@dutawisatabatam.id",
-    title: "Praktisi Event Organizer",
-    organization: "PT. Batam Event Pro",
-    stages: ["Pre-Camp", "Grand Final"],
+    title: "Juri Utama Etika & Komunikasi",
+    organization: "Batam Event Pro",
+    stages: ["Audition", "Camp", "Grand Final"],
     avatar: femalePhoto,
+    judgeType: "main",
   },
-];
+  {
+    id: "J004",
+    name: "Bpk. Rasyid Pranata, M.I.Kom",
+    email: "juri4@dutawisatabatam.id",
+    title: "Juri Utama Public Speaking",
+    organization: "Komunitas Public Speaking Batam",
+    stages: ["Audition", "Camp", "Grand Final"],
+    avatar: malePhoto,
+    judgeType: "main",
+  },
+  {
+    id: "J005",
+    name: "Kak Nadia Lestari",
+    email: "mentor1@dutawisatabatam.id",
+    title: "Juri Mentor Karantina",
+    organization: "Mentor Pembinaan Finalis",
+    stages: ["Camp"],
+    avatar: femalePhoto,
+    judgeType: "mentor",
+  },
+  {
+    id: "J006",
+    name: "Kak Fajar Ramadhan",
+    email: "mentor2@dutawisatabatam.id",
+    title: "Juri Mentor Karantina",
+    organization: "Mentor Kepribadian Finalis",
+    stages: ["Camp"],
+    avatar: malePhoto,
+    judgeType: "mentor",
+  },
+].map((judge) => ({
+  ...judge,
+  assignedStages: judge.stages.filter((stage): stage is ScoreStageKey => stage === "Audition" || stage === "Camp" || stage === "Grand Final"),
+}));
 
 // =============================================
 // MOCK SCORE MAP (OPTIONAL, LIKE FIGMA VERSION)
@@ -946,18 +1291,6 @@ export const mockStageScores: Record<
         },
       ],
     },
-    "Pre-Camp": {
-      stage: "Pre-Camp",
-      scores: [
-        {
-          tourismKnowledge: 90,
-          publicSpeaking: 88,
-          leadership: 85,
-          workProgram: 83,
-          english: 89,
-        },
-      ],
-    },
     Camp: {
       stage: "Camp",
       scores: [
@@ -967,6 +1300,18 @@ export const mockStageScores: Record<
           leadership: 88,
           workProgram: 86,
           english: 90,
+        },
+      ],
+    },
+    "Grand Final": {
+      stage: "Grand Final",
+      scores: [
+        {
+          tourismKnowledge: 94,
+          publicSpeaking: 93,
+          leadership: 90,
+          workProgram: 89,
+          english: 92,
         },
       ],
     },
@@ -981,36 +1326,92 @@ export const mockScoreRecords: ScoreRecord[] = [
   {
     id: "sr001",
     participantId: "P001",
-    participantName: "Muhammad Rizki Pratama",
+    participantName: "Encik Firdaus",
     judgeId: "J001",
     judgeName: "Dr. Hj. Siti Rahayu, M.Par",
-    stage: "Pre-Camp",
+    stage: "Audition",
+    stageKey: "Audition",
+    judgeRole: "main",
+    scoreType: "official",
+    visibility: "panel",
     score: {
-      tourismKnowledge: 88,
-      publicSpeaking: 85,
-      leadership: 82,
-      workProgram: 80,
-      english: 87,
+      auditionAppearanceGrooming: 88,
+      auditionConfidenceBodyLanguage: 86,
+      auditionEthicsPersonality: 90,
+      auditionBatamTourismKnowledge: 87,
+      auditionMalayCultureWisdom: 85,
+      auditionCommunicationPublicSpeaking: 89,
+      auditionIdeaDeliveryAnswering: 88,
+      auditionForeignLanguage: 84,
+      auditionSupportingTalent: 86,
+      auditionVisionMotivationCommitment: 91,
     },
-    totalScore: 84.85,
+    totalScore: 87.4,
     submittedAt: "2026-04-07T10:30:00",
   },
   {
     id: "sr002",
-    participantId: "P011",
-    participantName: "Siti Nurhaliza Putri",
+    participantId: "P002",
+    participantName: "Puan Marsha",
     judgeId: "J001",
     judgeName: "Dr. Hj. Siti Rahayu, M.Par",
-    stage: "Pre-Camp",
+    stage: "Camp",
+    stageKey: "Camp",
+    judgeRole: "main",
+    scoreType: "official",
+    visibility: "panel",
     score: {
-      tourismKnowledge: 90,
-      publicSpeaking: 92,
-      leadership: 88,
-      workProgram: 85,
-      english: 89,
+      campDisciplinePunctuality: 90,
+      campAttitudeEthics: 92,
+      campTeamwork: 89,
+      campActivenessInitiative: 91,
+      campTaskResponsibility: 90,
     },
-    totalScore: 89.2,
+    totalScore: 90.4,
     submittedAt: "2026-04-07T11:00:00",
+  },
+  {
+    id: "sr003",
+    participantId: "P002",
+    participantName: "Puan Marsha",
+    judgeId: "J005",
+    judgeName: "Kak Nadia Lestari",
+    stage: "Camp",
+    stageKey: "Camp",
+    judgeRole: "mentor",
+    scoreType: "mentor_observation",
+    visibility: "main_judges",
+    score: {
+      campDisciplinePunctuality: 92,
+      campAttitudeEthics: 93,
+      campTeamwork: 90,
+      campActivenessInitiative: 91,
+      campTaskResponsibility: 92,
+    },
+    totalScore: 91.6,
+    note: "Peserta sangat konsisten, aktif membantu tim, dan layak mendapat perhatian juri utama.",
+    submittedAt: "2026-04-20T09:15:00",
+  },
+  {
+    id: "sr004",
+    participantId: "P001",
+    participantName: "Encik Firdaus",
+    judgeId: "J002",
+    judgeName: "Bpk. Hendri Kusuma, S.Par",
+    stage: "Grand Final",
+    stageKey: "Grand Final",
+    judgeRole: "main",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      grandFinalAppearancePersonality: 89,
+      grandFinalTourismCultureInsight: 88,
+      grandFinalCommunicationPublicSpeaking: 90,
+      grandFinalIntelligenceAttitude: 87,
+      grandFinalDutaPotential: 91,
+    },
+    totalScore: 89,
+    submittedAt: "2026-04-25T20:10:00",
   },
 ];
 
@@ -1021,15 +1422,8 @@ export const mockScores = mockScoreRecords;
 // HELPER FUNCTIONS
 // =============================================
 
-export function calcTotalScore(score: Score): number {
-  let total = 0;
-
-  for (const c of criteriaList) {
-    const value = score[c.key];
-    total += (value * c.weight) / 100;
-  }
-
-  return Math.round(total * 100) / 100;
+export function calcTotalScore(score: Score, stageName = "Grand Final"): number {
+  return calculateStageTotal(score, stageName);
 }
 
 export function getAverageScore(participantId: string, stage: string): number {
@@ -1040,6 +1434,7 @@ export function getAverageScore(participantId: string, stage: string): number {
   const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
   return Math.round(avg * 100) / 100;
 }
+
 
 
 

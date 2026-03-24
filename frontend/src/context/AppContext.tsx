@@ -10,6 +10,7 @@ import React, {
 } from "react";
 
 import {
+  getParticipantSelectionStage,
   type Participant,
   type Judge,
   type NewsItem,
@@ -133,6 +134,7 @@ type AppContextType = {
   setParticipantList: React.Dispatch<React.SetStateAction<Participant[]>>;
 
   judgeList: Judge[];
+  setJudgeList: React.Dispatch<React.SetStateAction<Judge[]>>;
 
   newsList: NewsItem[];
   setNewsList: React.Dispatch<React.SetStateAction<NewsItem[]>>;
@@ -249,7 +251,10 @@ function normalizeInstagram(raw: string) {
 
 function buildVoteCandidates(participants: Participant[]): VotePublicCandidate[] {
   return participants
-    .filter((participant) => participant.status === "GrandFinal" || participant.status === "Winner")
+    .filter((participant) => {
+      const selectionStage = getParticipantSelectionStage(participant);
+      return selectionStage === "Grand Final" || selectionStage === "Final Result";
+    })
     .map((participant) => {
       const instagram = normalizeInstagram(participant.instagram);
       return {
@@ -270,7 +275,10 @@ function buildVoteCandidates(participants: Participant[]): VotePublicCandidate[]
 
 function buildInitialVoteTop(candidates: VotePublicCandidate[], participants: Participant[]): VoteTopItem[] {
   const sorted = [...participants]
-    .filter((participant) => participant.status === "GrandFinal" || participant.status === "Winner")
+    .filter((participant) => {
+      const selectionStage = getParticipantSelectionStage(participant);
+      return selectionStage === "Grand Final" || selectionStage === "Final Result";
+    })
     .sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0))
     .slice(0, 3);
 
@@ -298,7 +306,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [participantList, setParticipantList] =
     useState<Participant[]>(mockParticipants);
 
-  const [judgeList] = useState<Judge[]>(mockJudges);
+  const [judgeList, setJudgeList] = useState<Judge[]>(mockJudges);
 
   const [newsList, setNewsList] = useState<NewsItem[]>(mockNews);
 
@@ -520,6 +528,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setParticipantList,
 
       judgeList,
+      setJudgeList,
 
       newsList,
       setNewsList,
@@ -563,6 +572,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       changePassword,
       participantList,
       judgeList,
+      setJudgeList,
       newsList,
       scoreList,
       currentParticipant,

@@ -2,47 +2,86 @@
 
 import React, { useMemo, useState } from "react";
 import Image from "next/image";
-import { Search, Filter, Eye, Instagram } from "lucide-react";
+import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { useApp } from "../../../../context/AppContext";
-import { statusColors, statusLabelsId, type StageStatus } from "../../../../data/mockData";
+import {
+  getParticipantSelectionStage,
+  getParticipantVerificationStatus,
+  selectionStageLabels,
+  verificationStatusLabels,
+  type Participant,
+  type SelectionStageKey,
+  type VerificationStatus,
+} from "../../../../data/mockData";
 
-type StatusFilterValue = "all" | StageStatus;
+type StageFilterValue = "all" | SelectionStageKey;
+type VerificationFilterValue = "all" | VerificationStatus;
 type GenderFilterValue = "all" | "Encik" | "Puan";
 
-const stageFilterOptions: Array<{ value: StatusFilterValue; label: string }> = [
-  { value: "all", label: "Semua Status" },
-  { value: "Pending", label: statusLabelsId.Pending },
-  { value: "Verified", label: statusLabelsId.Verified },
-  { value: "Rejected", label: statusLabelsId.Rejected },
-  { value: "GrandFinal", label: statusLabelsId.GrandFinal },
-  { value: "Camp", label: "Karantina" },
-  { value: "PreCamp", label: "Pra-Karantina" },
+const stageFilterOptions: Array<{ value: StageFilterValue; label: string }> = [
+  { value: "all", label: "Semua Tahap" },
+  { value: "Verification", label: selectionStageLabels.Verification },
+  { value: "Audition", label: selectionStageLabels.Audition },
+  { value: "Camp", label: selectionStageLabels.Camp },
+  { value: "Grand Final", label: selectionStageLabels["Grand Final"] },
+  { value: "Final Result", label: selectionStageLabels["Final Result"] },
+];
+
+const verificationFilterOptions: Array<{ value: VerificationFilterValue; label: string }> = [
+  { value: "all", label: "Semua Verifikasi" },
+  { value: "Pending", label: verificationStatusLabels.Pending },
+  { value: "NeedsRevision", label: verificationStatusLabels.NeedsRevision },
+  { value: "Verified", label: verificationStatusLabels.Verified },
+  { value: "Rejected", label: verificationStatusLabels.Rejected },
 ];
 
 export default function AdminParticipantsPage() {
   const { participantList } = useApp();
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
+  const [stageFilter, setStageFilter] = useState<StageFilterValue>("all");
+  const [verificationFilter, setVerificationFilter] = useState<VerificationFilterValue>("all");
   const [genderFilter, setGenderFilter] = useState<GenderFilterValue>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const filteredParticipants = useMemo(() => {
     return participantList.filter((participant) => {
       const normalizedSearch = searchKeyword.toLowerCase();
+      const selectionStage = getParticipantSelectionStage(participant);
+      const verificationStatus = getParticipantVerificationStatus(participant);
       const matchSearch =
         participant.name.toLowerCase().includes(normalizedSearch) ||
         participant.number.toLowerCase().includes(normalizedSearch) ||
         participant.email.toLowerCase().includes(normalizedSearch);
-      const matchStatus = statusFilter === "all" || participant.status === statusFilter;
+      const matchStage = stageFilter === "all" || selectionStage === stageFilter;
+      const matchVerification = verificationFilter === "all" || verificationStatus === verificationFilter;
       const matchGender = genderFilter === "all" || participant.gender === genderFilter;
-      return matchSearch && matchStatus && matchGender;
+      return matchSearch && matchStage && matchVerification && matchGender;
     });
-  }, [genderFilter, participantList, searchKeyword, statusFilter]);
+  }, [genderFilter, participantList, searchKeyword, stageFilter, verificationFilter]);
 
   const selectedParticipant = selectedId
     ? participantList.find((participant) => participant.id === selectedId) ?? null
     : null;
+
+  const getDocumentSummary = (participant: Participant) => {
+    const documents = participant.documents ?? [];
+    const revisionCount = documents.filter((item) => item.status === "revision_required").length;
+
+    return {
+      total: documents.length,
+      revisionCount,
+      readyCount: documents.filter((item) => item.status === "submitted" || item.status === "verified").length,
+    };
+  };
+
+  const getReviewSummary = (participant: Participant) => {
+    const reviewItems = participant.reviewItems ?? [];
+    return {
+      revisionCount: reviewItems.filter((item) => item.status === "revision_required").length,
+      okCount: reviewItems.filter((item) => item.status === "ok").length,
+    };
+  };
 
   return (
     <div>
@@ -58,18 +97,14 @@ export default function AdminParticipantsPage() {
           Data Peserta
         </h1>
         <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-          Daftar seluruh peserta terdaftar - {participantList.length} peserta
+          Detail peserta kini menampilkan verifikasi, progres tahap, ringkasan dokumen, dan catatan revisi admin.
         </p>
       </div>
 
       <GoldCard className="mb-6">
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-48">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: "#D4AF37", textAlign: "right", maxWidth: "160px", wordBreak: "break-word" }}
-            />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#D4AF37" }} />
             <input
               type="text"
               value={searchKeyword}
@@ -82,14 +117,30 @@ export default function AdminParticipantsPage() {
                 color: "#F5E6C8",
                 fontFamily: "var(--font-poppins)",
               }}
-              onFocus={(event) => (event.target.style.borderColor = "rgba(212,175,55,0.6)")}
-              onBlur={(event) => (event.target.style.borderColor = "rgba(212,175,55,0.25)")}
             />
           </div>
 
           <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as StatusFilterValue)}
+            value={verificationFilter}
+            onChange={(event) => setVerificationFilter(event.target.value as VerificationFilterValue)}
+            className="px-4 py-2.5 rounded-xl text-sm outline-none"
+            style={{
+              background: "#111",
+              border: "1px solid rgba(212,175,55,0.25)",
+              color: "#F5E6C8",
+              fontFamily: "var(--font-poppins)",
+            }}
+          >
+            {verificationFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={stageFilter}
+            onChange={(event) => setStageFilter(event.target.value as StageFilterValue)}
             className="px-4 py-2.5 rounded-xl text-sm outline-none"
             style={{
               background: "#111",
@@ -150,10 +201,10 @@ export default function AdminParticipantsPage() {
                       Peserta
                     </th>
                     <th className="px-4 py-3 text-left text-xs hidden md:table-cell" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)", fontWeight: 600 }}>
-                      Kategori
+                      Verifikasi
                     </th>
                     <th className="px-4 py-3 text-left text-xs" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)", fontWeight: 600 }}>
-                      Status
+                      Tahap
                     </th>
                     <th className="px-4 py-3 text-center text-xs" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)", fontWeight: 600 }}>
                       Aksi
@@ -161,93 +212,98 @@ export default function AdminParticipantsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredParticipants.map((participant, index) => (
-                    <tr
-                      key={participant.id}
-                      className="transition-colors cursor-pointer"
-                      style={{
-                        borderBottom: "1px solid rgba(255,255,255,0.04)",
-                        background: selectedId === participant.id ? "rgba(212,175,55,0.08)" : "transparent",
-                      }}
-                      onClick={() => setSelectedId(participant.id)}
-                      onMouseEnter={(event) => {
-                        if (selectedId !== participant.id) {
-                          event.currentTarget.style.background = "rgba(255,255,255,0.02)";
-                        }
-                      }}
-                      onMouseLeave={(event) => {
-                        if (selectedId !== participant.id) {
-                          event.currentTarget.style.background = "transparent";
-                        }
-                      }}
-                    >
-                      <td className="px-4 py-3 text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-                        {index + 1}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <Image
-                            src={participant.photo}
-                            alt={participant.name}
-                            width={32}
-                            height={32}
-                            unoptimized
-                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                          />
-                          <div>
-                            <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
-                              {participant.name}
-                            </p>
-                            <p className="text-xs" style={{ color: "#666" }}>
-                              {participant.number}
-                            </p>
+                  {filteredParticipants.map((participant, index) => {
+                    const verificationStatus = getParticipantVerificationStatus(participant);
+                    const selectionStage = getParticipantSelectionStage(participant);
+
+                    return (
+                      <tr
+                        key={participant.id}
+                        className="transition-colors cursor-pointer"
+                        style={{
+                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          background: selectedId === participant.id ? "rgba(212,175,55,0.08)" : "transparent",
+                        }}
+                        onClick={() => setSelectedId(participant.id)}
+                      >
+                        <td className="px-4 py-3 text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                          {index + 1}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Image
+                              src={participant.photo}
+                              alt={participant.name}
+                              width={32}
+                              height={32}
+                              unoptimized
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            />
+                            <div>
+                              <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                                {participant.name}
+                              </p>
+                              <p className="text-xs" style={{ color: "#666" }}>
+                                {participant.number}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <span
-                          className="text-xs px-2 py-1 rounded-full"
-                          style={{
-                            background: participant.gender === "Encik" ? "rgba(59,130,246,0.15)" : "rgba(236,72,153,0.15)",
-                            color: participant.gender === "Encik" ? "#60a5fa" : "#f472b6",
-                            fontFamily: "var(--font-cinzel)",
-                          }}
-                        >
-                          {participant.gender}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
-                          style={{
-                            background: `${statusColors[participant.status]}20`,
-                            color: statusColors[participant.status],
-                            fontFamily: "var(--font-poppins)",
-                          }}
-                        >
-                          {statusLabelsId[participant.status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedId(participant.id);
-                          }}
-                          className="p-1.5 rounded-lg transition-all"
-                          style={{
-                            color: "#D4AF37",
-                            background: "rgba(212,175,55,0.1)",
-                            border: "none",
-                            cursor: "pointer",
-                          }}
-                          type="button"
-                        >
-                          <Eye size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <span
+                            className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
+                            style={{
+                              background:
+                                verificationStatus === "Verified"
+                                  ? "rgba(34,197,94,0.15)"
+                                  : verificationStatus === "NeedsRevision"
+                                  ? "rgba(249,115,22,0.15)"
+                                  : verificationStatus === "Rejected"
+                                  ? "rgba(239,68,68,0.15)"
+                                  : "rgba(245,158,11,0.15)",
+                              color:
+                                verificationStatus === "Verified"
+                                  ? "#22c55e"
+                                  : verificationStatus === "NeedsRevision"
+                                  ? "#f97316"
+                                  : verificationStatus === "Rejected"
+                                  ? "#ef4444"
+                                  : "#F59E0B",
+                              fontFamily: "var(--font-poppins)",
+                            }}
+                          >
+                            {verificationStatusLabels[verificationStatus]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
+                            style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa", fontFamily: "var(--font-poppins)" }}
+                          >
+                            {selectionStageLabels[selectionStage]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(participant.id);
+                            }}
+                            className="p-1.5 rounded-lg transition-all"
+                            style={{
+                              color: "#D4AF37",
+                              background: "rgba(212,175,55,0.1)",
+                              border: "none",
+                              cursor: "pointer",
+                            }}
+                            type="button"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
@@ -281,21 +337,13 @@ export default function AdminParticipantsPage() {
                 <h3 className="text-sm font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
                   {selectedParticipant.name}
                 </h3>
-                <span
-                  className="inline-block text-xs px-3 py-1 rounded-full mt-2"
-                  style={{
-                    background: `${statusColors[selectedParticipant.status]}20`,
-                    color: statusColors[selectedParticipant.status],
-                    fontFamily: "var(--font-poppins)",
-                  }}
-                >
-                  {statusLabelsId[selectedParticipant.status]}
-                </span>
               </div>
 
               <div className="space-y-2 text-xs" style={{ fontFamily: "var(--font-poppins)" }}>
                 {[
                   { label: "Kategori", value: selectedParticipant.gender },
+                  { label: "Tahap Seleksi", value: selectionStageLabels[getParticipantSelectionStage(selectedParticipant)] },
+                  { label: "Status Verifikasi", value: verificationStatusLabels[getParticipantVerificationStatus(selectedParticipant)] },
                   { label: "Tinggi", value: `${selectedParticipant.heightCm} cm` },
                   { label: "Pendidikan", value: selectedParticipant.education },
                   { label: "Email", value: selectedParticipant.email },
@@ -326,6 +374,135 @@ export default function AdminParticipantsPage() {
                   ) : (
                     <span style={{ color: "#666" }}>-</span>
                   )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-5">
+                {(() => {
+                  const summary = getDocumentSummary(selectedParticipant);
+                  const reviewSummary = getReviewSummary(selectedParticipant);
+
+                  return (
+                    <>
+                      <div
+                        className="rounded-xl p-3"
+                        style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.15)" }}
+                      >
+                        <FileCheck2 size={14} style={{ color: "#22c55e", marginBottom: 8 }} />
+                        <p className="text-lg font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
+                          {summary.readyCount}
+                        </p>
+                        <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                          Dokumen siap
+                        </p>
+                      </div>
+                      <div
+                        className="rounded-xl p-3"
+                        style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.15)" }}
+                      >
+                        <ClipboardList size={14} style={{ color: "#f97316", marginBottom: 8 }} />
+                        <p className="text-lg font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
+                          {Math.max(summary.revisionCount, reviewSummary.revisionCount)}
+                        </p>
+                        <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                          Perlu revisi
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div className="mt-5 pt-4 space-y-4" style={{ borderTop: "1px solid rgba(212,175,55,0.1)" }}>
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageSquareMore size={14} style={{ color: "#D4AF37" }} />
+                    <p className="text-xs font-semibold" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>
+                      Catatan Admin
+                    </p>
+                  </div>
+                  <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", lineHeight: 1.7 }}>
+                    {selectedParticipant.adminRevisionNote || selectedParticipant.adminVerificationNote || "Belum ada catatan admin untuk peserta ini."}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>
+                    Item Review
+                  </p>
+                  <div className="space-y-2">
+                    {(selectedParticipant.reviewItems ?? []).length > 0 ? (
+                      selectedParticipant.reviewItems?.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-xl p-3"
+                          style={{
+                            background: item.status === "revision_required" ? "rgba(249,115,22,0.08)" : "rgba(34,197,94,0.08)",
+                            border: item.status === "revision_required" ? "1px solid rgba(249,115,22,0.16)" : "1px solid rgba(34,197,94,0.16)",
+                          }}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                              {item.label}
+                            </p>
+                            <span
+                              className="text-[10px] px-2 py-0.5 rounded-full"
+                              style={{
+                                background: item.status === "revision_required" ? "rgba(249,115,22,0.16)" : "rgba(34,197,94,0.16)",
+                                color: item.status === "revision_required" ? "#f97316" : "#22c55e",
+                                fontFamily: "var(--font-poppins)",
+                              }}
+                            >
+                              {item.status === "revision_required" ? "Perlu revisi" : "OK"}
+                            </span>
+                          </div>
+                          <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", lineHeight: 1.6 }}>
+                            {item.note}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs" style={{ color: "#666", fontFamily: "var(--font-poppins)" }}>
+                        Belum ada item review terperinci.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>
+                    Dokumen Terkait
+                  </p>
+                  <div className="space-y-2">
+                    {(selectedParticipant.documents ?? []).map((document) => (
+                      <div
+                        key={`${selectedParticipant.id}-${document.key}`}
+                        className="rounded-xl p-3"
+                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                            {document.label}
+                          </p>
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full"
+                            style={{
+                              background: document.status === "revision_required" ? "rgba(249,115,22,0.14)" : "rgba(34,197,94,0.14)",
+                              color: document.status === "revision_required" ? "#f97316" : "#22c55e",
+                              fontFamily: "var(--font-poppins)",
+                            }}
+                          >
+                            {document.status === "revision_required" ? "Perlu revisi" : "Tersubmit"}
+                          </span>
+                        </div>
+                        {document.note ? (
+                          <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", lineHeight: 1.6 }}>
+                            {document.note}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </GoldCard>

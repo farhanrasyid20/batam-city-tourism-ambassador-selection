@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import React from "react";
+import Image from "next/image";
 import type { NewsBlock } from "../../../data/mockData";
 
 function Paragraph({ text }: { text: string }) {
@@ -29,6 +30,7 @@ export default function NewsArticleClient({ body, contentHtml }: NewsArticleClie
     return (
       <div
         className="news-reader-content"
+        style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", lineHeight: 1.9 }}
         dangerouslySetInnerHTML={{ __html: contentHtml }}
       />
     );
@@ -78,7 +80,7 @@ export default function NewsArticleClient({ body, contentHtml }: NewsArticleClie
                   lineHeight: 1.9,
                 }}
               >
-                “{block.text}”
+                â€œ{block.text}â€
               </p>
               {block.author ? (
                 <p
@@ -88,7 +90,7 @@ export default function NewsArticleClient({ body, contentHtml }: NewsArticleClie
                     fontFamily: "var(--font-poppins)",
                   }}
                 >
-                  — {block.author}
+                  â€” {block.author}
                 </p>
               ) : null}
             </blockquote>
@@ -125,9 +127,12 @@ export default function NewsArticleClient({ body, contentHtml }: NewsArticleClie
                   background: "#0F0F0F",
                 }}
               >
-                <img
+                <Image
                   src={block.src}
                   alt={block.alt ?? "Gambar berita"}
+                  width={1400}
+                  height={900}
+                  unoptimized
                   className="w-full h-auto object-cover"
                 />
               </div>

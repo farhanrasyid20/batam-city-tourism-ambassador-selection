@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useId, useMemo, useRef } from "react";
 import { readFileAsDataUrl } from "./newsUtils";
@@ -53,16 +53,23 @@ export default function TinyMceEditor({ value, onChange, height = 420 }: TinyMce
         selector: `#${editorId}`,
         license_key: "gpl",
         height,
-        menubar: false,
+        menubar: "file edit view insert format table tools",
         branding: false,
         plugins:
-          "advlist autolink lists link image charmap preview searchreplace visualblocks code fullscreen insertdatetime media table help wordcount",
+          "advlist autolink lists link image charmap preview searchreplace visualblocks visualchars code fullscreen insertdatetime media table help wordcount autoresize",
         toolbar:
-          "undo redo | formatselect | bold italic underline | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | image media link | removeformat code",
+          "undo redo | blocks fontfamily fontsize | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | image link table | removeformat code fullscreen",
+        block_formats: "Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3",
+        font_family_formats:
+          "Poppins=Poppins,sans-serif; Times New Roman='Times New Roman',Times,serif; Georgia=Georgia,serif; Arial=Arial,Helvetica,sans-serif; Verdana=Verdana,Geneva,sans-serif; Courier New='Courier New',Courier,monospace",
+        font_size_formats: "10pt 11pt 12pt 14pt 16pt 18pt 24pt 30pt 36pt",
         content_style:
-          "body { font-family: Poppins, sans-serif; font-size:14px; color:#E5E7EB; background:#111; } h1,h2,h3 { font-family: Cinzel, serif; color:#F5E6C8; } a { color:#D4AF37; }",
+          "body { font-family: Poppins, sans-serif; font-size:14px; line-height:1.8; color:#E5E7EB; background:#111; } p { margin:0 0 1rem; } h1,h2,h3 { margin:1.5rem 0 0.75rem; color:#F5E6C8; } h1 { font-size:2rem; } h2 { font-size:1.6rem; } h3 { font-size:1.25rem; } ul,ol { margin:0 0 1rem 1.25rem; } img { max-width:100%; height:auto; border-radius:12px; } figure { margin:1.5rem 0; } a { color:#D4AF37; }",
         skin: "oxide-dark",
         content_css: "dark",
+        image_title: true,
+        automatic_uploads: false,
+        toolbar_mode: "sliding",
         setup: (editor: TinyMceEditorInstance) => {
           editor.on("init", () => {
             editor.setContent(valueRef.current || "");
@@ -122,3 +129,7 @@ export default function TinyMceEditor({ value, onChange, height = 420 }: TinyMce
 
   return <textarea id={editorId} defaultValue={value} />;
 }
+
+
+
+

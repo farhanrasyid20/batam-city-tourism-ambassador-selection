@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import { useRouter } from "next/navigation";
@@ -14,19 +14,33 @@ import {
 } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { useApp } from "../../../../context/AppContext";
-import { schedule, statusLabelsId } from "../../../../data/mockData";
+import {
+  getParticipantSelectionStage,
+  getParticipantVerificationStatus,
+  schedule,
+  selectionStageLabels,
+} from "../../../../data/mockData";
 
 export default function AdminDashboardPage() {
   const { participantList, newsList } = useApp();
   const router = useRouter();
 
   const totalParticipants = participantList.length;
-  const pendingCount = participantList.filter((participant) => participant.status === "Pending").length;
-  const grandFinalCount = participantList.filter(
-    (participant) => participant.status === "GrandFinal"
+  const pendingCount = participantList.filter(
+    (participant) => getParticipantVerificationStatus(participant) === "Pending"
   ).length;
-  const verifiedCount = participantList.filter((participant) => participant.status === "Verified").length;
-  const campCount = participantList.filter((participant) => participant.status === "Camp").length;
+  const needsRevisionCount = participantList.filter(
+    (participant) => getParticipantVerificationStatus(participant) === "NeedsRevision"
+  ).length;
+  const grandFinalCount = participantList.filter(
+    (participant) => getParticipantSelectionStage(participant) === "Grand Final"
+  ).length;
+  const verifiedCount = participantList.filter(
+    (participant) => getParticipantVerificationStatus(participant) === "Verified"
+  ).length;
+  const campCount = participantList.filter(
+    (participant) => getParticipantSelectionStage(participant) === "Camp"
+  ).length;
   const encikCount = participantList.filter((participant) => participant.gender === "Encik").length;
   const puanCount = participantList.filter((participant) => participant.gender === "Puan").length;
 
@@ -36,7 +50,7 @@ export default function AdminDashboardPage() {
       value: totalParticipants,
       icon: <Users size={20} />,
       color: "#D4AF37",
-      sub: `${encikCount} Encik • ${puanCount} Puan`,
+      sub: `${encikCount} Encik â€¢ ${puanCount} Puan`,
     },
     {
       label: "Menunggu Verifikasi",
@@ -44,6 +58,13 @@ export default function AdminDashboardPage() {
       icon: <Clock size={20} />,
       color: "#F59E0B",
       sub: "Perlu ditindaklanjuti",
+    },
+    {
+      label: "Perlu Perbaikan",
+      value: needsRevisionCount,
+      icon: <ShieldCheck size={20} />,
+      color: "#EF4444",
+      sub: "Ada revisi dari admin",
     },
     {
       label: "Finalis Grand Final",
@@ -64,7 +85,7 @@ export default function AdminDashboardPage() {
   const quickActions = [
     {
       label: "Verifikasi Berkas",
-      desc: `${pendingCount} menunggu`,
+      desc: `${pendingCount + needsRevisionCount} perlu ditindaklanjuti`,
       icon: <ShieldCheck size={18} />,
       href: "/pages/admin/verification",
       color: "#F59E0B",
@@ -78,14 +99,14 @@ export default function AdminDashboardPage() {
     },
     {
       label: "Input Nilai",
-      desc: "Tahap aktif",
+      desc: "Audisi, karantina, grand final",
       icon: <Award size={18} />,
       href: "/pages/admin/scoring",
       color: "#10B981",
     },
     {
       label: "Export Excel",
-      desc: "Download rekap",
+      desc: "Download rekap resmi",
       icon: <TrendingUp size={18} />,
       href: "/pages/admin/export",
       color: "#3B82F6",
@@ -110,7 +131,7 @@ export default function AdminDashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {stats.map((stat) => (
           <GoldCard key={stat.label} className="text-center">
             <div
@@ -146,9 +167,10 @@ export default function AdminDashboardPage() {
           <div className="space-y-3">
             {[
               { label: "Menunggu Verifikasi", count: pendingCount, color: "#6B7280", total: totalParticipants },
-              { label: statusLabelsId.GrandFinal, count: grandFinalCount, color: "#D4AF37", total: totalParticipants },
-              { label: statusLabelsId.Verified, count: verifiedCount, color: "#3B82F6", total: totalParticipants },
-              { label: statusLabelsId.Camp, count: campCount, color: "#10B981", total: totalParticipants },
+              { label: "Perlu Perbaikan", count: needsRevisionCount, color: "#EF4444", total: totalParticipants },
+              { label: "Terverifikasi", count: verifiedCount, color: "#3B82F6", total: totalParticipants },
+              { label: selectionStageLabels.Camp, count: campCount, color: "#10B981", total: totalParticipants },
+              { label: selectionStageLabels["Grand Final"], count: grandFinalCount, color: "#D4AF37", total: totalParticipants },
             ].map((item) => (
               <div key={item.label}>
                 <div className="flex justify-between text-xs mb-1.5" style={{ fontFamily: "var(--font-poppins)" }}>
@@ -260,3 +282,4 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+

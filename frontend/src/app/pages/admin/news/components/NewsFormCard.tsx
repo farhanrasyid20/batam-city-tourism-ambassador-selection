@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import Image from "next/image";
 import { ImagePlus, Save, X } from "lucide-react";
 import GoldCard from "../../../../../components/dashboard/GoldCard";
@@ -139,6 +139,9 @@ export default function NewsFormCard({
               onChange={(nextValue) => setForm((prev) => ({ ...prev, contentHtml: nextValue }))}
             />
           </div>
+          <p className="text-xs mt-2" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+            Gunakan heading, font family, ukuran huruf, alignment, list, dan gambar langsung di editor. Format lama seperti /gambar1 atau blok image manual tidak dipakai lagi.
+          </p>
         </div>
 
         {formError ? (
@@ -161,3 +164,4 @@ export default function NewsFormCard({
     </GoldCard>
   );
 }
+

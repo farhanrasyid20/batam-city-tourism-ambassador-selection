@@ -6,13 +6,12 @@ import { Trophy, Medal, CheckCircle } from "lucide-react";
 import GoldCard from "../../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../../components/ui/GoldButton";
 import { useApp } from "../../../../../context/AppContext";
-import { criteriaList } from "../../../../../data/mockData";
+import {
+  getAverageStageScore,
+  getParticipantSelectionStage,
+} from "../../../../../data/mockData";
 
 type RankValue = 1 | 2 | 3;
-
-function normalizeStageName(stageName: string) {
-  return stageName.toLowerCase().replace(/[\s-]/g, "");
-}
 
 export default function AdminVoteJuryPage() {
   const {
@@ -25,32 +24,26 @@ export default function AdminVoteJuryPage() {
   } = useApp();
 
   const finalCandidates = useMemo(() => {
-    return participantList.filter((participant) => participant.status === "GrandFinal" || participant.status === "Winner");
+    return participantList.filter((participant) => {
+      const selectionStage = getParticipantSelectionStage(participant);
+      return selectionStage === "Grand Final" || selectionStage === "Final Result";
+    });
   }, [participantList]);
 
   const computedRanking = useMemo(() => {
     return finalCandidates
-      .map((participant, index) => {
-        const finals = scoreList.filter(
-          (score) =>
-            score.participantId === participant.id &&
-            normalizeStageName(score.stage) === normalizeStageName("Grand Final")
-        );
-
-        const totalScore =
-          finals.length > 0
-            ? finals.reduce((sum, item) => sum + item.totalScore, 0) / finals.length
-            : criteriaList.reduce((sum, _, criteriaIndex) => {
-                const seed = participant.id.charCodeAt(participant.id.length - 1) + criteriaIndex + index;
-                const fallback = 70 + ((seed * 17 + 11) % 26);
-                return sum + fallback / criteriaList.length;
-              }, 0);
+      .map((participant) => {
+        const totalScore = getAverageStageScore(scoreList, participant.id, "Grand Final", {
+          judgeRole: "main",
+          scoreType: "official",
+        });
 
         return {
           participant,
           totalScore: Math.round(totalScore * 100) / 100,
         };
       })
+      .filter((item) => item.totalScore > 0)
       .sort((a, b) => b.totalScore - a.totalScore);
   }, [finalCandidates, scoreList]);
 
@@ -100,7 +93,7 @@ export default function AdminVoteJuryPage() {
           Juara Versi Juri
         </h1>
         <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-          Publish juara 1, 2, 3 berdasarkan akumulasi nilai juri ketika sudah waktunya.
+          Publish juara 1, 2, 3 berdasarkan nilai resmi Grand Final dari juri utama.
         </p>
       </div>
 
@@ -141,30 +134,36 @@ export default function AdminVoteJuryPage() {
             Isi Juara Otomatis
           </GoldButton>
         </div>
-        <div className="space-y-2">
-          {computedRanking.slice(0, 10).map((row, index) => (
-            <div
-              key={row.participant.id}
-              className="rounded-xl p-3 flex items-center gap-3"
-              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(212,175,55,0.15)" }}
-            >
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: "rgba(212,175,55,0.18)", color: "#D4AF37" }}>
-                {index + 1}
-              </span>
-              <div className="relative w-10 h-10 rounded-full overflow-hidden" style={{ border: "1px solid rgba(212,175,55,0.25)" }}>
-                <Image src={row.participant.photo} alt={row.participant.name} fill unoptimized className="object-cover object-top" />
+        {computedRanking.length === 0 ? (
+          <p className="text-sm" style={{ color: "#666", fontFamily: "var(--font-poppins)" }}>
+            Belum ada nilai resmi Grand Final yang bisa dipakai untuk penetapan juara.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {computedRanking.slice(0, 10).map((row, index) => (
+              <div
+                key={row.participant.id}
+                className="rounded-xl p-3 flex items-center gap-3"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(212,175,55,0.15)" }}
+              >
+                <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: "rgba(212,175,55,0.18)", color: "#D4AF37" }}>
+                  {index + 1}
+                </span>
+                <div className="relative w-10 h-10 rounded-full overflow-hidden" style={{ border: "1px solid rgba(212,175,55,0.25)" }}>
+                  <Image src={row.participant.photo} alt={row.participant.name} fill unoptimized className="object-cover object-top" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold truncate" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                    {row.participant.name}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                    {row.participant.number} • {row.totalScore.toFixed(2)}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold truncate" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
-                  {row.participant.name}
-                </p>
-                <p className="text-xs mt-1" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
-                  {row.participant.number} • {row.totalScore.toFixed(2)}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </GoldCard>
 
       <GoldCard>

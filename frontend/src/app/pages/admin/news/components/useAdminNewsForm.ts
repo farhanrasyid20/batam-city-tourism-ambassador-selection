@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { useApp } from "../../../../../context/AppContext";
-import type { NewsBlock, NewsItem } from "../../../../../data/mockData";
+import type { NewsItem } from "../../../../../data/mockData";
 import { defaultImage } from "./config";
 import { blocksToHtml, getTodayDate, readFileAsDataUrl, toExcerptFromHtml } from "./newsUtils";
 import type { NewsFormState } from "./types";
@@ -78,7 +78,7 @@ export function useAdminNewsForm() {
       category: form.category,
       excerpt,
       contentHtml: form.contentHtml,
-      body: excerpt ? [{ type: "paragraph", text: excerpt } as NewsBlock] : [],
+      body: [],
     };
 
     if (editId) {
@@ -133,3 +133,4 @@ export function useAdminNewsForm() {
     handleCoverImageChange,
   };
 }
+
