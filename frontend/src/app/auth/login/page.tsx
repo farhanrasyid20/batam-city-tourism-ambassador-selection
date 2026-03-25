@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { GoldButton } from "../../../components/ui/GoldButton";
+import { getReadableApiError } from "../../../lib/api";
+import { loginParticipant } from "../../../lib/auth-api";
+import { saveParticipantAuthSession } from "../../../lib/auth-storage";
 
 type LocalRole = "peserta" | "admin" | "juri";
 
@@ -40,7 +43,7 @@ const roles = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useApp();
+  const { login, setPasswordForEmail } = useApp();
 
   const [role, setRole] = useState<LocalRole>("peserta");
   const [email, setEmail] = useState("");
@@ -60,16 +63,49 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 800));
-    const ok = login(email, password, roleMap[role]);
-    setLoading(false);
+    try {
+      if (role === "peserta") {
+        const isDemoParticipant =
+          email.trim().toLowerCase() === "ahmadrizky@email.com" && password === "demo123";
 
-    if (ok) {
-      if (role === "admin") router.push("/pages/admin/dashboard");
-      else if (role === "juri") router.push("/pages/juri/dashboard");
-      else router.push("/pages/participant/dashboard");
-    } else {
+        if (isDemoParticipant) {
+          await new Promise((r) => setTimeout(r, 400));
+          const ok = login(email, password, "participant");
+          if (ok) {
+            router.push("/pages/participant/dashboard");
+            return;
+          }
+        }
+
+        const response = await loginParticipant({ email, password });
+
+        saveParticipantAuthSession({
+          token: response.access_token,
+          tokenType: response.token_type,
+          expiresInMinutes: response.expires_in_minutes,
+          savedAt: new Date().toISOString(),
+          user: response.user,
+        });
+
+        setPasswordForEmail(email, password);
+        login(email, password, "participant");
+        router.push("/pages/participant/dashboard");
+        return;
+      }
+
+      await new Promise((r) => setTimeout(r, 400));
+      const ok = login(email, password, roleMap[role]);
+      if (ok) {
+        if (role === "admin") router.push("/pages/admin/dashboard");
+        else router.push("/pages/juri/dashboard");
+        return;
+      }
+
       setError("Email atau password salah. Silakan coba lagi.");
+    } catch (error) {
+      setError(getReadableApiError(error));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -329,10 +365,10 @@ export default function LoginPage() {
               style={{
                 color: "#BDBDBD",
                 fontFamily: "var(--font-poppins)",
-                opacity: 0.7,
-              }}
-            >
-              Demo Login (klik untuk isi otomatis):
+              opacity: 0.7,
+            }}
+          >
+              Demo Login internal:
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
               {demoAccounts.map((acc) => (

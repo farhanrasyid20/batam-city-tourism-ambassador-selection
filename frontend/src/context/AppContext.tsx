@@ -21,6 +21,7 @@ import {
   mockScores, // Ã¢Å“â€¦ ini harus ScoreRecord[]
 } from "../data/mockData";
 import { faqItems, type FAQItem } from "../data/faqData";
+import { clearParticipantAuthSession, getParticipantAuthSession } from "../lib/auth-storage";
 
 export type Role = "participant" | "admin" | "judge";
 
@@ -300,8 +301,67 @@ function buildInitialVoteTop(candidates: VotePublicCandidate[], participants: Pa
   });
 }
 
+function getStoredParticipantBootstrap(participants: Participant[]) {
+  const session = getParticipantAuthSession();
+  if (!session?.user) {
+    return {
+      user: null as AuthUser | null,
+      participant: null as Participant | null,
+    };
+  }
+
+  const normalizedEmail = session.user.email.trim().toLowerCase();
+  const matchedParticipant = participants.find(
+    (item) => item.email.trim().toLowerCase() === normalizedEmail
+  );
+
+  if (matchedParticipant) {
+    return {
+      user: {
+        id: String(session.user.id),
+        name: session.user.name,
+        email: normalizedEmail,
+        role: "participant" as const,
+        participantId: matchedParticipant.id,
+      },
+      participant: matchedParticipant,
+    };
+  }
+
+  return {
+    user: {
+      id: String(session.user.id),
+      name: session.user.name,
+      email: normalizedEmail,
+      role: "participant" as const,
+      participantId: `P_API_${session.user.id}`,
+    },
+    participant: {
+      id: `P_API_${session.user.id}`,
+      number: `P-${String(session.user.id).padStart(3, "0")}`,
+      name: session.user.name,
+      gender: "Encik",
+      nationalId: "",
+      birthPlace: "",
+      birthDate: "",
+      heightCm: 0,
+      education: "",
+      instagram: "",
+      phone: session.user.phone ?? "",
+      email: normalizedEmail,
+      photo:
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
+      status: "Pending",
+      registeredAt: new Date().toISOString().slice(0, 10),
+      scores: [],
+      submittedToAdmin: false,
+    } satisfies Participant,
+  };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const bootstrap = getStoredParticipantBootstrap(mockParticipants);
+  const [user, setUser] = useState<AuthUser | null>(bootstrap.user);
 
   const [participantList, setParticipantList] =
     useState<Participant[]>(mockParticipants);
@@ -314,7 +374,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [scoreList, setScoreList] = useState<ScoreRecord[]>(mockScores);
 
   const [currentParticipant, setCurrentParticipant] =
-    useState<Participant | null>(null);
+    useState<Participant | null>(bootstrap.participant);
   const [faqList, setFaqList] = useState<FAQItem[]>(faqItems);
 
   const [voteCandidateList, setVoteCandidateList] = useState<VotePublicCandidate[]>(
@@ -360,7 +420,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const emailKnown =
       Boolean(participantList.find((p) => p.email.toLowerCase() === normalized)) ||
-      Boolean(judgeList.find((j) => j.email.toLowerCase() === normalized)) ||
+      Boolean(judgeList.find((j) => (j.email ?? "").toLowerCase() === normalized)) ||
       normalized === "admin@dutawisatabatam.id" ||
       Boolean(passwordStore[normalized]);
 
@@ -381,7 +441,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const knownRole = normalized === "admin@dutawisatabatam.id"
         ? "admin"
-        : judgeList.some((j) => j.email.toLowerCase() === normalized)
+        : judgeList.some((j) => (j.email ?? "").toLowerCase() === normalized)
         ? "judge"
         : "participant";
       const activePassword = resolveStoredPassword(normalized, knownRole);
@@ -408,7 +468,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // JUDGE (demo)
     if (role === "judge") {
-      const judge = judgeList.find((j) => j.email.toLowerCase() === normalizedEmail);
+      const judge = judgeList.find((j) => (j.email ?? "").toLowerCase() === normalizedEmail);
 
       if (judge) {
         setUser({
@@ -494,6 +554,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [resolveStoredPassword, judgeList, participantList]);
 
   const logout = useCallback(() => {
+    clearParticipantAuthSession();
     setUser(null);
     setCurrentParticipant(null);
   }, []);

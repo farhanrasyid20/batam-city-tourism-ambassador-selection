@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import Image from "next/image";
@@ -12,6 +12,14 @@ import {
 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { GoldButton } from "../../../components/ui/GoldButton";
+import { getReadableApiError } from "../../../lib/api";
+import {
+  loginParticipant,
+  registerParticipant,
+  resendParticipantOtp,
+  verifyParticipantOtp,
+} from "../../../lib/auth-api";
+import { saveParticipantAuthSession } from "../../../lib/auth-storage";
 
 type Step = "form" | "otp" | "success";
 
@@ -24,6 +32,8 @@ export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [debugOtp, setDebugOtp] = useState("");
 
   const [form, setForm] = useState({
     nama: "",
@@ -32,6 +42,11 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
     kategori: "encik",
+  });
+
+  const [otpMeta, setOtpMeta] = useState({
+    expiresInMinutes: 5,
+    resendAvailableInSeconds: 60,
   });
 
   const hasMinLength = form.password.length >= 8;
@@ -44,6 +59,7 @@ export default function RegisterPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
 
     if (form.password !== form.confirmPassword) {
       setError("Password tidak cocok!");
@@ -59,28 +75,87 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setStep("otp");
+    try {
+      const response = await registerParticipant({
+        name: form.nama,
+        email: form.email,
+        phone: form.noHp,
+        password: form.password,
+        password_confirmation: form.confirmPassword,
+      });
+
+      setOtp("");
+      setDebugOtp(response.debug_otp ?? "");
+      setOtpMeta({
+        expiresInMinutes: response.otp_expires_in_minutes,
+        resendAvailableInSeconds: response.resend_available_in_seconds,
+      });
+      setInfo(response.message);
+      setStep("otp");
+    } catch (err) {
+      setError(getReadableApiError(err));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
+    try {
+      await verifyParticipantOtp({
+        email: form.email,
+        otp,
+      });
 
-    if (otp.length === 6) {
-      setStep("success");
+      const loginResponse = await loginParticipant({
+        email: form.email,
+        password: form.password,
+      });
+
+      saveParticipantAuthSession({
+        token: loginResponse.access_token,
+        tokenType: loginResponse.token_type,
+        expiresInMinutes: loginResponse.expires_in_minutes,
+        savedAt: new Date().toISOString(),
+        user: loginResponse.user,
+      });
+
       setPasswordForEmail(form.email, form.password);
+      login(form.email, form.password, "participant");
+      setInfo("Email berhasil diverifikasi. Anda akan diarahkan ke dashboard peserta.");
+      setStep("success");
+
       setTimeout(() => {
-        login(form.email, form.password, "participant");
         router.push("/pages/participant/dashboard");
       }, 2000);
-    } else {
-      setError("Kode OTP harus 6 digit!");
+    } catch (err) {
+      setError(getReadableApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError("");
+    setInfo("");
+    setLoading(true);
+
+    try {
+      const response = await resendParticipantOtp({ email: form.email });
+      setDebugOtp(response.debug_otp ?? "");
+      setOtpMeta({
+        expiresInMinutes: response.otp_expires_in_minutes,
+        resendAvailableInSeconds: response.resend_available_in_seconds,
+      });
+      setInfo(response.message);
+    } catch (err) {
+      setError(getReadableApiError(err));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -163,8 +238,8 @@ export default function RegisterPage() {
                       step === s
                         ? "linear-gradient(135deg, #F5D06F, #C8A24D)"
                         : ["form", "otp", "success"].indexOf(step) > i
-                        ? "rgba(200,162,77,0.3)"
-                        : "rgba(255,255,255,0.05)",
+                          ? "rgba(200,162,77,0.3)"
+                          : "rgba(255,255,255,0.05)",
                     color: step === s ? "#0F0F0F" : "#BDBDBD",
                     fontFamily: "var(--font-cinzel)",
                   }}
@@ -273,14 +348,14 @@ export default function RegisterPage() {
                           passwordScore <= 1
                             ? "linear-gradient(90deg,#ef4444,#f97316)"
                             : passwordScore === 2
-                            ? "linear-gradient(90deg,#f59e0b,#facc15)"
-                            : "linear-gradient(90deg,#22c55e,#16a34a)",
+                              ? "linear-gradient(90deg,#f59e0b,#facc15)"
+                              : "linear-gradient(90deg,#22c55e,#16a34a)",
                       }}
                     />
                   </div>
                   <p className="text-[11px] mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                     Kekuatan password: <strong style={{ color: "#C8A24D" }}>{passwordStrengthLabel}</strong>
-                    {" · "}Gunakan minimal 8 karakter, huruf, dan angka.
+                    {" | "}Gunakan minimal 8 karakter, huruf, dan angka.
                   </p>
                 </div>
               </div>
@@ -343,6 +418,9 @@ export default function RegisterPage() {
                   <br />
                   <strong style={{ color: "#C8A24D" }}>{form.email}</strong>
                 </p>
+                <p className="text-[11px] mt-2" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
+                  Kode berlaku {otpMeta.expiresInMinutes} menit.
+                </p>
               </div>
 
               <div>
@@ -358,10 +436,18 @@ export default function RegisterPage() {
                   className="w-full rounded-xl px-4 py-3 text-center text-2xl tracking-widest outline-none"
                   style={{ background: "#111", border: "1px solid rgba(200,162,77,0.25)", color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}
                 />
-                <p className="text-xs text-center mt-2" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", opacity: 0.6 }}>
-                  Demo: masukkan 6 digit angka apapun
-                </p>
+                {debugOtp ? (
+                  <p className="text-xs text-center mt-2" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
+                    Debug OTP lokal: <strong>{debugOtp}</strong>
+                  </p>
+                ) : null}
               </div>
+
+              {info ? (
+                <p className="text-xs text-center" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                  {info}
+                </p>
+              ) : null}
 
               {error ? (
                 <p className="text-xs text-red-400 text-center" style={{ fontFamily: "var(--font-poppins)" }}>
@@ -374,6 +460,14 @@ export default function RegisterPage() {
               </GoldButton>
 
               <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  className="text-xs mr-3"
+                  style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                >
+                  {loading ? "Mengirim..." : "Kirim Ulang OTP"}
+                </button>
                 <button
                   type="button"
                   onClick={() => setStep("form")}
@@ -401,6 +495,11 @@ export default function RegisterPage() {
                 Selamat datang, <strong style={{ color: "#F5D06F" }}>{form.nama}</strong>!
                 Akun Anda telah berhasil dibuat.
               </p>
+              {info ? (
+                <p className="text-xs mb-4" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                  {info}
+                </p>
+              ) : null}
               <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", opacity: 0.7 }}>
                 Mengalihkan ke dashboard...
               </p>
@@ -411,4 +510,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
