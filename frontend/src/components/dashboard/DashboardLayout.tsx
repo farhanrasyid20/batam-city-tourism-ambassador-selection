@@ -16,7 +16,7 @@ type NavItem = {
 type DashboardLayoutProps = {
   navItems: NavItem[];
   children: React.ReactNode;
-  role: "participant" | "admin" | "judge";
+  role: "participant" | "admin" | "judge" | "super_admin";
 };
 
 export default function DashboardLayout({
@@ -77,12 +77,14 @@ export default function DashboardLayout({
     participant: "#C8A24D",
     admin: "#F5D06F",
     judge: "#B68D2A",
+    super_admin: "#FFD700",
   } as const;
 
   const roleLabel = {
     participant: "Peserta",
     admin: "Administrator",
     judge: "Dewan Juri",
+    super_admin: "Super Admin",
   } as const;
 
   const handleLogout = () => {
@@ -103,7 +105,12 @@ export default function DashboardLayout({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const changePasswordPath = role === "participant" ? "/pages/participant/change-password" : "/auth/forgot-password";
+  const changePasswordPath =
+    role === "participant"
+      ? "/pages/participant/change-password"
+      : role === "judge"
+      ? "/pages/judges/change-password"
+      : "/pages/admin/change-password";
 
   const isItemActive = (item: NavItem) => {
     const hasSelfActive = item.href ? pathname === item.href || pathname.startsWith(`${item.href}/`) : false;

@@ -43,7 +43,7 @@ const roles = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, setPasswordForEmail } = useApp();
+  const { login, setPasswordForEmail, setAuthenticatedUser } = useApp();
 
   const [role, setRole] = useState<LocalRole>("peserta");
   const [email, setEmail] = useState("");
@@ -93,11 +93,74 @@ export default function LoginPage() {
         return;
       }
 
+      if (role === "admin") {
+        try {
+          const response = await loginParticipant({ email, password });
+          const backendRole = (response.user.role ?? "").toLowerCase();
+
+          if (backendRole === "admin" || backendRole === "super_admin") {
+            saveParticipantAuthSession({
+              token: response.access_token,
+              tokenType: response.token_type,
+              expiresInMinutes: response.expires_in_minutes,
+              savedAt: new Date().toISOString(),
+              user: response.user,
+            });
+
+            setAuthenticatedUser({
+              id: String(response.user.id),
+              name: response.user.name,
+              email: response.user.email,
+              role: backendRole === "super_admin" ? "super_admin" : "admin",
+            });
+            router.push("/pages/admin/dashboard");
+            return;
+          }
+          setError("Akun ini bukan role admin/super admin.");
+          return;
+        } catch (error) {
+          setError(getReadableApiError(error));
+          return;
+        }
+      }
+
+      if (role === "juri") {
+        try {
+          const response = await loginParticipant({ email, password });
+          const backendRole = (response.user.role ?? "").toLowerCase();
+
+          if (backendRole === "judge") {
+            saveParticipantAuthSession({
+              token: response.access_token,
+              tokenType: response.token_type,
+              expiresInMinutes: response.expires_in_minutes,
+              savedAt: new Date().toISOString(),
+              user: response.user,
+            });
+
+            setAuthenticatedUser({
+              id: String(response.user.id),
+              name: response.user.name,
+              email: response.user.email,
+              role: "judge",
+            });
+            router.push("/pages/judges/dashboard");
+            return;
+          }
+
+          setError("Akun ini bukan role juri.");
+          return;
+        } catch (error) {
+          setError(getReadableApiError(error));
+          return;
+        }
+      }
+
       await new Promise((r) => setTimeout(r, 400));
       const ok = login(email, password, roleMap[role]);
       if (ok) {
         if (role === "admin") router.push("/pages/admin/dashboard");
-        else router.push("/pages/juri/dashboard");
+        else router.push("/pages/judges/dashboard");
         return;
       }
 

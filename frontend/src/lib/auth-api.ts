@@ -64,6 +64,16 @@ export type MeResponse = {
   user: BackendAuthUser;
 };
 
+export type ChangePasswordPayload = {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
+};
+
+export type ChangePasswordResponse = {
+  message: string;
+};
+
 export type ForgotPasswordRequestOtpPayload = {
   email: string;
 };
@@ -128,6 +138,14 @@ export function fetchAuthenticatedParticipant(token: string) {
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
     token,
+  });
+}
+
+export function changeAuthenticatedPassword(token: string, payload: ChangePasswordPayload) {
+  return apiRequest<ChangePasswordResponse>("/auth/change-password", {
+    method: "POST",
+    token,
+    body: payload,
   });
 }
 

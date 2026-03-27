@@ -1,6 +1,7 @@
 "use client";
 
 import React, {
+  useEffect,
   useCallback,
   createContext,
   useContext,
@@ -23,7 +24,7 @@ import {
 import { faqItems, type FAQItem } from "../data/faqData";
 import { clearParticipantAuthSession, getParticipantAuthSession } from "../lib/auth-storage";
 
-export type Role = "participant" | "admin" | "judge";
+export type Role = "participant" | "admin" | "judge" | "super_admin";
 
 export type AuthUser = {
   id: string;
@@ -123,8 +124,10 @@ export type ParticipantResources = {
 };
 
 type AppContextType = {
+  authInitialized: boolean;
   user: AuthUser | null;
   login: (email: string, password: string, role: Role) => boolean;
+  setAuthenticatedUser: (user: AuthUser | null) => void;
   logout: () => void;
   setPasswordForEmail: (email: string, password: string) => void;
   requestPasswordReset: (email: string) => boolean;
@@ -311,6 +314,20 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
   }
 
   const normalizedEmail = session.user.email.trim().toLowerCase();
+  const sessionRole = (session.user.role ?? "participant").toLowerCase();
+
+  if (sessionRole === "admin" || sessionRole === "super_admin" || sessionRole === "judge") {
+    return {
+      user: {
+        id: String(session.user.id),
+        name: session.user.name,
+        email: normalizedEmail,
+        role: sessionRole as Role,
+      },
+      participant: null as Participant | null,
+    };
+  }
+
   const matchedParticipant = participants.find(
     (item) => item.email.trim().toLowerCase() === normalizedEmail
   );
@@ -360,8 +377,8 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const bootstrap = getStoredParticipantBootstrap(mockParticipants);
-  const [user, setUser] = useState<AuthUser | null>(bootstrap.user);
+  const [authInitialized, setAuthInitialized] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   const [participantList, setParticipantList] =
     useState<Participant[]>(mockParticipants);
@@ -374,7 +391,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [scoreList, setScoreList] = useState<ScoreRecord[]>(mockScores);
 
   const [currentParticipant, setCurrentParticipant] =
-    useState<Participant | null>(bootstrap.participant);
+    useState<Participant | null>(null);
   const [faqList, setFaqList] = useState<FAQItem[]>(faqItems);
 
   const [voteCandidateList, setVoteCandidateList] = useState<VotePublicCandidate[]>(
@@ -390,6 +407,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [participantResources, setParticipantResources] =
     useState<ParticipantResources>(defaultParticipantResources);
 
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      const bootstrap = getStoredParticipantBootstrap(mockParticipants);
+      setUser(bootstrap.user);
+      setCurrentParticipant(bootstrap.participant);
+      setAuthInitialized(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
+
   const [passwordStore, setPasswordStore] = useState<Record<string, string>>({
     "admin@dutawisatabatam.id": "admin123",
     "juri1@dutawisatabatam.id": "demo123",
@@ -397,6 +425,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
 
   const getDefaultPasswordByRole = useCallback((role: Role) => {
+    if (role === "super_admin") return "SuperAdmin123!";
     if (role === "admin") return "admin123";
     return "demo123";
   }, []);
@@ -458,6 +487,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const activePassword = resolveStoredPassword(normalizedEmail, role);
     if (activePassword !== password) {
       return false;
+    }
+
+    if (role === "super_admin") {
+      setUser({ id: "superadmin001", name: "Super Administrator", email: normalizedEmail, role: "super_admin" });
+      return true;
     }
 
     // ADMIN (demo)
@@ -553,6 +587,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return false;
   }, [resolveStoredPassword, judgeList, participantList]);
 
+  const setAuthenticatedUser = useCallback((nextUser: AuthUser | null) => {
+    setUser(nextUser);
+    if (!nextUser || nextUser.role !== "participant") {
+      setCurrentParticipant(null);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     clearParticipantAuthSession();
     setUser(null);
@@ -577,8 +618,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppContextType>(
     () => ({
+      authInitialized,
       user,
       login,
+      setAuthenticatedUser,
       logout,
       setPasswordForEmail,
       requestPasswordReset,
@@ -624,8 +667,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setParticipantResources,
     }),
     [
+      authInitialized,
       user,
       login,
+      setAuthenticatedUser,
       logout,
       setPasswordForEmail,
       requestPasswordReset,

@@ -48,7 +48,7 @@ const adminNavItems = [
       { label: "Feedback", href: "/pages/admin/feedback", icon: <MessageSquare size={14} /> },
     ],
   },
-  { label: "Data Juri", href: "/pages/admin/juri", icon: <Settings size={16} /> },
+  { label: "Data Juri", href: "/pages/admin/judges", icon: <Settings size={16} /> },
   { label: "Export Excel", href: "/pages/admin/export", icon: <Download size={16} /> },
 ];
 
@@ -57,24 +57,32 @@ export default function AdminPagesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = useApp();
+  const { user, authInitialized } = useApp();
   const router = useRouter();
 
   useEffect(() => {
+    if (!authInitialized) return;
+
     if (!user) {
       router.replace("/auth/login");
       return;
     }
 
-    if (user.role !== "admin") {
+    if (user.role !== "admin" && user.role !== "super_admin") {
       router.replace("/");
     }
-  }, [router, user]);
+  }, [router, user, authInitialized]);
 
-  if (!user || user.role !== "admin") return null;
+  if (!authInitialized) return null;
+  if (!user || (user.role !== "admin" && user.role !== "super_admin")) return null;
+
+  const navItems = [
+    ...adminNavItems,
+    { label: "Manajemen User", href: "/pages/admin/users", icon: <Users size={16} /> },
+  ];
 
   return (
-    <DashboardLayout navItems={adminNavItems} role="admin">
+    <DashboardLayout navItems={navItems} role={user.role === "super_admin" ? "super_admin" : "admin"}>
       {children}
     </DashboardLayout>
   );

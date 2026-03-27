@@ -663,6 +663,44 @@ class AuthController extends Controller
         ]);
     }
 
+    public function changePassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        /** @var User|null $user */
+        $user = $request->attributes->get('auth_user');
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'User tidak terautentikasi.',
+            ], 401);
+        }
+
+        if (! Hash::check($request->string('current_password')->toString(), $user->password)) {
+            return response()->json([
+                'message' => 'Password saat ini tidak sesuai.',
+            ], 422);
+        }
+
+        $user->forceFill([
+            'password' => $request->string('password')->toString(),
+        ])->save();
+
+        return response()->json([
+            'message' => 'Password berhasil diperbarui.',
+        ]);
+    }
+
     public function me(Request $request): JsonResponse
     {
         /** @var User $user */
