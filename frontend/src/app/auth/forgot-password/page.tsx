@@ -4,51 +4,103 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowLeft, Eye, EyeOff, KeyRound, MailCheck } from "lucide-react";
-import { useApp } from "../../../context/AppContext";
 import { GoldButton } from "../../../components/ui/GoldButton";
+import { getReadableApiError } from "../../../lib/api";
+import {
+  requestForgotPasswordOtp,
+  resetForgotPassword,
+  verifyForgotPasswordOtp,
+} from "../../../lib/auth-api";
 
 type Step = "email" | "otp" | "new_password" | "success";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const { requestPasswordReset, resetPasswordWithOtp } = useApp();
 
   const [step, setStep] = useState<Step>("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setResendCooldown((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    requestPasswordReset(email);
-    setLoading(false);
-    setStep("otp");
+
+    try {
+      const response = await requestForgotPasswordOtp({ email: email.trim() });
+      setInfo(response.message);
+      setResendCooldown(response.resend_available_in_seconds ?? 0);
+      setStep("otp");
+    } catch (error) {
+      setError(getReadableApiError(error));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     if (otp.length !== 6) {
       setError("Kode OTP harus 6 digit.");
       return;
     }
+
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setLoading(false);
-    setStep("new_password");
+
+    try {
+      const response = await verifyForgotPasswordOtp({ email: email.trim(), otp });
+      setInfo(response.message);
+      setStep("new_password");
+    } catch (error) {
+      setError(getReadableApiError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || loading) return;
+
+    setError("");
+    setInfo("");
+    setLoading(true);
+
+    try {
+      const response = await requestForgotPasswordOtp({ email: email.trim() });
+      setInfo(response.message);
+      setResendCooldown(response.resend_available_in_seconds ?? 0);
+    } catch (error) {
+      setError(getReadableApiError(error));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     if (newPassword.length < 8) {
       setError("Password baru minimal 8 karakter.");
       return;
@@ -63,15 +115,21 @@ export default function ForgotPasswordPage() {
     }
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const ok = resetPasswordWithOtp(email, otp, newPassword);
-    setLoading(false);
-    if (!ok) {
-      setError("Gagal reset password. Coba lagi.");
-      return;
+    try {
+      const response = await resetForgotPassword({
+        email: email.trim(),
+        otp,
+        password: newPassword,
+        password_confirmation: confirmPassword,
+      });
+      setInfo(response.message);
+      setStep("success");
+      setTimeout(() => router.push("/auth/login"), 1300);
+    } catch (error) {
+      setError(getReadableApiError(error));
+    } finally {
+      setLoading(false);
     }
-    setStep("success");
-    setTimeout(() => router.push("/auth/login"), 1300);
   };
 
   return (
@@ -149,6 +207,7 @@ export default function ForgotPasswordPage() {
                 className="w-full rounded-xl px-4 py-3 text-sm outline-none"
                 style={{ background: "#111", border: "1px solid rgba(200,162,77,0.25)", color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
               />
+              {info ? <p className="text-xs text-emerald-300" style={{ fontFamily: "var(--font-poppins)" }}>{info}</p> : null}
               {error ? <p className="text-xs text-red-400" style={{ fontFamily: "var(--font-poppins)" }}>{error}</p> : null}
               <GoldButton type="submit" variant="primary" fullWidth disabled={loading}>
                 <MailCheck size={16} />
@@ -171,11 +230,27 @@ export default function ForgotPasswordPage() {
                 className="w-full rounded-xl px-4 py-3 text-center text-xl tracking-widest outline-none"
                 style={{ background: "#111", border: "1px solid rgba(200,162,77,0.25)", color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}
               />
+              {info ? <p className="text-xs text-emerald-300 text-center" style={{ fontFamily: "var(--font-poppins)" }}>{info}</p> : null}
               {error ? <p className="text-xs text-red-400 text-center" style={{ fontFamily: "var(--font-poppins)" }}>{error}</p> : null}
               <GoldButton type="submit" variant="primary" fullWidth disabled={loading}>
                 <KeyRound size={16} />
                 {loading ? "Memverifikasi..." : "Verifikasi OTP"}
               </GoldButton>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={loading || resendCooldown > 0}
+                className="w-full text-xs text-center pt-1 disabled:opacity-50"
+                style={{
+                  color: "#C8A24D",
+                  fontFamily: "var(--font-poppins)",
+                  background: "none",
+                  border: "none",
+                  cursor: loading || resendCooldown > 0 ? "not-allowed" : "pointer",
+                }}
+              >
+                {resendCooldown > 0 ? `Kirim ulang OTP dalam ${resendCooldown} detik` : "Kirim ulang OTP"}
+              </button>
             </form>
           ) : null}
 
@@ -230,6 +305,7 @@ export default function ForgotPasswordPage() {
                   </button>
                 </div>
               </div>
+              {info ? <p className="text-xs text-emerald-300" style={{ fontFamily: "var(--font-poppins)" }}>{info}</p> : null}
               {error ? <p className="text-xs text-red-400" style={{ fontFamily: "var(--font-poppins)" }}>{error}</p> : null}
               <GoldButton type="submit" variant="primary" fullWidth disabled={loading}>
                 <KeyRound size={16} />

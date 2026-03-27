@@ -55,4 +55,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(EmailVerificationOtp::class);
     }
+
+    public function passwordResetOtps(): HasMany
+    {
+        return $this->hasMany(PasswordResetOtp::class);
+    }
 }

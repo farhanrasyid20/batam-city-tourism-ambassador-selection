@@ -430,12 +430,7 @@ export default function VoteHighlightSection() {
   }, [finalists]);
 
   const [officialLikesMap, setOfficialLikesMap] = useState<Record<string, number>>(initialLikeMap);
-  const [lastSyncedAt, setLastSyncedAt] = useState(() =>
-    new Date().toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  );
+  const [lastSyncedAt, setLastSyncedAt] = useState("--:--");
 
   useEffect(() => {
     setOfficialLikesMap(initialLikeMap);

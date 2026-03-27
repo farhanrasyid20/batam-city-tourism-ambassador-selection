@@ -25,7 +25,6 @@ export type RegisterParticipantResponse = {
   user: BackendAuthUser;
   otp_expires_in_minutes: number;
   resend_available_in_seconds: number;
-  debug_otp?: string;
 };
 
 export type VerifyOtpPayload = {
@@ -46,7 +45,6 @@ export type ResendOtpResponse = {
   message: string;
   otp_expires_in_minutes: number;
   resend_available_in_seconds: number;
-  debug_otp?: string;
 };
 
 export type LoginParticipantPayload = {
@@ -64,6 +62,38 @@ export type LoginParticipantResponse = {
 
 export type MeResponse = {
   user: BackendAuthUser;
+};
+
+export type ForgotPasswordRequestOtpPayload = {
+  email: string;
+};
+
+export type ForgotPasswordRequestOtpResponse = {
+  message: string;
+  otp_expires_in_minutes: number;
+  resend_available_in_seconds: number;
+  retry_after_seconds?: number;
+};
+
+export type ForgotPasswordVerifyOtpPayload = {
+  email: string;
+  otp: string;
+};
+
+export type ForgotPasswordVerifyOtpResponse = {
+  message: string;
+  otp_expires_in_minutes: number;
+};
+
+export type ForgotPasswordResetPayload = {
+  email: string;
+  otp: string;
+  password: string;
+  password_confirmation: string;
+};
+
+export type ForgotPasswordResetResponse = {
+  message: string;
 };
 
 export function registerParticipant(payload: RegisterParticipantPayload) {
@@ -98,5 +128,26 @@ export function fetchAuthenticatedParticipant(token: string) {
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
     token,
+  });
+}
+
+export function requestForgotPasswordOtp(payload: ForgotPasswordRequestOtpPayload) {
+  return apiRequest<ForgotPasswordRequestOtpResponse>("/forgot-password/request-otp", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function verifyForgotPasswordOtp(payload: ForgotPasswordVerifyOtpPayload) {
+  return apiRequest<ForgotPasswordVerifyOtpResponse>("/forgot-password/verify-otp", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function resetForgotPassword(payload: ForgotPasswordResetPayload) {
+  return apiRequest<ForgotPasswordResetResponse>("/forgot-password/reset", {
+    method: "POST",
+    body: payload,
   });
 }

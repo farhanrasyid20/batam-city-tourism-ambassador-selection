@@ -457,11 +457,12 @@ const documentBlueprint: Array<{ key: string; label: string; target: Participant
 ];
 
 export const schedule: ScheduleItem[] = [
-  { activity: "Pendaftaran Online", date: "1 Februari - 1 April 2026", status: "active" },
-  { activity: "Pertemuan Teknis", date: "2 April 2026", status: "upcoming" },
-  { activity: "Audisi", date: "4 April 2026", status: "upcoming" },
-  { activity: "Karantina", date: "22 April - 24 April 2026", status: "upcoming" },
-  { activity: "Grand Final", date: "25 April 2026", status: "upcoming" },
+  { activity: "Pendaftaran Online", date: "1 Februari - 9 April 2026", status: "active" },
+  { activity: "Pertemuan Teknis", date: "10 April 2026", status: "upcoming" },
+  { activity: "Audisi", date: "11 April 2026", status: "upcoming" },
+  { activity: "Pra-karantina", date: "13 April - 24 April 2026", status: "upcoming" },
+  { activity: "Karantina", date: "29 April - 1 Mei 2026", status: "upcoming" },
+  { activity: "Grand Final", date: "2 Mei 2026", status: "upcoming" },
 ];
 
 export const winnerCategories: WinnerCategory[] = [

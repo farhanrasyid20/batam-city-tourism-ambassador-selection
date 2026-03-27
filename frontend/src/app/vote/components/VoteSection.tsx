@@ -165,10 +165,8 @@ export default function VoteSection() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {finalists.map((candidate) => {
-              const number = candidate.number.includes("-")
-                ? candidate.number.split("-")[1]
-                : candidate.number;
+            {finalists.map((candidate, index) => {
+              const displayNumber = index + 1;
               const genderLabel = candidate.gender === "Encik" ? "ENCIK" : "PUAN";
               const genderBg =
                 candidate.gender === "Encik"
@@ -215,7 +213,7 @@ export default function VoteSection() {
                         fontFamily: "var(--font-cinzel)",
                       }}
                     >
-                      {number}
+                      {displayNumber}
                     </div>
 
                     <span
