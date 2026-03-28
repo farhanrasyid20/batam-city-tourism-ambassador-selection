@@ -24,7 +24,7 @@ export default function DashboardLayout({
   children,
   role,
 }: DashboardLayoutProps) {
-  const { user, logout, currentParticipant, participantList } = useApp();
+  const { user, logout, currentParticipant, participantList, judgeList } = useApp();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,7 +35,15 @@ export default function DashboardLayout({
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
   const participant = currentParticipant ?? participantList[0] ?? null;
-  const profilePhoto = role === "participant" ? participant?.photo : undefined;
+  const activeJudge =
+    role === "judge"
+      ? judgeList.find(
+          (judge) =>
+            judge.id === user?.judgeId ||
+            (judge.email ?? "").trim().toLowerCase() === (user?.email ?? "").trim().toLowerCase()
+        ) ?? judgeList[0]
+      : null;
+  const profilePhoto = role === "participant" ? participant?.photo : role === "judge" ? activeJudge?.avatar : undefined;
   const verificationIssues = participant?.verificationIssues ?? [];
   const participantNotifications =
     role === "participant" && participant
@@ -111,6 +119,8 @@ export default function DashboardLayout({
       : role === "judge"
       ? "/pages/judges/change-password"
       : "/pages/admin/change-password";
+  const editProfilePath =
+    role === "participant" ? "/pages/participant/biodata" : role === "judge" ? "/pages/judges/profile" : null;
 
   const isItemActive = (item: NavItem) => {
     const hasSelfActive = item.href ? pathname === item.href || pathname.startsWith(`${item.href}/`) : false;
@@ -217,10 +227,10 @@ export default function DashboardLayout({
           >
             {roleLabel[role]}
           </span>
-          {role === "participant" ? (
+          {editProfilePath ? (
             <button
               onClick={() => {
-                router.push("/pages/participant/biodata");
+                router.push(editProfilePath);
                 setSidebarOpen(false);
               }}
               className="w-full mt-3 px-3 py-2 rounded-lg text-xs text-left transition-all duration-200"
@@ -236,10 +246,10 @@ export default function DashboardLayout({
             </button>
           ) : null}
         </div>
-        {role === "participant" && sidebarCollapsed ? (
+        {editProfilePath && sidebarCollapsed ? (
           <button
             onClick={() => {
-              router.push("/pages/participant/biodata");
+              router.push(editProfilePath);
               setSidebarOpen(false);
             }}
             className="w-full mt-3 px-2 py-2 rounded-lg text-xs text-center transition-all duration-200"
@@ -561,11 +571,11 @@ export default function DashboardLayout({
                     <KeyRound size={14} />
                     Ubah Password
                   </button>
-                  {role === "participant" ? (
+                  {editProfilePath ? (
                     <button
                       type="button"
                       onClick={() => {
-                        router.push("/pages/participant/biodata");
+                        router.push(editProfilePath);
                         setProfileMenuOpen(false);
                       }}
                       className="w-full px-3 py-2 text-left text-xs flex items-center gap-2"

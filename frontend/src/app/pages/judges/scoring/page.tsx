@@ -67,8 +67,13 @@ export default function JudgeScoringPage() {
   };
 
   const isComplete = (participantId: string) => {
-    const score = getScore(participantId);
-    return activeCriteria.every((criterion) => score[criterion.key] >= 10);
+    const inputs = scoreInputs[participantId] ?? {};
+    return activeCriteria.every((criterion) => {
+      const rawValue = inputs[criterion.key];
+      if (rawValue === undefined || rawValue === "") return false;
+      const parsedValue = Number.parseInt(rawValue, 10);
+      return !Number.isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 100;
+    });
   };
 
   const updateScore = (participantId: string, key: string, rawValue: string) => {
@@ -86,7 +91,7 @@ export default function JudgeScoringPage() {
     const parsedValue = Number.parseInt(rawValue, 10);
     if (Number.isNaN(parsedValue)) return;
 
-    const nextValue = String(Math.min(100, Math.max(10, parsedValue)));
+    const nextValue = String(Math.min(100, Math.max(0, parsedValue)));
     setScoreInputs((prev) => ({
       ...prev,
       [participantId]: {
@@ -274,11 +279,11 @@ export default function JudgeScoringPage() {
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
-                            min={10}
+                            min={0}
                             max={100}
                             value={scoreInputs[activeParticipantId]?.[criterion.key] ?? ""}
                             onChange={(event) => updateScore(activeParticipantId, criterion.key, event.target.value)}
-                            placeholder="10"
+                            placeholder="0"
                             className="w-20 text-center px-2 py-2 rounded-xl text-sm font-bold outline-none"
                             style={{ background: "#111", border: "1px solid rgba(212,175,55,0.25)", color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}
                           />
@@ -313,7 +318,7 @@ export default function JudgeScoringPage() {
                   <div className="flex items-center gap-2 mb-4">
                     <AlertCircle size={14} style={{ color: "#F59E0B" }} />
                     <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                      Isi semua kriteria dengan rentang nilai 10-100 sebelum submit.
+                      Isi semua kriteria dengan rentang nilai 0-100 sebelum submit.
                     </p>
                   </div>
                 ) : null}
