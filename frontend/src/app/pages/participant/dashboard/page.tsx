@@ -29,6 +29,9 @@ function toPercent(filled: number, total: number) {
 function getStageIndex(status: string): number {
   if (status === "PreCamp") return 2;
   const order = ["Verified", "Audition", "Camp", "GrandFinal", "Winner"];
+  if (status === "Camp") return 3;
+  if (status === "GrandFinal") return 4;
+  if (status === "Winner") return 5;
   return order.findIndex((s) => s === status);
 }
 
@@ -129,9 +132,10 @@ export default function ParticipantDashboardPage() {
   const stages = [
     { label: "Administrasi", index: 0 },
     { label: "Audisi", index: 1 },
-    { label: "Karantina", index: 2 },
-    { label: "Grand Final", index: 3 },
-    { label: "Juara", index: 4 },
+    { label: "Pra-karantina", index: 2 },
+    { label: "Karantina", index: 3 },
+    { label: "Grand Final", index: 4 },
+    { label: "Juara", index: 5 },
   ];
 
   const participantAlert = participant

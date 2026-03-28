@@ -112,7 +112,7 @@ export default function JudgeDashboardPage() {
               {judgeType === "mentor" ? "Masuk ke halaman observasi pendukung karantina." : "Masuk ke halaman input nilai resmi sesuai tahap penugasan."}
             </p>
           </div>
-          <GoldButton variant="primary" onClick={() => router.push("/pages/juri/scoring")}>
+          <GoldButton variant="primary" onClick={() => router.push("/pages/judges/scoring")}>
             <Star size={16} fill="#0F0F0F" />
             Input Nilai
             <ArrowRight size={16} />
