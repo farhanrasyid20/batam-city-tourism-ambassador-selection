@@ -24,16 +24,22 @@ type RequestOptions = Omit<RequestInit, "body"> & {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, token, ...rest } = options;
+  const isFormDataBody = typeof FormData !== "undefined" && body instanceof FormData;
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json",
+      ...(isFormDataBody ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body:
+      body === undefined
+        ? undefined
+        : isFormDataBody
+        ? (body as FormData)
+        : JSON.stringify(body),
   });
 
   const contentType = response.headers.get("content-type") ?? "";

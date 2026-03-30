@@ -23,10 +23,10 @@ const statusLabel: Record<StageStatus, string> = {
 };
 
 export default function ExportPDFPage() {
-  const { currentParticipant, participantList, user } = useApp();
+  const { currentParticipant, user } = useApp();
   const [printing, setPrinting] = useState(false);
 
-  const participant = currentParticipant ?? participantList[0] ?? null;
+  const participant = currentParticipant;
 
   const canDownloadPdf = Boolean(
     participant &&

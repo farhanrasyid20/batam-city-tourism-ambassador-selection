@@ -4,9 +4,19 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import NextImage from "next/image";
 import { Save, Upload, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Datepicker } from "flowbite-react";
 import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
+import {
+  fetchParticipantBiodata,
+  updateParticipantBiodata,
+  type ParticipantBiodata,
+  type ParticipantDocumentMeta,
+} from "../../../../lib/auth-api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
+import type { Participant, StageStatus } from "../../../../data/mockData";
 
 type FormState = {
   fullName: string;
@@ -46,13 +56,121 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "var(--font-poppins)",
 };
 
+const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
+
+function resolveParticipantPhotoUrl(photo?: string | null): string | undefined {
+  const value = photo?.trim();
+  if (!value) return undefined;
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
+  }
+  return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
+}
+
+function mapBiodataStatus(accountStatus?: string, fallback?: StageStatus): StageStatus {
+  const normalized = (accountStatus ?? "").toLowerCase();
+  if (normalized === "suspended") return "Rejected";
+  if (normalized === "active") return fallback ?? "Pending";
+  return fallback ?? "Pending";
+}
+
+function buildEducationTextFromBiodata(data: ParticipantBiodata): string {
+  const category = data.education_category?.trim();
+  const institution = data.education_institution?.trim();
+  const degree = data.education_degree?.trim();
+  const major = data.education_major?.trim();
+
+  if (!institution) return "";
+
+  if (category === "Kuliah" && degree && major) {
+    return `${category} - ${institution} - ${degree} - ${major}`;
+  }
+  if (category && major) {
+    return `${category} - ${institution} - ${major}`;
+  }
+  if (major) {
+    return `${institution} - ${major}`;
+  }
+  return institution;
+}
+
+function mergeParticipantFromBiodata(base: Participant | null, data: ParticipantBiodata): Participant {
+  const normalizedDocuments =
+    data.documents?.map((doc: ParticipantDocumentMeta) => ({
+      key: doc.key,
+      label: doc.label,
+      status:
+        doc.status === "verified" || doc.status === "revision_required" || doc.status === "missing"
+          ? doc.status
+          : ("submitted" as const),
+      note: doc.note ?? undefined,
+    })) ?? base?.documents ?? [];
+
+  return {
+    id: base?.id ?? `P_API_${data.id}`,
+    number: data.participant_number ?? base?.number ?? "-",
+    name: data.name ?? base?.name ?? "Peserta",
+    gender: data.gender ?? base?.gender ?? "Encik",
+    nationalId: data.national_id ?? base?.nationalId ?? "",
+    birthPlace: data.birth_place ?? base?.birthPlace ?? "",
+    birthDate: data.birth_date ?? base?.birthDate ?? "",
+    heightCm: data.height_cm ?? base?.heightCm ?? 0,
+    education: buildEducationTextFromBiodata(data) || base?.education || "",
+    instagram: data.instagram ?? base?.instagram ?? "",
+    phone: data.phone ?? base?.phone ?? "",
+    email: data.email ?? base?.email ?? "",
+    photo: resolveParticipantPhotoUrl(data.photo) ?? base?.photo ?? "",
+    status: mapBiodataStatus(data.account_status, base?.status),
+    verificationStatus: base?.verificationStatus,
+    selectionStage: base?.selectionStage,
+    adminVerificationNote: base?.adminVerificationNote,
+    adminRevisionNote: base?.adminRevisionNote,
+    reviewItems: base?.reviewItems ?? [],
+    documents: normalizedDocuments,
+    submittedToAdmin: data.submitted_to_admin ?? base?.submittedToAdmin ?? false,
+    rejectionReason: base?.rejectionReason,
+    verificationIssues: base?.verificationIssues ?? [],
+    agreementNoAgency: data.agreement_no_agency ?? base?.agreementNoAgency,
+    agencyName: data.agency_name ?? base?.agencyName,
+    agreementParentPermission: data.agreement_parent_permission ?? base?.agreementParentPermission,
+    agreementAllStages: data.agreement_all_stages ?? base?.agreementAllStages,
+    motivationStatement: data.motivation_statement ?? base?.motivationStatement,
+    contributionIdea: data.contribution_idea ?? base?.contributionIdea,
+    publicSpeakingExperience: data.public_speaking_experience ?? base?.publicSpeakingExperience,
+    registeredAt: base?.registeredAt ?? new Date().toISOString().slice(0, 10),
+    scores: base?.scores ?? [],
+    likes: base?.likes ?? 0,
+  };
+}
+
+function parseBirthDate(value: string): Date | null {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function formatBirthDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function BiodataPage() {
   // Ambil data peserta aktif dan state form biodata.
   const router = useRouter();
-  const { currentParticipant, setCurrentParticipant, participantList, setParticipantList, user } = useApp();
-  const participant = currentParticipant ?? participantList[0] ?? null;
+  const { currentParticipant, setCurrentParticipant, setParticipantList, user } = useApp();
+  const participant = currentParticipant;
   const [isSaved, setIsSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSyncingBiodata, setIsSyncingBiodata] = useState(false);
+  const [isSavingBiodata, setIsSavingBiodata] = useState(false);
   const [showInstitutionDropdown, setShowInstitutionDropdown] = useState(false);
   const [showMajorDropdown, setShowMajorDropdown] = useState(false);
   const institutionRef = useRef<HTMLDivElement | null>(null);
@@ -217,6 +335,89 @@ export default function BiodataPage() {
     publicSpeakingExperience: participant?.publicSpeakingExperience ?? "",
   });
 
+  useEffect(() => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) return;
+
+    let cancelled = false;
+    const syncBiodata = async () => {
+      setIsSyncingBiodata(true);
+      try {
+        const response = await fetchParticipantBiodata(token);
+        if (cancelled) return;
+        const data = response.data;
+
+        setForm((prev) => ({
+          ...prev,
+          fullName: data.name ?? prev.fullName,
+          gender: data.gender ?? prev.gender,
+          nationalId: data.national_id ?? prev.nationalId,
+          birthPlace: data.birth_place ?? prev.birthPlace,
+          birthDate: data.birth_date ?? prev.birthDate,
+          heightCm:
+            data.height_cm !== null && data.height_cm !== undefined
+              ? String(data.height_cm)
+              : prev.heightCm,
+          educationCategory: data.education_category ?? prev.educationCategory,
+          educationInstitution: data.education_institution ?? prev.educationInstitution,
+          educationMajor: data.education_major ?? prev.educationMajor,
+          educationDegree: data.education_degree ?? prev.educationDegree,
+          email: data.email ?? prev.email,
+          phone: data.phone ?? prev.phone,
+          instagram: data.instagram ?? prev.instagram,
+          vision: data.vision ?? prev.vision,
+          mission: data.mission ?? prev.mission,
+          experience: data.experience ?? prev.experience,
+          achievement: data.achievement ?? prev.achievement,
+          introVideoUrl: data.intro_video_url ?? prev.introVideoUrl,
+          profilePhoto: data.photo ?? prev.profilePhoto,
+          agreementNoAgency: data.agreement_no_agency ?? prev.agreementNoAgency,
+          agencyName: data.agency_name ?? prev.agencyName,
+          agreementParentPermission:
+            data.agreement_parent_permission ?? prev.agreementParentPermission,
+          agreementAllStages: data.agreement_all_stages ?? prev.agreementAllStages,
+          motivationStatement: data.motivation_statement ?? prev.motivationStatement,
+          contributionIdea: data.contribution_idea ?? prev.contributionIdea,
+          publicSpeakingExperience:
+            data.public_speaking_experience ?? prev.publicSpeakingExperience,
+        }));
+
+        setCurrentParticipant((prev) => mergeParticipantFromBiodata(prev, data));
+        setParticipantList((prev) => {
+          const merged = mergeParticipantFromBiodata(
+            prev.find((item) => item.email.toLowerCase() === (data.email ?? "").toLowerCase()) ??
+              null,
+            data
+          );
+          const index = prev.findIndex(
+            (item) =>
+              item.id === merged.id ||
+              item.email.toLowerCase() === (data.email ?? "").toLowerCase()
+          );
+          if (index === -1) return [merged, ...prev];
+          const next = [...prev];
+          next[index] = merged;
+          return next;
+        });
+
+        setErrorMessage("");
+      } catch (error) {
+        if (!cancelled) {
+          setErrorMessage(`Gagal sinkron biodata dari backend: ${getReadableApiError(error)}`);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSyncingBiodata(false);
+        }
+      }
+    };
+
+    void syncBiodata();
+    return () => {
+      cancelled = true;
+    };
+  }, [setCurrentParticipant, setParticipantList]);
+
   // Progress kelengkapan biodata untuk indikator persentase.
   const completionProgress = useMemo(() => {
     const requiredFields = [
@@ -290,46 +491,97 @@ export default function BiodataPage() {
       : "";
 
   // Simpan draft biodata peserta.
-  const handleSaveDraft = (event: React.FormEvent) => {
+  const handleSaveDraft = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!participant) return;
     setErrorMessage("");
+    setIsSavingBiodata(true);
 
     const parsedHeight = Number(form.heightCm);
     const normalizedHeight =
-      Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : participant.heightCm || 0;
+      Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : participant?.heightCm || 0;
 
     const educationValue = buildEducationValue();
+    const token = getParticipantAuthSession()?.token;
 
-    const updatedParticipant = {
-      ...participant,
-      name: form.fullName,
-      gender: form.gender,
-      nationalId: form.nationalId,
-      birthPlace: form.birthPlace,
-      birthDate: form.birthDate,
-      heightCm: normalizedHeight,
-      education: educationValue,
-      email: participant.email || form.email,
-      phone: form.phone,
-      instagram: form.instagram,
-      photo: form.profilePhoto || participant.photo,
-      agreementNoAgency: form.agreementNoAgency || undefined,
-      agencyName: form.agencyName.trim() || undefined,
-      agreementParentPermission: form.agreementParentPermission || undefined,
-      agreementAllStages: form.agreementAllStages || undefined,
-      motivationStatement: form.motivationStatement.trim() || undefined,
-      contributionIdea: form.contributionIdea.trim() || undefined,
-      publicSpeakingExperience: form.publicSpeakingExperience.trim() || undefined,
-    };
+    try {
+      if (token) {
+        const response = await updateParticipantBiodata(token, {
+          name: form.fullName,
+          phone: form.phone,
+          gender: form.gender,
+          national_id: form.nationalId,
+          birth_place: form.birthPlace,
+          birth_date: form.birthDate,
+          height_cm: normalizedHeight || undefined,
+          instagram: form.instagram,
+          photo: form.profilePhoto || undefined,
+          education_category: form.educationCategory,
+          education_institution: form.educationInstitution,
+          education_major: form.educationMajor,
+          education_degree: form.educationDegree || undefined,
+          vision: form.vision,
+          mission: form.mission,
+          experience: form.experience || undefined,
+          achievement: form.achievement || undefined,
+          intro_video_url: form.introVideoUrl,
+          agreement_no_agency: form.agreementNoAgency || undefined,
+          agency_name: form.agencyName.trim() || undefined,
+          agreement_parent_permission: form.agreementParentPermission || undefined,
+          agreement_all_stages: form.agreementAllStages || undefined,
+          motivation_statement: form.motivationStatement.trim() || undefined,
+          contribution_idea: form.contributionIdea.trim() || undefined,
+          public_speaking_experience: form.publicSpeakingExperience.trim() || undefined,
+        });
 
-    setCurrentParticipant(updatedParticipant);
-    setParticipantList((prev) =>
-      prev.map((item) => (item.id === updatedParticipant.id ? updatedParticipant : item))
-    );
+        const merged = mergeParticipantFromBiodata(participant, response.data);
+        merged.education = educationValue || merged.education;
+        setCurrentParticipant(merged);
+        setParticipantList((prev) => {
+          const index = prev.findIndex(
+            (item) =>
+              item.id === merged.id ||
+              item.email.toLowerCase() === (response.data.email ?? "").toLowerCase()
+          );
+          if (index === -1) return [merged, ...prev];
+          const next = [...prev];
+          next[index] = merged;
+          return next;
+        });
+      } else if (participant) {
+        const updatedParticipant = {
+          ...participant,
+          name: form.fullName,
+          gender: form.gender,
+          nationalId: form.nationalId,
+          birthPlace: form.birthPlace,
+          birthDate: form.birthDate,
+          heightCm: normalizedHeight,
+          education: educationValue,
+          email: participant.email || form.email,
+          phone: form.phone,
+          instagram: form.instagram,
+          photo: form.profilePhoto || participant.photo,
+          agreementNoAgency: form.agreementNoAgency || undefined,
+          agencyName: form.agencyName.trim() || undefined,
+          agreementParentPermission: form.agreementParentPermission || undefined,
+          agreementAllStages: form.agreementAllStages || undefined,
+          motivationStatement: form.motivationStatement.trim() || undefined,
+          contributionIdea: form.contributionIdea.trim() || undefined,
+          publicSpeakingExperience: form.publicSpeakingExperience.trim() || undefined,
+        };
+        setCurrentParticipant(updatedParticipant);
+        setParticipantList((prev) =>
+          prev.map((item) => (item.id === updatedParticipant.id ? updatedParticipant : item))
+        );
+      }
 
-    setIsSaved(true);
-    window.setTimeout(() => setIsSaved(false), 2800);
+      setIsSaved(true);
+      window.setTimeout(() => setIsSaved(false), 2800);
+    } catch (error) {
+      setErrorMessage(getReadableApiError(error));
+    } finally {
+      setIsSavingBiodata(false);
+    }
   };
 
   // Komponen helper input standar.
@@ -473,6 +725,172 @@ export default function BiodataPage() {
     </div>
   );
 
+  const renderBirthDateField = () => (
+    <div>
+      <label
+        className="block text-xs mb-1.5"
+        style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)", fontWeight: 600 }}
+      >
+        Tanggal Lahir <span style={{ color: "#ef4444" }}>*</span>
+      </label>
+      <div className="relative">
+        <Datepicker
+          key={form.birthDate || "birth-date-empty"}
+          language="id-ID"
+          defaultValue={parseBirthDate(form.birthDate) ?? undefined}
+          onChange={(date) => updateFormField("birthDate", date ? formatBirthDate(date) : "")}
+          maxDate={new Date()}
+          placeholder="Pilih tanggal lahir"
+          theme={{
+            root: {
+              base: "relative",
+              input: {
+                base: "",
+                addon: "",
+                field: {
+                  base: "relative w-full",
+                  icon: {
+                    base: "pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3",
+                    svg: "h-4 w-4 text-[#BDBDBD]",
+                  },
+                  rightIcon: {
+                    base: "pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3",
+                    svg: "h-4 w-4 text-[#BDBDBD]",
+                  },
+                  input: {
+                    base:
+                      "block w-full rounded-xl border px-4 py-3 pl-10 text-sm outline-none transition-all disabled:cursor-not-allowed disabled:opacity-70",
+                    sizes: {
+                      sm: "text-xs px-3 py-2",
+                      md: "text-sm px-4 py-3",
+                      lg: "text-base px-4 py-3.5",
+                    },
+                    colors: {
+                      gray:
+                        "border-[rgba(200,162,77,0.25)] bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-[rgba(200,162,77,0.6)] focus:ring-0",
+                      info:
+                        "border-[rgba(200,162,77,0.25)] bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-[rgba(200,162,77,0.6)] focus:ring-0",
+                      failure:
+                        "border-red-500 bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-red-500 focus:ring-0",
+                      warning:
+                        "border-amber-500 bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-amber-500 focus:ring-0",
+                      success:
+                        "border-emerald-500 bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-emerald-500 focus:ring-0",
+                    },
+                    withIcon: {
+                      on: "pl-10",
+                      off: "",
+                    },
+                    withRightIcon: {
+                      on: "pr-10",
+                      off: "",
+                    },
+                    withAddon: {
+                      on: "rounded-r-xl",
+                      off: "rounded-xl",
+                    },
+                    withShadow: {
+                      on: "shadow-sm",
+                      off: "",
+                    },
+                  },
+                },
+              },
+            },
+            popup: {
+              root: {
+                base: "absolute top-12 z-50 block pt-2",
+                inline: "relative top-0 z-auto",
+                inner: "inline-block rounded-xl border border-[rgba(200,162,77,0.25)] bg-[#111] p-3 shadow-xl",
+              },
+              header: {
+                base: "",
+                title: "px-2 py-2 text-center text-sm font-semibold text-[#C8A24D]",
+                selectors: {
+                  base: "mb-2 flex justify-between",
+                  button: {
+                    base:
+                      "rounded-lg border border-[rgba(200,162,77,0.22)] bg-[rgba(200,162,77,0.08)] px-3 py-1.5 text-sm font-semibold text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.16)] focus:outline-none",
+                    prev: "",
+                    next: "",
+                    view: "",
+                  },
+                },
+              },
+              view: {
+                base: "p-1",
+              },
+              footer: {
+                base: "mt-3 flex space-x-2",
+                button: {
+                  base: "w-full rounded-lg px-3 py-2 text-center text-xs font-semibold",
+                  today: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
+                  clear:
+                    "border border-[rgba(200,162,77,0.25)] bg-transparent text-[#C8A24D] hover:bg-[rgba(200,162,77,0.1)]",
+                },
+              },
+            },
+            views: {
+              days: {
+                header: {
+                  base: "mb-1 grid grid-cols-7",
+                  title: "h-6 text-center text-sm font-medium leading-6 text-[#BDBDBD]",
+                },
+                items: {
+                  base: "grid w-64 grid-cols-7",
+                  item: {
+                    base:
+                      "block flex-1 cursor-pointer rounded-lg border-0 text-center text-sm font-semibold leading-9 text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.14)]",
+                    selected: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
+                    disabled: "text-[#555]",
+                    today: "ring-1 ring-[rgba(200,162,77,0.35)]",
+                  },
+                },
+              },
+              months: {
+                items: {
+                  base: "grid w-64 grid-cols-4",
+                  item: {
+                    base:
+                      "block flex-1 cursor-pointer rounded-lg border-0 text-center text-sm font-semibold leading-9 text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.14)]",
+                    selected: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
+                    disabled: "text-[#555]",
+                  },
+                },
+              },
+              years: {
+                items: {
+                  base: "grid w-64 grid-cols-4",
+                  item: {
+                    base:
+                      "block flex-1 cursor-pointer rounded-lg border-0 text-center text-sm font-semibold leading-9 text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.14)]",
+                    selected: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
+                    disabled: "text-[#555]",
+                  },
+                },
+              },
+              decades: {
+                items: {
+                  base: "grid w-64 grid-cols-4",
+                  item: {
+                    base:
+                      "block flex-1 cursor-pointer rounded-lg border-0 text-center text-sm font-semibold leading-9 text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.14)]",
+                    selected: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
+                    disabled: "text-[#555]",
+                  },
+                },
+              },
+            },
+          }}
+          className="w-full"
+        />
+      </div>
+      <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+        Klik field lalu pilih tanggal dari kalender.
+      </p>
+    </div>
+  );
+
   // Validasi + preview upload foto profil peserta.
   const handleProfilePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -510,6 +928,11 @@ export default function BiodataPage() {
           <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
             Lengkapi biodata Anda dengan benar dan lengkap.
           </p>
+          {isSyncingBiodata ? (
+            <p className="text-xs mt-1" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
+              Menyinkronkan biodata dari backend...
+            </p>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-3">
@@ -566,7 +989,7 @@ export default function BiodataPage() {
                 style={{ background: "#111", border: "1px solid rgba(200,162,77,0.25)" }}
               >
                 <NextImage
-                  src={form.profilePhoto || "/encik-puan-logo-2026.png"}
+                  src={resolveParticipantPhotoUrl(form.profilePhoto) || "/default-avatar.svg"}
                   alt="Preview foto profil"
                   width={64}
                   height={64}
@@ -626,7 +1049,7 @@ export default function BiodataPage() {
             </div>
             {renderInputField({ label: "NIK", name: "nationalId", placeholder: "16 digit NIK", required: true })}
             {renderInputField({ label: "Tempat Lahir", name: "birthPlace", placeholder: "Batam", required: true })}
-            {renderInputField({ label: "Tanggal Lahir", name: "birthDate", type: "date", required: true })}
+            {renderBirthDateField()}
             {renderInputField({
               label: "Tinggi Badan (cm)",
               name: "heightCm",
@@ -979,9 +1402,9 @@ export default function BiodataPage() {
 
         {/* Tombol aksi utama halaman biodata */}
         <div className="flex gap-3 flex-wrap">
-          <GoldButton type="submit" variant="outline" size="md">
+          <GoldButton type="submit" variant="outline" size="md" disabled={isSavingBiodata}>
             <Save size={16} />
-            Simpan Draft
+            {isSavingBiodata ? "Menyimpan..." : "Simpan Draft"}
           </GoldButton>
           <GoldButton variant="outline" size="md" onClick={() => router.push("/pages/participant/dashboard")}>
             Batal

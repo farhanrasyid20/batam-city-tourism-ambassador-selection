@@ -12,6 +12,99 @@ export type BackendAuthUser = {
   email_verified_at?: string | null;
 };
 
+export type ParticipantBiodata = {
+  id: number;
+  participant_number?: string | null;
+  name: string;
+  email: string;
+  phone?: string | null;
+  gender?: "Encik" | "Puan" | null;
+  national_id?: string | null;
+  birth_place?: string | null;
+  birth_date?: string | null;
+  height_cm?: number | null;
+  instagram?: string | null;
+  photo?: string | null;
+  education_category?: "SMA" | "SMK" | "MA" | "Kuliah" | null;
+  education_institution?: string | null;
+  education_major?: string | null;
+  education_degree?: string | null;
+  vision?: string | null;
+  mission?: string | null;
+  experience?: string | null;
+  achievement?: string | null;
+  intro_video_url?: string | null;
+  agreement_no_agency?: "yes" | "no" | null;
+  agency_name?: string | null;
+  agreement_parent_permission?: "yes" | "no" | null;
+  agreement_all_stages?: "yes" | "no" | null;
+  motivation_statement?: string | null;
+  contribution_idea?: string | null;
+  public_speaking_experience?: string | null;
+  account_status?: string;
+  documents?: ParticipantDocumentMeta[] | null;
+  submitted_to_admin?: boolean;
+  submitted_to_admin_at?: string | null;
+};
+
+export type ParticipantDocumentMeta = {
+  key: string;
+  label: string;
+  required: boolean;
+  status: "submitted" | "verified" | "revision_required" | "missing";
+  original_name?: string;
+  size_bytes?: number;
+  mime_type?: string;
+  path?: string;
+  url?: string;
+  uploaded_at?: string;
+  note?: string | null;
+};
+
+export type ParticipantBiodataResponse = {
+  message: string;
+  data: ParticipantBiodata;
+};
+
+export type UpdateParticipantBiodataPayload = Partial<{
+  name: string;
+  phone: string;
+  gender: "Encik" | "Puan";
+  national_id: string;
+  birth_place: string;
+  birth_date: string;
+  height_cm: number;
+  instagram: string;
+  photo: string;
+  education_category: "SMA" | "SMK" | "MA" | "Kuliah";
+  education_institution: string;
+  education_major: string;
+  education_degree: string;
+  vision: string;
+  mission: string;
+  experience: string;
+  achievement: string;
+  intro_video_url: string;
+  agreement_no_agency: "yes" | "no";
+  agency_name: string;
+  agreement_parent_permission: "yes" | "no";
+  agreement_all_stages: "yes" | "no";
+  motivation_statement: string;
+  contribution_idea: string;
+  public_speaking_experience: string;
+}>;
+
+export type ParticipantDocumentsResponse = {
+  message: string;
+  data: {
+    id: number;
+    participant_number?: string | null;
+    submitted_to_admin: boolean;
+    submitted_to_admin_at?: string | null;
+    documents: ParticipantDocumentMeta[];
+  };
+};
+
 export type RegisterParticipantPayload = {
   name: string;
   email: string;
@@ -137,6 +230,47 @@ export function loginParticipant(payload: LoginParticipantPayload) {
 export function fetchAuthenticatedParticipant(token: string) {
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
+    token,
+  });
+}
+
+export function fetchParticipantBiodata(token: string) {
+  return apiRequest<ParticipantBiodataResponse>("/participant/biodata", {
+    method: "GET",
+    token,
+  });
+}
+
+export function updateParticipantBiodata(token: string, payload: UpdateParticipantBiodataPayload) {
+  return apiRequest<ParticipantBiodataResponse>("/participant/biodata", {
+    method: "PUT",
+    token,
+    body: payload,
+  });
+}
+
+export function fetchParticipantDocuments(token: string) {
+  return apiRequest<ParticipantDocumentsResponse>("/participant/documents", {
+    method: "GET",
+    token,
+  });
+}
+
+export function uploadParticipantDocument(token: string, documentKey: string, file: File) {
+  const body = new FormData();
+  body.append("document_key", documentKey);
+  body.append("file", file);
+
+  return apiRequest<ParticipantDocumentsResponse>("/participant/documents/upload", {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
+export function submitParticipantDocuments(token: string) {
+  return apiRequest<ParticipantDocumentsResponse>("/participant/documents/submit", {
+    method: "POST",
     token,
   });
 }

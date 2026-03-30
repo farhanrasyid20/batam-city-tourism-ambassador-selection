@@ -101,8 +101,8 @@ const stateLabel: Record<TimelineState, string> = {
 
 export default function ParticipantStatusPage() {
   // Ambil peserta aktif untuk ditampilkan statusnya.
-  const { currentParticipant, participantList } = useApp();
-  const participant = currentParticipant ?? participantList[0] ?? null;
+  const { currentParticipant } = useApp();
+  const participant = currentParticipant;
   const currentStatus: StageStatus = participant?.status ?? "Pending";
   const currentStageIndex = stageOrder.indexOf(currentStatus);
 
@@ -160,7 +160,7 @@ export default function ParticipantStatusPage() {
         <GoldCard glow className="mb-6">
           <div className="flex items-center gap-4 flex-wrap">
             <NextImage
-              src={participant.photo}
+              src={participant.photo || "/default-avatar.svg"}
               alt={participant.name}
               width={64}
               height={64}

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ParticipantBiodataController;
+use App\Http\Controllers\Api\ParticipantDocumentController;
 use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +23,14 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password/request-otp', [AuthController::class, 'requestPasswordResetOtp']);
 Route::post('/forgot-password/verify-otp', [AuthController::class, 'verifyPasswordResetOtp']);
 Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordWithOtp']);
+
+Route::prefix('participant')->middleware(['jwt.auth', 'role:participant'])->group(function (): void {
+    Route::get('/biodata', [ParticipantBiodataController::class, 'show']);
+    Route::put('/biodata', [ParticipantBiodataController::class, 'update']);
+    Route::get('/documents', [ParticipantDocumentController::class, 'index']);
+    Route::post('/documents/upload', [ParticipantDocumentController::class, 'upload']);
+    Route::post('/documents/submit', [ParticipantDocumentController::class, 'submit']);
+});
 
 Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])->group(function (): void {
     Route::get('/users', [UserManagementController::class, 'index']);

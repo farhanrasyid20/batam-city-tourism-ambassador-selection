@@ -355,7 +355,7 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
     },
     participant: {
       id: `P_API_${session.user.id}`,
-      number: `P-${String(session.user.id).padStart(3, "0")}`,
+      number: "-",
       name: session.user.name,
       gender: "Encik",
       nationalId: "",
@@ -366,8 +366,7 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
       instagram: "",
       phone: session.user.phone ?? "",
       email: normalizedEmail,
-      photo:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
+      photo: "",
       status: "Pending",
       registeredAt: new Date().toISOString().slice(0, 10),
       scores: [],
@@ -545,7 +544,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Ã¢Å“â€¦ create demo participant session (HARUS sesuai type Participant)
       const newParticipant: Participant = {
         id: "P_DEMO",
-        number: `P-${Math.floor(Math.random() * 900 + 100)}`,
+        number: "-",
         name: "Demo Participant",
 
         gender: "Encik", // Ã¢Å“â€¦ HARUS "Encik" / "Puan", BUKAN "Male"
@@ -559,8 +558,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         phone: "",
         email: normalizedEmail,
 
-        photo:
-          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
+        photo: "",
 
         status: "Pending",
         registeredAt: new Date().toISOString().slice(0, 10),

@@ -4,26 +4,52 @@ import React, { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle, FileText } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
+import { GoldButton } from "../../../../components/ui/GoldButton";
 import DocumentUploadCard from "../components/DocumentUploadCard";
 import ParticipantGuidePanel from "../components/ParticipantGuidePanel";
+import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import {
+  fetchParticipantDocuments,
+  submitParticipantDocuments,
+  uploadParticipantDocument,
+  type ParticipantDocumentsResponse,
+} from "../../../../lib/auth-api";
 import {
   optionalDocuments,
   requiredDocuments,
   type DocumentItem,
   type UploadFileInfo,
 } from "../components/documentUploadConfig";
+import type { Participant } from "../../../../data/mockData";
 
 export default function ParticipantDocumentsPage() {
   // Ambil data peserta aktif (fallback ke data pertama jika belum ada sesi aktif).
-  const { currentParticipant, participantList } = useApp();
-  const participant = currentParticipant ?? participantList[0] ?? null;
+  const { currentParticipant, setCurrentParticipant, setParticipantList } = useApp();
+  const participant = currentParticipant;
 
   // State lokal upload dokumen pada halaman ini.
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadFileInfo | null>>({});
   const [resubmittedKeys, setResubmittedKeys] = useState<string[]>([]);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [submittingToAdmin, setSubmittingToAdmin] = useState(false);
+  const [isSyncingDocuments, setIsSyncingDocuments] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState("");
   const [noticeType, setNoticeType] = useState<"success" | "error">("success");
+  const [serverDoneKeys, setServerDoneKeys] = useState<string[]>([]);
+  const apiOrigin = API_BASE_URL.replace(/\/api$/i, "");
+  const toAssetUrl = (url?: string) => {
+    if (!url) return undefined;
+    if (
+      url.startsWith("http://") ||
+      url.startsWith("https://") ||
+      url.startsWith("blob:") ||
+      url.startsWith("data:")
+    ) {
+      return url;
+    }
+    return url.startsWith("/") ? `${apiOrigin}${url}` : `${apiOrigin}/${url}`;
+  };
   const allDocuments: DocumentItem[] = [...requiredDocuments, ...optionalDocuments];
   const verificationIssues = participant?.verificationIssues ?? [];
   const revisionStorageKey = participant ? `participant-revision-uploads:${participant.id}` : "";
@@ -33,6 +59,93 @@ export default function ParticipantDocumentsPage() {
   }, {});
   const revisedIssueCount = verificationIssues.filter((issue) => resubmittedKeys.includes(issue.target)).length;
   const allIssuesReuploaded = verificationIssues.length > 0 && revisedIssueCount === verificationIssues.length;
+
+  const formatFileSize = (bytes: number) => {
+    const sizeInKb = bytes / 1024;
+    return sizeInKb >= 1024 ? `${(sizeInKb / 1024).toFixed(1)} MB` : `${Math.round(sizeInKb)} KB`;
+  };
+
+  const syncParticipantDocumentState = (data: ParticipantDocumentsResponse["data"]) => {
+    const normalizedDocs =
+      data.documents?.map((doc) => ({
+        key: doc.key,
+        label: doc.label,
+        status:
+          doc.status === "verified" || doc.status === "revision_required" || doc.status === "missing"
+            ? doc.status
+            : ("submitted" as const),
+        note: doc.note ?? undefined,
+      })) ?? [];
+
+    setServerDoneKeys(
+      data.documents
+        .filter((doc) => doc.status === "submitted" || doc.status === "verified")
+        .map((doc) => doc.key)
+    );
+
+    setUploadedFiles((prev) => {
+      const fromServer: Record<string, UploadFileInfo | null> = {};
+      for (const doc of data.documents) {
+        fromServer[doc.key] = {
+          name: doc.original_name ?? doc.label,
+          size: doc.size_bytes ? formatFileSize(doc.size_bytes) : "-",
+          preview: doc.mime_type?.startsWith("image/") ? toAssetUrl(doc.url) : undefined,
+        };
+      }
+      return { ...prev, ...fromServer };
+    });
+
+    setCurrentParticipant((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        number: data.participant_number ?? prev.number ?? "-",
+        documents: normalizedDocs,
+        submittedToAdmin: data.submitted_to_admin,
+      };
+    });
+    setParticipantList((prev) =>
+      prev.map((item) =>
+        item.id === participant?.id
+          ? ({
+              ...item,
+              number: data.participant_number ?? item.number ?? "-",
+              documents: normalizedDocs,
+              submittedToAdmin: data.submitted_to_admin,
+            } as Participant)
+          : item
+      )
+    );
+  };
+
+  useEffect(() => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) return;
+    let cancelled = false;
+
+    const loadDocuments = async () => {
+      setIsSyncingDocuments(true);
+      try {
+        const response = await fetchParticipantDocuments(token);
+        if (cancelled) return;
+        syncParticipantDocumentState(response.data);
+      } catch (error) {
+        if (!cancelled) {
+          setNoticeType("error");
+          setNoticeMessage(`Gagal mengambil data dokumen: ${getReadableApiError(error)}`);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSyncingDocuments(false);
+        }
+      }
+    };
+
+    void loadDocuments();
+    return () => {
+      cancelled = true;
+    };
+  }, [participant?.id]);
 
   useEffect(() => {
     if (!revisionStorageKey || typeof window === "undefined") {
@@ -68,7 +181,8 @@ export default function ParticipantDocumentsPage() {
   };
 
   // Menentukan status selesai per dokumen (gabungan data existing + upload lokal).
-  const isDone = (key: string) => Boolean(uploadedFiles[key]) || inferredDoneFromProfile(key);
+  const isDone = (key: string) =>
+    Boolean(uploadedFiles[key]) || serverDoneKeys.includes(key) || inferredDoneFromProfile(key);
 
   // Handler upload file per jenis dokumen.
   const handleFileChange = async (key: string, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,22 +198,26 @@ export default function ParticipantDocumentsPage() {
       return;
     }
 
-    setUploadingKey(key);
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    setUploadingKey(null);
-
-    const sizeInKb = file.size / 1024;
-    const formattedSize = sizeInKb >= 1024 ? `${(sizeInKb / 1024).toFixed(1)} MB` : `${Math.round(sizeInKb)} KB`;
-
-    let previewUrl: string | undefined;
-    if (file.type.startsWith("image/")) {
-      previewUrl = URL.createObjectURL(file);
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setNoticeType("error");
+      setNoticeMessage("Sesi login tidak ditemukan. Silakan login ulang.");
+      return;
     }
 
-    setUploadedFiles((prev) => ({
-      ...prev,
-      [key]: { name: file.name, size: formattedSize, preview: previewUrl },
-    }));
+    setUploadingKey(key);
+
+    try {
+      const response = await uploadParticipantDocument(token, key, file);
+      syncParticipantDocumentState(response.data);
+    } catch (error) {
+      setNoticeType("error");
+      setNoticeMessage(getReadableApiError(error));
+      setUploadingKey(null);
+      return;
+    } finally {
+      setUploadingKey(null);
+    }
 
     if (documentIssueMap[key] && revisionStorageKey && typeof window !== "undefined") {
       setResubmittedKeys((prev) => {
@@ -111,6 +229,30 @@ export default function ParticipantDocumentsPage() {
 
     setNoticeType("success");
     setNoticeMessage(`Berkas ${file.name} berhasil diupload.`);
+  };
+
+  const handleSubmitToAdmin = async () => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setNoticeType("error");
+      setNoticeMessage("Sesi login tidak ditemukan. Silakan login ulang.");
+      return;
+    }
+
+    setSubmittingToAdmin(true);
+    try {
+      const response = await submitParticipantDocuments(token);
+      syncParticipantDocumentState(response.data);
+      setNoticeType("success");
+      setNoticeMessage(
+        `Berkas berhasil dikirim ke admin. Nomor peserta Anda: ${response.data.participant_number ?? "-"}`
+      );
+    } catch (error) {
+      setNoticeType("error");
+      setNoticeMessage(getReadableApiError(error));
+    } finally {
+      setSubmittingToAdmin(false);
+    }
   };
 
   // Ringkasan progress upload dokumen wajib.
@@ -138,6 +280,11 @@ export default function ParticipantDocumentsPage() {
           <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
             Unduh dulu dokumen resmi, ikuti tata cara, lalu upload berkas dengan format yang benar.
           </p>
+          {isSyncingDocuments ? (
+            <p className="text-xs mt-1" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
+              Menyinkronkan dokumen dari backend...
+            </p>
+          ) : null}
         </div>
         <div className="text-right">
           <p className="text-xs mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
@@ -308,6 +455,27 @@ export default function ParticipantDocumentsPage() {
         </div>
       </div>
 
+      <GoldCard className="mt-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
+              Submit Berkas ke Admin
+            </p>
+            <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+              Nomor peserta akan dibuat otomatis setelah berkas wajib lengkap dan Anda submit.
+            </p>
+          </div>
+          <GoldButton
+            variant="primary"
+            size="sm"
+            onClick={handleSubmitToAdmin}
+            disabled={submittingToAdmin || completedRequired !== totalRequired}
+          >
+            {submittingToAdmin ? "Mengirim..." : "Kirim Berkas ke Admin"}
+          </GoldButton>
+        </div>
+      </GoldCard>
+
       {/* Toast notifikasi upload berhasil */}
       {noticeMessage ? (
         <div
@@ -335,4 +503,3 @@ export default function ParticipantDocumentsPage() {
     </div>
   );
 }
-

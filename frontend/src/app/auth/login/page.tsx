@@ -126,6 +126,12 @@ export default function LoginPage() {
           savedAt: new Date().toISOString(),
           user: response.user,
         });
+        setAuthenticatedUser({
+          id: String(response.user.id),
+          name: response.user.name,
+          email: response.user.email,
+          role: "participant",
+        });
 
         setPasswordForEmail(email, password);
         login(email, password, "participant");

@@ -17,9 +17,17 @@ import {
   X,
 } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
-import { statusLabelsId } from "../../../../data/mockData";
+import { statusLabelsId, type Participant, type StageStatus } from "../../../../data/mockData";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
+import {
+  fetchAuthenticatedParticipant,
+  fetchParticipantBiodata,
+  type BackendAuthUser,
+  type ParticipantBiodata,
+} from "../../../../lib/auth-api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
 
 function toPercent(filled: number, total: number) {
   if (total <= 0) return 0;
@@ -35,17 +43,117 @@ function getStageIndex(status: string): number {
   return order.findIndex((s) => s === status);
 }
 
+function mapBackendAccountStatusToStage(accountStatus?: string, fallback?: StageStatus): StageStatus {
+  const normalized = (accountStatus ?? "").toLowerCase();
+
+  // Jika dashboard lokal sudah bergerak ke tahap lanjut, jangan diturunkan kembali.
+  if (fallback && !["Pending", "Rejected"].includes(fallback)) {
+    return fallback;
+  }
+
+  if (normalized === "suspended") return "Rejected";
+  if (normalized === "active") return fallback ?? "Pending";
+  return "Pending";
+}
+
+const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
+
+function resolveParticipantPhotoUrl(photo?: string | null): string | undefined {
+  const value = photo?.trim();
+  if (!value) return undefined;
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
+  }
+  return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
+}
+
+function mergeParticipantWithBackend(
+  base: Participant | null,
+  backendUser: BackendAuthUser,
+  biodata?: ParticipantBiodata | null
+): Participant {
+  const defaultId = `P_API_${backendUser.id}`;
+  const safeEmail = backendUser.email?.trim().toLowerCase() ?? "";
+  const normalizedDocuments =
+    biodata?.documents?.map((doc) => ({
+      key: doc.key,
+      label: doc.label,
+      status:
+        doc.status === "verified" || doc.status === "revision_required" || doc.status === "missing"
+          ? doc.status
+          : ("submitted" as const),
+      note: doc.note ?? undefined,
+    })) ?? base?.documents ?? [];
+
+  const educationFromBiodata = [
+    biodata?.education_category?.trim(),
+    biodata?.education_institution?.trim(),
+    biodata?.education_degree?.trim(),
+    biodata?.education_major?.trim(),
+  ]
+    .filter(Boolean)
+    .join(" - ");
+
+  return {
+    id: base?.id ?? defaultId,
+    number: biodata?.participant_number ?? base?.number ?? "-",
+    name: biodata?.name ?? backendUser.name ?? base?.name ?? "Peserta",
+    gender: biodata?.gender ?? base?.gender ?? "Encik",
+    nationalId: biodata?.national_id ?? base?.nationalId ?? "",
+    birthPlace: biodata?.birth_place ?? base?.birthPlace ?? "",
+    birthDate: biodata?.birth_date ?? base?.birthDate ?? "",
+    heightCm: biodata?.height_cm ?? base?.heightCm ?? 0,
+    education: educationFromBiodata || base?.education || "",
+    instagram: biodata?.instagram ?? base?.instagram ?? "",
+    phone: backendUser.phone ?? base?.phone ?? "",
+    email: biodata?.email?.trim().toLowerCase() || safeEmail || base?.email || "",
+    photo: resolveParticipantPhotoUrl(biodata?.photo) ?? base?.photo ?? "",
+    status: mapBackendAccountStatusToStage(
+      biodata?.account_status ?? backendUser.account_status,
+      base?.status
+    ),
+    verificationStatus: base?.verificationStatus,
+    selectionStage: base?.selectionStage,
+    adminVerificationNote: base?.adminVerificationNote,
+    adminRevisionNote: base?.adminRevisionNote,
+    reviewItems: base?.reviewItems ?? [],
+    documents: normalizedDocuments,
+    submittedToAdmin: biodata?.submitted_to_admin ?? base?.submittedToAdmin ?? false,
+    rejectionReason: base?.rejectionReason,
+    verificationIssues: base?.verificationIssues ?? [],
+    agreementNoAgency: biodata?.agreement_no_agency ?? base?.agreementNoAgency,
+    agencyName: biodata?.agency_name ?? base?.agencyName,
+    agreementParentPermission:
+      biodata?.agreement_parent_permission ?? base?.agreementParentPermission,
+    agreementAllStages: biodata?.agreement_all_stages ?? base?.agreementAllStages,
+    motivationStatement: biodata?.motivation_statement ?? base?.motivationStatement,
+    contributionIdea: biodata?.contribution_idea ?? base?.contributionIdea,
+    publicSpeakingExperience:
+      biodata?.public_speaking_experience ?? base?.publicSpeakingExperience,
+    registeredAt: base?.registeredAt ?? new Date().toISOString().slice(0, 10),
+    scores: base?.scores ?? [],
+    likes: base?.likes ?? 0,
+  };
+}
+
 export default function ParticipantDashboardPage() {
   // Router dan context utama peserta.
   const router = useRouter();
-  const { user, currentParticipant, participantList, setCurrentParticipant, setParticipantList } = useApp();
+  const { user, currentParticipant, setCurrentParticipant, setParticipantList } = useApp();
   const [submitInfo, setSubmitInfo] = useState("");
   const [submitInfoType, setSubmitInfoType] = useState<"success" | "error">("error");
   const [dismissedAlertId, setDismissedAlertId] = useState("");
   const [resubmittedKeys, setResubmittedKeys] = useState<string[]>([]);
+  const [syncError, setSyncError] = useState("");
 
   // Peserta aktif, fallback ke data pertama untuk mode demo.
-  const participant = currentParticipant ?? participantList[0] ?? null;
+  const participant = currentParticipant;
+  const greetingName = participant?.name || user?.name || "Peserta";
   const verificationIssues = participant?.verificationIssues ?? [];
   const revisionStorageKey = participant ? `participant-revision-uploads:${participant.id}` : "";
   const revisedIssueCount = verificationIssues.filter((issue) => resubmittedKeys.includes(issue.target)).length;
@@ -77,15 +185,20 @@ export default function ParticipantDashboardPage() {
   );
 
   // Ringkasan dokumen untuk progress dashboard.
+  const uploadedDocumentKeys = new Set(
+    (participant?.documents ?? [])
+      .filter((doc) => doc.status === "submitted" || doc.status === "verified")
+      .map((doc) => doc.key)
+  );
   const requiredDocuments = participant
     ? [
-        { label: "KTP / NIK", done: Boolean(participant.nationalId) },
-        { label: "Foto Close Up", done: Boolean(participant.photo) },
-        { label: "Foto Full Body", done: Boolean(participant.photo) },
-        { label: "Formulir S-01", done: Boolean(participant.education) },
-        { label: "Formulir S-02", done: Boolean(participant.instagram) },
-        { label: "Formulir S-03", done: Boolean(participant.phone) },
-        { label: "Formulir S-04", done: Boolean(participant.birthDate && participant.birthPlace) },
+        { label: "KTP / NIK", done: uploadedDocumentKeys.has("identityCard") },
+        { label: "Foto Close Up", done: uploadedDocumentKeys.has("closeUpPhoto") },
+        { label: "Foto Full Body", done: uploadedDocumentKeys.has("fullBodyPhoto") },
+        { label: "Formulir S-01", done: uploadedDocumentKeys.has("formS01") },
+        { label: "Formulir S-02", done: uploadedDocumentKeys.has("formS02") },
+        { label: "Formulir S-03", done: uploadedDocumentKeys.has("formS03") },
+        { label: "Formulir S-04", done: uploadedDocumentKeys.has("formS04") },
       ]
     : [];
 
@@ -176,6 +289,68 @@ export default function ParticipantDashboardPage() {
         }
       : null
     : null;
+
+  useEffect(() => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) return;
+
+    let cancelled = false;
+
+    const syncParticipantFromBackend = async () => {
+      try {
+        const [response, biodataResponse] = await Promise.all([
+          fetchAuthenticatedParticipant(token),
+          fetchParticipantBiodata(token).catch(() => null),
+        ]);
+        if (cancelled) return;
+
+        const backendUser = response.user;
+        if ((backendUser.role ?? "").toLowerCase() !== "participant") return;
+        const biodata = biodataResponse?.data ?? null;
+
+        const backendEmail = (backendUser.email ?? "").trim().toLowerCase();
+        let mergedSnapshot: Participant | null = null;
+
+        setCurrentParticipant((prev) => {
+          const merged = mergeParticipantWithBackend(prev, backendUser, biodata);
+          mergedSnapshot = merged;
+          return merged;
+        });
+
+        setParticipantList((prev) => {
+          const fallbackBase =
+            prev.find((item) => item.email.trim().toLowerCase() === backendEmail) ?? null;
+          const merged =
+            mergedSnapshot ?? mergeParticipantWithBackend(fallbackBase, backendUser, biodata);
+
+          const index = prev.findIndex(
+            (item) =>
+              item.id === merged.id ||
+              item.email.trim().toLowerCase() === merged.email.trim().toLowerCase()
+          );
+
+          if (index === -1) {
+            return [merged, ...prev];
+          }
+
+          const next = [...prev];
+          next[index] = merged;
+          return next;
+        });
+
+        setSyncError("");
+      } catch (error) {
+        if (cancelled) return;
+        setSyncError(getReadableApiError(error));
+      }
+    };
+
+    void syncParticipantFromBackend();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setCurrentParticipant, setParticipantList]);
 
   useEffect(() => {
     if (!revisionStorageKey || typeof window === "undefined") {
@@ -315,8 +490,13 @@ export default function ParticipantDashboardPage() {
           Dashboard Peserta
         </h1>
         <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-          Selamat datang, <strong style={{ color: "#F5E6C8" }}>{user?.name ?? "Peserta"}</strong>!
+          Selamat datang, <strong style={{ color: "#F5E6C8" }}>{greetingName}</strong>!
         </p>
+        {syncError ? (
+          <p className="text-xs mt-2" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
+            Sinkronisasi data backend gagal: {syncError}
+          </p>
+        ) : null}
       </div>
 
       {participant && statusInfo ? (

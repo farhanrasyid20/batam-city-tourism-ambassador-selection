@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, ChevronRight, PanelLeft, PanelRight, ChevronDown, KeyRound, UserCircle2, Bell, AlertCircle, CheckCircle2, Clock3 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
+import { API_BASE_URL } from "../../lib/api";
 
 type NavItem = {
   label: string;
@@ -24,7 +25,17 @@ export default function DashboardLayout({
   children,
   role,
 }: DashboardLayoutProps) {
-  const { user, logout, currentParticipant, participantList, judgeList } = useApp();
+  const apiOrigin = API_BASE_URL.replace(/\/api$/i, "");
+  const toAssetUrl = (url?: string | null) => {
+    const value = url?.trim();
+    if (!value) return undefined;
+    if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:") || value.startsWith("blob:")) {
+      return value;
+    }
+    return value.startsWith("/") ? `${apiOrigin}${value}` : `${apiOrigin}/${value}`;
+  };
+
+  const { user, logout, currentParticipant, judgeList } = useApp();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,7 +45,7 @@ export default function DashboardLayout({
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
-  const participant = currentParticipant ?? participantList[0] ?? null;
+  const participant = currentParticipant;
   const activeJudge =
     role === "judge"
       ? judgeList.find(
@@ -43,7 +54,12 @@ export default function DashboardLayout({
             (judge.email ?? "").trim().toLowerCase() === (user?.email ?? "").trim().toLowerCase()
         ) ?? judgeList[0]
       : null;
-  const profilePhoto = role === "participant" ? participant?.photo : role === "judge" ? activeJudge?.avatar : undefined;
+  const profilePhoto = role === "participant" ? toAssetUrl(participant?.photo) : role === "judge" ? activeJudge?.avatar : undefined;
+  const displayName =
+    role === "participant"
+      ? participant?.name || user?.name || "Peserta"
+      : user?.name || (role === "judge" ? "Juri" : "Pengguna");
+  const displayEmail = role === "participant" ? participant?.email || user?.email || "" : user?.email || "";
   const verificationIssues = participant?.verificationIssues ?? [];
   const participantNotifications =
     role === "participant" && participant
@@ -193,30 +209,24 @@ export default function DashboardLayout({
               style={{ border: "1px solid rgba(200,162,77,0.45)" }}
             />
           ) : (
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${sidebarCollapsed ? "" : "mb-2"}`}
-              style={{ background: "linear-gradient(135deg, #F5D06F, #8C6A1C)" }}
-            >
-              <span
-                style={{
-                  color: "#0F0F0F",
-                  fontFamily: "var(--font-cinzel)",
-                  fontWeight: 700,
-                  fontSize: "0.75rem",
-                }}
-              >
-                {user?.name?.charAt(0).toUpperCase() ?? "P"}
-              </span>
-            </div>
+            <Image
+              src="/default-avatar.svg"
+              alt="Avatar default"
+              width={40}
+              height={40}
+              unoptimized
+              className={`w-10 h-10 rounded-full object-cover ${sidebarCollapsed ? "" : "mb-2"}`}
+              style={{ border: "1px solid rgba(200,162,77,0.45)" }}
+            />
           )}
         </div>
         <div className={sidebarCollapsed ? "hidden" : ""}>
-          <p
-            className="text-xs font-semibold truncate"
-            style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
-          >
-            {user?.name ?? "Peserta"}
-          </p>
+            <p
+              className="text-xs font-semibold truncate"
+              style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
+            >
+            {displayName}
+            </p>
           <span
             className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
             style={{
@@ -397,32 +407,31 @@ export default function DashboardLayout({
           className="h-14 flex items-center justify-between px-4 lg:px-6 shrink-0"
           style={{ background: "#141414", borderBottom: "1px solid rgba(200,162,77,0.15)" }}
         >
-          <button
-            className="lg:hidden p-2 rounded-lg"
-            style={{ color: "#C8A24D", background: "rgba(200,162,77,0.1)" }}
-            onClick={() => setSidebarOpen(true)}
-            type="button"
-          >
-            <Menu size={18} />
-          </button>
-          <button
-            className="hidden lg:flex p-2 rounded-lg"
-            style={{ color: "#C8A24D", background: "rgba(200,162,77,0.1)" }}
-            onClick={() => setSidebarCollapsed((prev) => !prev)}
-            type="button"
-            title={sidebarCollapsed ? "Buka Sidebar" : "Tutup Sidebar"}
-          >
-            {sidebarCollapsed ? <PanelRight size={18} /> : <PanelLeft size={18} />}
-          </button>
-          <div className="lg:hidden flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              className="lg:hidden p-2 rounded-lg shrink-0"
+              style={{ color: "#C8A24D", background: "rgba(200,162,77,0.1)" }}
+              onClick={() => setSidebarOpen(true)}
+              type="button"
+            >
+              <Menu size={18} />
+            </button>
+            <button
+              className="hidden lg:flex p-2 rounded-lg"
+              style={{ color: "#C8A24D", background: "rgba(200,162,77,0.1)" }}
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              type="button"
+              title={sidebarCollapsed ? "Buka Sidebar" : "Tutup Sidebar"}
+            >
+              {sidebarCollapsed ? <PanelRight size={18} /> : <PanelLeft size={18} />}
+            </button>
             <span
-              className="text-sm font-semibold"
+              className="lg:hidden text-sm font-semibold truncate"
               style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
             >
               DUTA WISATA BATAM 2026
             </span>
           </div>
-          <div className="hidden lg:block" />
           <div className="flex items-center gap-3">
             {role === "participant" ? (
               <div className="relative" ref={notificationMenuRef}>
@@ -527,17 +536,18 @@ export default function DashboardLayout({
                     style={{ border: "1px solid rgba(200,162,77,0.45)" }}
                   />
                 ) : (
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg, #F5D06F, #8C6A1C)" }}
-                  >
-                    <span style={{ color: "#0F0F0F", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "0.7rem" }}>
-                      {user?.name?.charAt(0).toUpperCase() ?? "U"}
-                    </span>
-                  </div>
+                  <Image
+                    src="/default-avatar.svg"
+                    alt="Avatar default"
+                    width={28}
+                    height={28}
+                    unoptimized
+                    className="w-7 h-7 rounded-full object-cover"
+                    style={{ border: "1px solid rgba(200,162,77,0.45)" }}
+                  />
                 )}
                 <span className="hidden sm:block text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                  {user?.email}
+                  {displayEmail}
                 </span>
                 <ChevronDown size={14} style={{ color: "#C8A24D" }} />
               </button>
@@ -553,10 +563,10 @@ export default function DashboardLayout({
                 >
                   <div className="px-3 py-2 border-b" style={{ borderColor: "rgba(200,162,77,0.16)" }}>
                     <p className="text-xs font-semibold truncate" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
-                      {user?.name ?? "Pengguna"}
+                      {displayName}
                     </p>
                     <p className="text-[11px] truncate" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                      {user?.email}
+                      {displayEmail}
                     </p>
                   </div>
                   <button
