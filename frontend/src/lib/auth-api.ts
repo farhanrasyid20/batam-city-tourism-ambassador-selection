@@ -45,6 +45,19 @@ export type ParticipantBiodata = {
   documents?: ParticipantDocumentMeta[] | null;
   submitted_to_admin?: boolean;
   submitted_to_admin_at?: string | null;
+  selection_status?:
+    | "Pending"
+    | "Verified"
+    | "Rejected"
+    | "Audition"
+    | "Top20"
+    | "PreCamp"
+    | "Camp"
+    | "GrandFinal"
+    | "Winner"
+    | null;
+  selection_status_note?: string | null;
+  selection_status_updated_at?: string | null;
 };
 
 export type ParticipantDocumentMeta = {
@@ -199,6 +212,86 @@ export type ForgotPasswordResetResponse = {
   message: string;
 };
 
+type CacheEnvelope<T> = {
+  ts: number;
+  data: T;
+};
+
+const BIODATA_CACHE_KEY = "participant:biodata:v1";
+const DOCUMENTS_CACHE_KEY = "participant:documents:v1";
+const DEFAULT_PARTICIPANT_CACHE_MAX_AGE_MS = 8000;
+
+const memoryCache = new Map<string, CacheEnvelope<unknown>>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+function readCached<T>(key: string): CacheEnvelope<T> | null {
+  const memoryHit = memoryCache.get(key) as CacheEnvelope<T> | undefined;
+  if (memoryHit) return memoryHit;
+
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CacheEnvelope<T>;
+    if (!parsed || typeof parsed.ts !== "number" || parsed.data === undefined) return null;
+    memoryCache.set(key, parsed as CacheEnvelope<unknown>);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCached<T>(key: string, data: T): void {
+  const envelope: CacheEnvelope<T> = {
+    ts: Date.now(),
+    data,
+  };
+  memoryCache.set(key, envelope as CacheEnvelope<unknown>);
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(envelope));
+  } catch {
+    // ignore storage quota / private mode failure
+  }
+}
+
+function isFresh(envelope: CacheEnvelope<unknown>, maxAgeMs: number): boolean {
+  return Date.now() - envelope.ts <= maxAgeMs;
+}
+
+async function fetchWithCache<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  options?: { force?: boolean; maxAgeMs?: number }
+): Promise<T> {
+  const force = Boolean(options?.force);
+  const maxAgeMs = options?.maxAgeMs ?? DEFAULT_PARTICIPANT_CACHE_MAX_AGE_MS;
+
+  if (!force) {
+    const cached = readCached<T>(key);
+    if (cached && isFresh(cached as CacheEnvelope<unknown>, maxAgeMs)) {
+      return cached.data;
+    }
+  }
+
+  const inflight = inFlightRequests.get(key);
+  if (inflight) {
+    return inflight as Promise<T>;
+  }
+
+  const request = fetcher()
+    .then((result) => {
+      writeCached(key, result);
+      return result;
+    })
+    .finally(() => {
+      inFlightRequests.delete(key);
+    });
+
+  inFlightRequests.set(key, request as Promise<unknown>);
+  return request;
+}
+
 export function registerParticipant(payload: RegisterParticipantPayload) {
   return apiRequest<RegisterParticipantResponse>("/register", {
     method: "POST",
@@ -234,11 +327,19 @@ export function fetchAuthenticatedParticipant(token: string) {
   });
 }
 
-export function fetchParticipantBiodata(token: string) {
-  return apiRequest<ParticipantBiodataResponse>("/participant/biodata", {
-    method: "GET",
-    token,
-  });
+export function fetchParticipantBiodata(
+  token: string,
+  options?: { force?: boolean; maxAgeMs?: number }
+) {
+  return fetchWithCache<ParticipantBiodataResponse>(
+    BIODATA_CACHE_KEY,
+    () =>
+      apiRequest<ParticipantBiodataResponse>("/participant/biodata", {
+        method: "GET",
+        token,
+      }),
+    options
+  );
 }
 
 export function updateParticipantBiodata(token: string, payload: UpdateParticipantBiodataPayload) {
@@ -246,14 +347,25 @@ export function updateParticipantBiodata(token: string, payload: UpdateParticipa
     method: "PUT",
     token,
     body: payload,
+  }).then((response) => {
+    writeCached(BIODATA_CACHE_KEY, response);
+    return response;
   });
 }
 
-export function fetchParticipantDocuments(token: string) {
-  return apiRequest<ParticipantDocumentsResponse>("/participant/documents", {
-    method: "GET",
-    token,
-  });
+export function fetchParticipantDocuments(
+  token: string,
+  options?: { force?: boolean; maxAgeMs?: number }
+) {
+  return fetchWithCache<ParticipantDocumentsResponse>(
+    DOCUMENTS_CACHE_KEY,
+    () =>
+      apiRequest<ParticipantDocumentsResponse>("/participant/documents", {
+        method: "GET",
+        token,
+      }),
+    options
+  );
 }
 
 export function uploadParticipantDocument(token: string, documentKey: string, file: File) {
@@ -265,6 +377,9 @@ export function uploadParticipantDocument(token: string, documentKey: string, fi
     method: "POST",
     token,
     body,
+  }).then((response) => {
+    writeCached(DOCUMENTS_CACHE_KEY, response);
+    return response;
   });
 }
 
@@ -272,6 +387,9 @@ export function submitParticipantDocuments(token: string) {
   return apiRequest<ParticipantDocumentsResponse>("/participant/documents/submit", {
     method: "POST",
     token,
+  }).then((response) => {
+    writeCached(DOCUMENTS_CACHE_KEY, response);
+    return response;
   });
 }
 

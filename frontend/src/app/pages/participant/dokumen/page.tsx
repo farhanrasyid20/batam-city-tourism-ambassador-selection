@@ -1,12 +1,12 @@
 ﻿"use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { AlertCircle, CheckCircle, FileText } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import DocumentUploadCard from "../components/DocumentUploadCard";
-import ParticipantGuidePanel from "../components/ParticipantGuidePanel";
 import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 import {
@@ -23,6 +23,17 @@ import {
 } from "../components/documentUploadConfig";
 import type { Participant } from "../../../../data/mockData";
 
+const ParticipantGuidePanel = dynamic(() => import("../components/ParticipantGuidePanel"), {
+  ssr: false,
+  loading: () => (
+    <GoldCard className="mb-6">
+      <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+        Memuat panduan berkas...
+      </p>
+    </GoldCard>
+  ),
+});
+
 export default function ParticipantDocumentsPage() {
   // Ambil data peserta aktif (fallback ke data pertama jika belum ada sesi aktif).
   const { currentParticipant, setCurrentParticipant, setParticipantList } = useApp();
@@ -38,7 +49,7 @@ export default function ParticipantDocumentsPage() {
   const [noticeType, setNoticeType] = useState<"success" | "error">("success");
   const [serverDoneKeys, setServerDoneKeys] = useState<string[]>([]);
   const apiOrigin = API_BASE_URL.replace(/\/api$/i, "");
-  const toAssetUrl = (url?: string) => {
+  const toAssetUrl = useCallback((url?: string) => {
     if (!url) return undefined;
     if (
       url.startsWith("http://") ||
@@ -49,7 +60,7 @@ export default function ParticipantDocumentsPage() {
       return url;
     }
     return url.startsWith("/") ? `${apiOrigin}${url}` : `${apiOrigin}/${url}`;
-  };
+  }, [apiOrigin]);
   const allDocuments: DocumentItem[] = [...requiredDocuments, ...optionalDocuments];
   const verificationIssues = participant?.verificationIssues ?? [];
   const revisionStorageKey = participant ? `participant-revision-uploads:${participant.id}` : "";
@@ -65,7 +76,7 @@ export default function ParticipantDocumentsPage() {
     return sizeInKb >= 1024 ? `${(sizeInKb / 1024).toFixed(1)} MB` : `${Math.round(sizeInKb)} KB`;
   };
 
-  const syncParticipantDocumentState = (data: ParticipantDocumentsResponse["data"]) => {
+  const syncParticipantDocumentState = useCallback((data: ParticipantDocumentsResponse["data"]) => {
     const normalizedDocs =
       data.documents?.map((doc) => ({
         key: doc.key,
@@ -116,7 +127,7 @@ export default function ParticipantDocumentsPage() {
           : item
       )
     );
-  };
+  }, [participant?.id, setCurrentParticipant, setParticipantList, toAssetUrl]);
 
   useEffect(() => {
     const token = getParticipantAuthSession()?.token;
@@ -145,7 +156,7 @@ export default function ParticipantDocumentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [participant?.id]);
+  }, [participant?.id, syncParticipantDocumentState]);
 
   useEffect(() => {
     if (!revisionStorageKey || typeof window === "undefined") {

@@ -56,6 +56,30 @@ function mapBackendAccountStatusToStage(accountStatus?: string, fallback?: Stage
   return "Pending";
 }
 
+function mapSelectionStatusToStage(
+  selectionStatus?: ParticipantBiodata["selection_status"] | null,
+  accountStatus?: string,
+  fallback?: StageStatus
+): StageStatus {
+  const allowed: StageStatus[] = [
+    "Pending",
+    "Verified",
+    "Rejected",
+    "Audition",
+    "Top20",
+    "PreCamp",
+    "Camp",
+    "GrandFinal",
+    "Winner",
+  ];
+
+  if (selectionStatus && allowed.includes(selectionStatus as StageStatus)) {
+    return selectionStatus as StageStatus;
+  }
+
+  return mapBackendAccountStatusToStage(accountStatus, fallback);
+}
+
 const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
 
 function resolveParticipantPhotoUrl(photo?: string | null): string | undefined {
@@ -113,7 +137,8 @@ function mergeParticipantWithBackend(
     phone: backendUser.phone ?? base?.phone ?? "",
     email: biodata?.email?.trim().toLowerCase() || safeEmail || base?.email || "",
     photo: resolveParticipantPhotoUrl(biodata?.photo) ?? base?.photo ?? "",
-    status: mapBackendAccountStatusToStage(
+    status: mapSelectionStatusToStage(
+      biodata?.selection_status,
       biodata?.account_status ?? backendUser.account_status,
       base?.status
     ),

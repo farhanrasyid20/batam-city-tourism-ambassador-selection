@@ -130,6 +130,9 @@ class ParticipantBiodataController extends Controller
             'documents' => $documents,
             'submitted_to_admin' => (bool) $profile->submitted_to_admin,
             'submitted_to_admin_at' => $profile->submitted_to_admin_at?->toISOString(),
+            'selection_status' => $profile->selection_status,
+            'selection_status_note' => $profile->selection_status_note,
+            'selection_status_updated_at' => $profile->selection_status_updated_at?->toISOString(),
         ];
     }
 

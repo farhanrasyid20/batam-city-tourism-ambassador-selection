@@ -22,7 +22,11 @@ import {
   mockScores, // Ã¢Å“â€¦ ini harus ScoreRecord[]
 } from "../data/mockData";
 import { faqItems, type FAQItem } from "../data/faqData";
-import { clearParticipantAuthSession, getParticipantAuthSession } from "../lib/auth-storage";
+import {
+  clearParticipantAuthSession,
+  getParticipantAuthSession,
+  getParticipantProfileSnapshot,
+} from "../lib/auth-storage";
 
 export type Role = "participant" | "admin" | "judge" | "super_admin";
 
@@ -331,42 +335,52 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
   const matchedParticipant = participants.find(
     (item) => item.email.trim().toLowerCase() === normalizedEmail
   );
+  const snapshot = getParticipantProfileSnapshot();
+  const matchedSnapshot =
+    snapshot && snapshot.email.trim().toLowerCase() === normalizedEmail ? snapshot : null;
 
   if (matchedParticipant) {
     return {
       user: {
         id: String(session.user.id),
-        name: session.user.name,
+        name: matchedSnapshot?.name ?? session.user.name,
         email: normalizedEmail,
         role: "participant" as const,
         participantId: matchedParticipant.id,
       },
-      participant: matchedParticipant,
+      participant: {
+        ...matchedParticipant,
+        name: matchedSnapshot?.name ?? matchedParticipant.name,
+        number: matchedSnapshot?.number ?? matchedParticipant.number,
+        gender: matchedSnapshot?.gender ?? matchedParticipant.gender,
+        phone: matchedSnapshot?.phone ?? matchedParticipant.phone,
+        photo: matchedSnapshot?.photo ?? matchedParticipant.photo,
+      },
     };
   }
 
   return {
     user: {
       id: String(session.user.id),
-      name: session.user.name,
+      name: matchedSnapshot?.name ?? session.user.name,
       email: normalizedEmail,
       role: "participant" as const,
       participantId: `P_API_${session.user.id}`,
     },
     participant: {
       id: `P_API_${session.user.id}`,
-      number: "-",
-      name: session.user.name,
-      gender: "Encik",
+      number: matchedSnapshot?.number ?? "-",
+      name: matchedSnapshot?.name ?? session.user.name,
+      gender: matchedSnapshot?.gender ?? "Encik",
       nationalId: "",
       birthPlace: "",
       birthDate: "",
       heightCm: 0,
       education: "",
       instagram: "",
-      phone: session.user.phone ?? "",
+      phone: matchedSnapshot?.phone ?? session.user.phone ?? "",
       email: normalizedEmail,
-      photo: "",
+      photo: matchedSnapshot?.photo ?? "",
       status: "Pending",
       registeredAt: new Date().toISOString().slice(0, 10),
       scores: [],

@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --background: #120f0a;
@@ -353,3 +353,4 @@ body {
     min-height: 200px;
   }
 }
+

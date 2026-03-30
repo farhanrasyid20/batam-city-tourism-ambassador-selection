@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import NextImage from "next/image";
 import { Save, Upload, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Datepicker } from "flowbite-react";
 import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
@@ -79,6 +78,86 @@ function mapBiodataStatus(accountStatus?: string, fallback?: StageStatus): Stage
   return fallback ?? "Pending";
 }
 
+function mapSelectionStatus(
+  selectionStatus?: ParticipantBiodata["selection_status"],
+  accountStatus?: string,
+  fallback?: StageStatus
+): StageStatus {
+  const allowed: StageStatus[] = [
+    "Pending",
+    "Verified",
+    "Rejected",
+    "Audition",
+    "Top20",
+    "PreCamp",
+    "Camp",
+    "GrandFinal",
+    "Winner",
+  ];
+
+  if (selectionStatus && allowed.includes(selectionStatus as StageStatus)) {
+    return selectionStatus as StageStatus;
+  }
+
+  return mapBiodataStatus(accountStatus, fallback);
+}
+
+function formatIsoDateToDisplay(iso: string): string {
+  if (!iso) return "";
+  const [year, month, day] = iso.split("-");
+  if (!year || !month || !day) return "";
+  return `${day}/${month}/${year}`;
+}
+
+function parseDisplayDateToIso(display: string): string | null {
+  const normalized = display.trim();
+  if (!normalized) return "";
+
+  const match = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (!day || !month || !year) return null;
+
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${year}-${mm}-${dd}`;
+}
+
+function parseIsoDateToDate(iso: string): Date | null {
+  if (!iso) return null;
+  const [year, month, day] = iso.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function isSameDate(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 function buildEducationTextFromBiodata(data: ParticipantBiodata): string {
   const category = data.education_category?.trim();
   const institution = data.education_institution?.trim();
@@ -125,7 +204,7 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
     phone: data.phone ?? base?.phone ?? "",
     email: data.email ?? base?.email ?? "",
     photo: resolveParticipantPhotoUrl(data.photo) ?? base?.photo ?? "",
-    status: mapBiodataStatus(data.account_status, base?.status),
+    status: mapSelectionStatus(data.selection_status, data.account_status, base?.status),
     verificationStatus: base?.verificationStatus,
     selectionStage: base?.selectionStage,
     adminVerificationNote: base?.adminVerificationNote,
@@ -148,20 +227,6 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
   };
 }
 
-function parseBirthDate(value: string): Date | null {
-  if (!value) return null;
-  const [year, month, day] = value.split("-").map(Number);
-  if (!year || !month || !day) return null;
-  return new Date(year, month - 1, day);
-}
-
-function formatBirthDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 export default function BiodataPage() {
   // Ambil data peserta aktif dan state form biodata.
   const router = useRouter();
@@ -175,6 +240,7 @@ export default function BiodataPage() {
   const [showMajorDropdown, setShowMajorDropdown] = useState(false);
   const institutionRef = useRef<HTMLDivElement | null>(null);
   const majorRef = useRef<HTMLDivElement | null>(null);
+  const birthDatePickerWrapperRef = useRef<HTMLDivElement | null>(null);
 
   // Data referensi pendidikan per kategori (SMA/SMK/MA/Kuliah).
   const educationData = {
@@ -334,6 +400,13 @@ export default function BiodataPage() {
     contributionIdea: participant?.contributionIdea ?? "",
     publicSpeakingExperience: participant?.publicSpeakingExperience ?? "",
   });
+  const [birthDateDisplay, setBirthDateDisplay] = useState<string>(
+    formatIsoDateToDisplay(participant?.birthDate ?? "")
+  );
+  const [isBirthDatePickerOpen, setIsBirthDatePickerOpen] = useState(false);
+  const [birthDateView, setBirthDateView] = useState<Date>(
+    () => parseIsoDateToDate(participant?.birthDate ?? "") ?? new Date()
+  );
 
   useEffect(() => {
     const token = getParticipantAuthSession()?.token;
@@ -381,6 +454,7 @@ export default function BiodataPage() {
           publicSpeakingExperience:
             data.public_speaking_experience ?? prev.publicSpeakingExperience,
         }));
+        setBirthDateDisplay(formatIsoDateToDisplay(data.birth_date ?? form.birthDate ?? ""));
 
         setCurrentParticipant((prev) => mergeParticipantFromBiodata(prev, data));
         setParticipantList((prev) => {
@@ -417,6 +491,33 @@ export default function BiodataPage() {
       cancelled = true;
     };
   }, [setCurrentParticipant, setParticipantList]);
+
+  useEffect(() => {
+    if (!isBirthDatePickerOpen) return;
+
+    const close = () => setIsBirthDatePickerOpen(false);
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (!birthDatePickerWrapperRef.current?.contains(target)) {
+        close();
+      }
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onEscape);
+    window.addEventListener("resize", close);
+
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onEscape);
+      window.removeEventListener("resize", close);
+    };
+  }, [isBirthDatePickerOpen]);
 
   // Progress kelengkapan biodata untuk indikator persentase.
   const completionProgress = useMemo(() => {
@@ -497,8 +598,12 @@ export default function BiodataPage() {
     setIsSavingBiodata(true);
 
     const parsedHeight = Number(form.heightCm);
-    const normalizedHeight =
-      Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : participant?.heightCm || 0;
+    if (!Number.isFinite(parsedHeight) || parsedHeight <= 0) {
+      setErrorMessage("Tinggi badan tidak valid. Mohon isi angka yang benar.");
+      setIsSavingBiodata(false);
+      return;
+    }
+    const normalizedHeight = Math.round(parsedHeight);
 
     const educationValue = buildEducationValue();
     const token = getParticipantAuthSession()?.token;
@@ -615,9 +720,14 @@ export default function BiodataPage() {
         type={type}
         value={form[name]}
         onChange={(e) => updateFormField(name, e.target.value)}
+        onWheel={type === "number" ? (e) => (e.currentTarget as HTMLInputElement).blur() : undefined}
         placeholder={placeholder}
         readOnly={readOnly}
         disabled={disabled}
+        inputMode={type === "number" ? "numeric" : undefined}
+        step={type === "number" ? 1 : undefined}
+        min={name === "heightCm" ? (form.gender === "Encik" ? 175 : 165) : undefined}
+        max={name === "heightCm" ? 250 : undefined}
         className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
         style={{
           ...inputStyle,
@@ -733,160 +843,218 @@ export default function BiodataPage() {
       >
         Tanggal Lahir <span style={{ color: "#ef4444" }}>*</span>
       </label>
-      <div className="relative">
-        <Datepicker
-          key={form.birthDate || "birth-date-empty"}
-          language="id-ID"
-          defaultValue={parseBirthDate(form.birthDate) ?? undefined}
-          onChange={(date) => updateFormField("birthDate", date ? formatBirthDate(date) : "")}
-          maxDate={new Date()}
-          placeholder="Pilih tanggal lahir"
-          theme={{
-            root: {
-              base: "relative",
-              input: {
-                base: "",
-                addon: "",
-                field: {
-                  base: "relative w-full",
-                  icon: {
-                    base: "pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3",
-                    svg: "h-4 w-4 text-[#BDBDBD]",
-                  },
-                  rightIcon: {
-                    base: "pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3",
-                    svg: "h-4 w-4 text-[#BDBDBD]",
-                  },
-                  input: {
-                    base:
-                      "block w-full rounded-xl border px-4 py-3 pl-10 text-sm outline-none transition-all disabled:cursor-not-allowed disabled:opacity-70",
-                    sizes: {
-                      sm: "text-xs px-3 py-2",
-                      md: "text-sm px-4 py-3",
-                      lg: "text-base px-4 py-3.5",
-                    },
-                    colors: {
-                      gray:
-                        "border-[rgba(200,162,77,0.25)] bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-[rgba(200,162,77,0.6)] focus:ring-0",
-                      info:
-                        "border-[rgba(200,162,77,0.25)] bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-[rgba(200,162,77,0.6)] focus:ring-0",
-                      failure:
-                        "border-red-500 bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-red-500 focus:ring-0",
-                      warning:
-                        "border-amber-500 bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-amber-500 focus:ring-0",
-                      success:
-                        "border-emerald-500 bg-[#111] text-[#F5E6C8] placeholder:text-[#888] focus:border-emerald-500 focus:ring-0",
-                    },
-                    withIcon: {
-                      on: "pl-10",
-                      off: "",
-                    },
-                    withRightIcon: {
-                      on: "pr-10",
-                      off: "",
-                    },
-                    withAddon: {
-                      on: "rounded-r-xl",
-                      off: "rounded-xl",
-                    },
-                    withShadow: {
-                      on: "shadow-sm",
-                      off: "",
-                    },
-                  },
-                },
-              },
-            },
-            popup: {
-              root: {
-                base: "absolute top-12 z-50 block pt-2",
-                inline: "relative top-0 z-auto",
-                inner: "inline-block rounded-xl border border-[rgba(200,162,77,0.25)] bg-[#111] p-3 shadow-xl",
-              },
-              header: {
-                base: "",
-                title: "px-2 py-2 text-center text-sm font-semibold text-[#C8A24D]",
-                selectors: {
-                  base: "mb-2 flex justify-between",
-                  button: {
-                    base:
-                      "rounded-lg border border-[rgba(200,162,77,0.22)] bg-[rgba(200,162,77,0.08)] px-3 py-1.5 text-sm font-semibold text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.16)] focus:outline-none",
-                    prev: "",
-                    next: "",
-                    view: "",
-                  },
-                },
-              },
-              view: {
-                base: "p-1",
-              },
-              footer: {
-                base: "mt-3 flex space-x-2",
-                button: {
-                  base: "w-full rounded-lg px-3 py-2 text-center text-xs font-semibold",
-                  today: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
-                  clear:
-                    "border border-[rgba(200,162,77,0.25)] bg-transparent text-[#C8A24D] hover:bg-[rgba(200,162,77,0.1)]",
-                },
-              },
-            },
-            views: {
-              days: {
-                header: {
-                  base: "mb-1 grid grid-cols-7",
-                  title: "h-6 text-center text-sm font-medium leading-6 text-[#BDBDBD]",
-                },
-                items: {
-                  base: "grid w-64 grid-cols-7",
-                  item: {
-                    base:
-                      "block flex-1 cursor-pointer rounded-lg border-0 text-center text-sm font-semibold leading-9 text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.14)]",
-                    selected: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
-                    disabled: "text-[#555]",
-                    today: "ring-1 ring-[rgba(200,162,77,0.35)]",
-                  },
-                },
-              },
-              months: {
-                items: {
-                  base: "grid w-64 grid-cols-4",
-                  item: {
-                    base:
-                      "block flex-1 cursor-pointer rounded-lg border-0 text-center text-sm font-semibold leading-9 text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.14)]",
-                    selected: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
-                    disabled: "text-[#555]",
-                  },
-                },
-              },
-              years: {
-                items: {
-                  base: "grid w-64 grid-cols-4",
-                  item: {
-                    base:
-                      "block flex-1 cursor-pointer rounded-lg border-0 text-center text-sm font-semibold leading-9 text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.14)]",
-                    selected: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
-                    disabled: "text-[#555]",
-                  },
-                },
-              },
-              decades: {
-                items: {
-                  base: "grid w-64 grid-cols-4",
-                  item: {
-                    base:
-                      "block flex-1 cursor-pointer rounded-lg border-0 text-center text-sm font-semibold leading-9 text-[#F5E6C8] hover:bg-[rgba(200,162,77,0.14)]",
-                    selected: "bg-[#C8A24D] text-[#111] hover:bg-[#D6B66A]",
-                    disabled: "text-[#555]",
-                  },
-                },
-              },
-            },
+      <div className="relative" ref={birthDatePickerWrapperRef}>
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 z-[1]">
+          <svg
+            className="h-4 w-4"
+            style={{ color: "#BDBDBD" }}
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M4 10h16m-8-3V4M7 7V4m10 3V4M5 20h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Zm3-7h.01v.01H8V13Zm4 0h.01v.01H12V13Zm4 0h.01v.01H16V13Zm-8 4h.01v.01H8V17Zm4 0h.01v.01H12V17Zm4 0h.01v.01H16V17Z"
+            />
+          </svg>
+        </div>
+        <input
+          type="text"
+          value={birthDateDisplay}
+          onChange={(event) => {
+            const next = event.target.value;
+            setBirthDateDisplay(next);
+            const iso = parseDisplayDateToIso(next);
+            if (iso !== null) {
+              updateFormField("birthDate", iso);
+            }
           }}
-          className="w-full"
+          onBlur={(event) => {
+            const iso = parseDisplayDateToIso(event.target.value);
+            if (iso === null) {
+              setErrorMessage("Format tanggal lahir harus dd/mm/yyyy.");
+              window.setTimeout(() => setErrorMessage(""), 2500);
+              if (form.birthDate) {
+                setBirthDateDisplay(formatIsoDateToDisplay(form.birthDate));
+              } else {
+                setBirthDateDisplay("");
+              }
+              event.target.style.borderColor = "rgba(200,162,77,0.25)";
+              return;
+            }
+            if (iso === "") {
+              updateFormField("birthDate", "");
+              setBirthDateDisplay("");
+            } else {
+              setBirthDateDisplay(formatIsoDateToDisplay(iso));
+              const selectedDate = parseIsoDateToDate(iso);
+              if (selectedDate) setBirthDateView(selectedDate);
+            }
+            event.target.style.borderColor = "rgba(200,162,77,0.25)";
+          }}
+          onFocus={() => setIsBirthDatePickerOpen(true)}
+          placeholder="dd/mm/yyyy"
+          aria-label="Tanggal lahir"
+          className="block w-full rounded-xl border px-4 py-3 pl-10 pr-11 text-sm outline-none transition-all"
+          style={{
+            background: "#111",
+            border: "1px solid rgba(200,162,77,0.25)",
+            color: "#F5E6C8",
+            fontFamily: "var(--font-poppins)",
+          }}
+          onFocus={(e) => (e.target.style.borderColor = "rgba(200,162,77,0.6)")}
         />
+        <button
+          type="button"
+          onClick={() => {
+            setIsBirthDatePickerOpen((prev) => !prev);
+          }}
+          className="absolute inset-y-0 right-0 flex items-center pr-3"
+          style={{ color: "#BDBDBD" }}
+          aria-label="Buka kalender tanggal lahir"
+        >
+          <svg
+            className="h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M4 10h16m-8-3V4M7 7V4m10 3V4M5 20h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z"
+            />
+          </svg>
+        </button>
+        {isBirthDatePickerOpen ? (
+          <div
+            className="absolute left-0 top-[calc(100%+8px)] z-50 w-[320px] rounded-xl border p-3"
+            style={{
+              background: "#111",
+              borderColor: "rgba(200,162,77,0.35)",
+              boxShadow: "0 14px 34px rgba(0,0,0,0.45)",
+            }}
+          >
+            {(() => {
+              const currentMonth = birthDateView.getMonth();
+              const currentYear = birthDateView.getFullYear();
+              const firstDay = new Date(currentYear, currentMonth, 1);
+              const startWeekday = firstDay.getDay();
+              const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+              const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+              const monthName = new Intl.DateTimeFormat("id-ID", {
+                month: "long",
+                year: "numeric",
+              }).format(firstDay);
+              const selectedDate = parseIsoDateToDate(form.birthDate);
+              const today = new Date();
+              const weekdayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+              const maxDate = new Date();
+              const cells: { date: Date; currentMonth: boolean }[] = [];
+              for (let i = 0; i < 42; i += 1) {
+                const dayOffset = i - startWeekday + 1;
+                if (dayOffset <= 0) {
+                  cells.push({
+                    date: new Date(currentYear, currentMonth - 1, daysInPrevMonth + dayOffset),
+                    currentMonth: false,
+                  });
+                } else if (dayOffset > daysInMonth) {
+                  cells.push({
+                    date: new Date(currentYear, currentMonth + 1, dayOffset - daysInMonth),
+                    currentMonth: false,
+                  });
+                } else {
+                  cells.push({
+                    date: new Date(currentYear, currentMonth, dayOffset),
+                    currentMonth: true,
+                  });
+                }
+              }
+
+              return (
+                <>
+                  <div className="mb-3 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBirthDateView((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+                      }
+                      className="rounded-md px-2 py-1 text-sm"
+                      style={{ color: "#F5E6C8", border: "1px solid rgba(200,162,77,0.2)" }}
+                    >
+                      {"<"}
+                    </button>
+                    <p style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)", fontWeight: 600 }}>
+                      {monthName}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBirthDateView((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+                      }
+                      className="rounded-md px-2 py-1 text-sm"
+                      style={{ color: "#F5E6C8", border: "1px solid rgba(200,162,77,0.2)" }}
+                    >
+                      {">"}
+                    </button>
+                  </div>
+                  <div className="mb-2 grid grid-cols-7 text-center text-xs">
+                    {weekdayLabels.map((label) => (
+                      <span key={label} style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {cells.map(({ date, currentMonth }) => {
+                      const disabled = date > maxDate;
+                      const selected = selectedDate ? isSameDate(date, selectedDate) : false;
+                      const todayCell = isSameDate(date, today);
+                      return (
+                        <button
+                          key={date.toISOString()}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => {
+                            const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                            updateFormField("birthDate", iso);
+                            setBirthDateDisplay(formatIsoDateToDisplay(iso));
+                            setBirthDateView(new Date(date.getFullYear(), date.getMonth(), 1));
+                            setIsBirthDatePickerOpen(false);
+                          }}
+                          className="h-9 rounded-md text-sm"
+                          style={{
+                            fontFamily: "var(--font-poppins)",
+                            background: selected ? "#C8A24D" : todayCell ? "rgba(200,162,77,0.2)" : "transparent",
+                            color: selected ? "#111" : currentMonth ? "#F5E6C8" : "#8E8E8E",
+                            border: selected ? "1px solid #C8A24D" : "1px solid transparent",
+                            opacity: disabled ? 0.35 : 1,
+                            cursor: disabled ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {date.getDate()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        ) : null}
       </div>
       <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-        Klik field lalu pilih tanggal dari kalender.
+        Bisa ketik manual format dd/mm/yyyy atau pilih dari kalender.
       </p>
     </div>
   );
@@ -1056,7 +1224,7 @@ export default function BiodataPage() {
               type: "number",
               placeholder: "Contoh: 170",
               required: true,
-              hint: `Min. Encik: 175 cm | Min. Puan: 170 cm (${form.gender === "Encik" ? "saat ini Encik" : "saat ini Puan"})`,
+              hint: `Min. Encik: 175 cm | Min. Puan: 165 cm (${form.gender === "Encik" ? "saat ini Encik" : "saat ini Puan"})`,
             })}
             <div className="sm:col-span-2">
               <label

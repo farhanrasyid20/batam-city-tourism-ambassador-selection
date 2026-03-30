@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ParticipantProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,18 @@ use Illuminate\Validation\Rule;
 
 class UserManagementController extends Controller
 {
+    private const PARTICIPANT_SELECTION_STATUSES = [
+        'Pending',
+        'Verified',
+        'Rejected',
+        'Audition',
+        'Top20',
+        'PreCamp',
+        'Camp',
+        'GrandFinal',
+        'Winner',
+    ];
+
     private function allowedRolesFor(?string $requesterRole): array
     {
         return $requesterRole === 'admin' ? ['judge'] : ['admin', 'judge'];
@@ -232,6 +245,54 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => 'User internal berhasil dihapus.',
+        ]);
+    }
+
+    public function updateParticipantSelectionStatus(Request $request, int $id): JsonResponse
+    {
+        /** @var User|null $participant */
+        $participant = User::query()
+            ->where('role', 'participant')
+            ->find($id);
+
+        if (! $participant) {
+            return response()->json([
+                'message' => 'Peserta tidak ditemukan.',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'selection_status' => ['required', Rule::in(self::PARTICIPANT_SELECTION_STATUSES)],
+            'selection_status_note' => ['nullable', 'string', 'max:3000'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $payload = $validator->validated();
+
+        /** @var ParticipantProfile $profile */
+        $profile = $participant->participantProfile()->firstOrCreate([
+            'user_id' => $participant->id,
+        ]);
+
+        $profile->selection_status = $payload['selection_status'];
+        $profile->selection_status_note = $payload['selection_status_note'] ?? null;
+        $profile->selection_status_updated_at = Carbon::now();
+        $profile->save();
+
+        return response()->json([
+            'message' => 'Status seleksi peserta berhasil diperbarui.',
+            'data' => [
+                'user_id' => $participant->id,
+                'selection_status' => $profile->selection_status,
+                'selection_status_note' => $profile->selection_status_note,
+                'selection_status_updated_at' => $profile->selection_status_updated_at?->toISOString(),
+            ],
         ]);
     }
 }

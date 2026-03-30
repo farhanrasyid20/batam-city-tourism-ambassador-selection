@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, ChevronRight, PanelLeft, PanelRight, ChevronDown, KeyRound, UserCircle2, Bell, AlertCircle, CheckCircle2, Clock3 } from "lucide-react";
@@ -42,6 +42,7 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
+  const [readParticipantNotificationMap, setReadParticipantNotificationMap] = useState<Record<string, string[]>>({});
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const notificationMenuRef = useRef<HTMLDivElement | null>(null);
@@ -61,41 +62,91 @@ export default function DashboardLayout({
       : user?.name || (role === "judge" ? "Juri" : "Pengguna");
   const displayEmail = role === "participant" ? participant?.email || user?.email || "" : user?.email || "";
   const verificationIssues = participant?.verificationIssues ?? [];
-  const participantNotifications =
+  const participantNotifications = useMemo(
+    () =>
+      role === "participant" && participant
+        ? [
+            verificationIssues.length > 0
+              ? {
+                  id: "revision-note",
+                  title: "Perlu Revisi Berkas",
+                  message: `${verificationIssues.length} item memerlukan perbaikan. Buka halaman dokumen untuk melihat catatan admin dan upload ulang.`,
+                  color: "#ef4444",
+                  icon: <AlertCircle size={14} />,
+                  href: "/pages/participant/dokumen",
+                }
+              : null,
+            participant.submittedToAdmin && participant.status === "Pending"
+              ? {
+                  id: "pending-review",
+                  title: "Menunggu Verifikasi",
+                  message: "Berkas Anda sudah dikirim dan sedang ditinjau oleh admin panitia.",
+                  color: "#C8A24D",
+                  icon: <Clock3 size={14} />,
+                  href: "/pages/participant/status",
+                }
+              : null,
+            participant.status === "Verified"
+              ? {
+                  id: "verified",
+                  title: "Berkas Terverifikasi",
+                  message: "Administrasi Anda dinyatakan lengkap. Silakan pantau tahap seleksi berikutnya.",
+                  color: "#22c55e",
+                  icon: <CheckCircle2 size={14} />,
+                  href: "/pages/participant/status",
+                }
+              : null,
+          ].filter(Boolean)
+        : [],
+    [participant, role, verificationIssues.length]
+  );
+
+  const participantNotificationStorageKey =
     role === "participant" && participant
-      ? [
-          verificationIssues.length > 0
-            ? {
-                id: "revision-note",
-                title: "Perlu Revisi Berkas",
-                message: `${verificationIssues.length} item memerlukan perbaikan. Buka halaman dokumen untuk melihat catatan admin dan upload ulang.`,
-                color: "#ef4444",
-                icon: <AlertCircle size={14} />,
-                href: "/pages/participant/dokumen",
-              }
-            : null,
-          participant.submittedToAdmin && participant.status === "Pending"
-            ? {
-                id: "pending-review",
-                title: "Menunggu Verifikasi",
-                message: "Berkas Anda sudah dikirim dan sedang ditinjau oleh admin panitia.",
-                color: "#C8A24D",
-                icon: <Clock3 size={14} />,
-                href: "/pages/participant/status",
-              }
-            : null,
-          participant.status === "Verified"
-            ? {
-                id: "verified",
-                title: "Berkas Terverifikasi",
-                message: "Administrasi Anda dinyatakan lengkap. Silakan pantau tahap seleksi berikutnya.",
-                color: "#22c55e",
-                icon: <CheckCircle2 size={14} />,
-                href: "/pages/participant/status",
-              }
-            : null,
-        ].filter(Boolean)
-      : [];
+      ? `participant-notification-read:${participant.id}`
+      : "";
+
+  const readParticipantNotificationIds = useMemo(() => {
+    if (!participantNotificationStorageKey) return [];
+    const fromState = readParticipantNotificationMap[participantNotificationStorageKey];
+    if (fromState) return fromState;
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(participantNotificationStorageKey);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [participantNotificationStorageKey, readParticipantNotificationMap]);
+
+  const markParticipantNotificationsRead = useCallback(
+    (ids: string[]) => {
+      if (!ids.length) return;
+
+      setReadParticipantNotificationMap((prev) => {
+        const current = prev[participantNotificationStorageKey] ?? [];
+        const next = Array.from(new Set([...current, ...ids]));
+        if (participantNotificationStorageKey && typeof window !== "undefined") {
+          window.localStorage.setItem(participantNotificationStorageKey, JSON.stringify(next));
+        }
+        return {
+          ...prev,
+          [participantNotificationStorageKey]: next,
+        };
+      });
+    },
+    [participantNotificationStorageKey]
+  );
+
+  const unreadParticipantNotifications = useMemo(
+    () =>
+      participantNotifications.filter(
+        (notification) => !readParticipantNotificationIds.includes(notification.id)
+      ),
+    [participantNotifications, readParticipantNotificationIds]
+  );
 
   const roleColors = {
     participant: "#C8A24D",
@@ -437,7 +488,17 @@ export default function DashboardLayout({
               <div className="relative" ref={notificationMenuRef}>
                 <button
                   type="button"
-                  onClick={() => setNotificationMenuOpen((prev) => !prev)}
+                  onClick={() =>
+                    setNotificationMenuOpen((prev) => {
+                      const nextOpen = !prev;
+                      if (nextOpen) {
+                        markParticipantNotificationsRead(
+                          unreadParticipantNotifications.map((item) => item.id)
+                        );
+                      }
+                      return nextOpen;
+                    })
+                  }
                   className="relative flex items-center justify-center rounded-xl w-10 h-10"
                   style={{
                     background: "rgba(200,162,77,0.08)",
@@ -447,7 +508,7 @@ export default function DashboardLayout({
                   title="Notifikasi"
                 >
                   <Bell size={17} style={{ color: "#C8A24D" }} />
-                  {participantNotifications.length > 0 ? (
+                  {unreadParticipantNotifications.length > 0 ? (
                     <span
                       className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] flex items-center justify-center font-bold"
                       style={{
@@ -456,7 +517,7 @@ export default function DashboardLayout({
                         fontFamily: "var(--font-poppins)",
                       }}
                     >
-                      {participantNotifications.length}
+                      {unreadParticipantNotifications.length}
                     </span>
                   ) : null}
                 </button>
@@ -475,12 +536,13 @@ export default function DashboardLayout({
                         Notifikasi Peserta
                       </p>
                     </div>
-                    {participantNotifications.length > 0 ? (
-                      participantNotifications.map((notification) => (
+                    {unreadParticipantNotifications.length > 0 ? (
+                      unreadParticipantNotifications.map((notification) => (
                         <button
                           key={notification.id}
                           type="button"
                           onClick={() => {
+                            markParticipantNotificationsRead([notification.id]);
                             router.push(notification.href);
                             setNotificationMenuOpen(false);
                           }}

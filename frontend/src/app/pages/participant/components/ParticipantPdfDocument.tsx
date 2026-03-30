@@ -43,7 +43,9 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
   },
   card: {
-    border: "1 solid #d6c089",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "#d6c089",
     borderRadius: 10,
     overflow: "hidden",
   },
@@ -51,7 +53,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     padding: 16,
-    borderBottom: "1 solid #d6c089",
+    borderBottomWidth: 1,
+    borderBottomStyle: "solid",
+    borderBottomColor: "#d6c089",
     backgroundColor: "#faf7ef",
   },
   logo: {
@@ -177,7 +181,7 @@ const styles = StyleSheet.create({
     fontWeight: 700,
   },
   footer: {
-    borderTop: "1 solid #e6d8aa",
+    borderTop: "1 solid #d6c089",
     padding: 10,
     textAlign: "center",
     fontSize: 8,

@@ -36,6 +36,9 @@ class ParticipantProfile extends Model
         'public_speaking_experience',
         'submitted_to_admin',
         'submitted_to_admin_at',
+        'selection_status',
+        'selection_status_note',
+        'selection_status_updated_at',
     ];
 
     protected function casts(): array
@@ -45,6 +48,7 @@ class ParticipantProfile extends Model
             'height_cm' => 'integer',
             'submitted_to_admin' => 'boolean',
             'submitted_to_admin_at' => 'datetime',
+            'selection_status_updated_at' => 'datetime',
         ];
     }
 
@@ -58,4 +62,3 @@ class ParticipantProfile extends Model
         return $this->hasMany(ParticipantDocument::class, 'user_id', 'user_id');
     }
 }
-

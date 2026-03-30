@@ -4,8 +4,11 @@ import React from "react";
 import NextImage from "next/image";
 import { CheckCircle, Clock, XCircle, Star, AlertCircle, Trophy } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
-import type { StageStatus } from "../../../../data/mockData";
+import type { Participant, StageStatus } from "../../../../data/mockData";
 import GoldCard from "../../../../components/dashboard/GoldCard";
+import { fetchParticipantBiodata } from "../../../../lib/auth-api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
 
 type TimelineState = "done" | "active" | "failed" | "pending";
 
@@ -99,12 +102,125 @@ const stateLabel: Record<TimelineState, string> = {
   pending: "BELUM",
 };
 
+const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
+
+function resolveParticipantPhotoUrl(photo?: string | null): string {
+  const value = photo?.trim();
+  if (!value) return "/default-avatar.svg";
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
+  }
+  return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
+}
+
+function mapSelectionStatusToStage(selectionStatus?: string | null, accountStatus?: string | null): StageStatus {
+  const allowed: StageStatus[] = [
+    "Pending",
+    "Verified",
+    "Rejected",
+    "Audition",
+    "Top20",
+    "PreCamp",
+    "Camp",
+    "GrandFinal",
+    "Winner",
+  ];
+
+  if (selectionStatus && allowed.includes(selectionStatus as StageStatus)) {
+    return selectionStatus as StageStatus;
+  }
+
+  return (accountStatus ?? "").toLowerCase() === "suspended" ? "Rejected" : "Pending";
+}
+
 export default function ParticipantStatusPage() {
   // Ambil peserta aktif untuk ditampilkan statusnya.
-  const { currentParticipant } = useApp();
+  const { currentParticipant, setCurrentParticipant, setParticipantList } = useApp();
   const participant = currentParticipant;
   const currentStatus: StageStatus = participant?.status ?? "Pending";
   const currentStageIndex = stageOrder.indexOf(currentStatus);
+  const isAdminVerificationInProgress = Boolean(
+    participant?.submittedToAdmin && currentStatus === "Pending"
+  );
+  const [syncError, setSyncError] = React.useState("");
+
+  React.useEffect(() => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) return;
+
+    let cancelled = false;
+    const syncStatus = async () => {
+      try {
+        const response = await fetchParticipantBiodata(token);
+        if (cancelled) return;
+
+        const data = response.data;
+        const mappedStatus = mapSelectionStatusToStage(data.selection_status, data.account_status);
+
+        setCurrentParticipant((prev) => {
+          const fallback: Participant = {
+            id: `P_API_${data.id}`,
+            number: data.participant_number ?? "-",
+            name: data.name ?? "Peserta",
+            gender: data.gender ?? "Encik",
+            nationalId: data.national_id ?? "",
+            birthPlace: data.birth_place ?? "",
+            birthDate: data.birth_date ?? "",
+            heightCm: data.height_cm ?? 0,
+            education: [data.education_category, data.education_institution, data.education_degree, data.education_major]
+              .filter(Boolean)
+              .join(" - "),
+            instagram: data.instagram ?? "",
+            phone: data.phone ?? "",
+            email: (data.email ?? "").toLowerCase(),
+            photo: data.photo ?? "",
+            status: mappedStatus,
+            registeredAt: new Date().toISOString().slice(0, 10),
+            scores: [],
+          };
+
+          return {
+            ...(prev ?? fallback),
+            ...fallback,
+            ...(prev ?? {}),
+            status: mappedStatus,
+            number: data.participant_number ?? prev?.number ?? "-",
+            photo: data.photo ?? prev?.photo ?? "",
+          };
+        });
+
+        setParticipantList((prev) =>
+          prev.map((item) =>
+            item.id === `P_API_${data.id}` || item.email.toLowerCase() === (data.email ?? "").toLowerCase()
+              ? {
+                  ...item,
+                  status: mappedStatus,
+                  number: data.participant_number ?? item.number,
+                  photo: data.photo ?? item.photo,
+                }
+              : item
+          )
+        );
+
+        setSyncError("");
+      } catch (error) {
+        if (!cancelled) {
+          setSyncError(getReadableApiError(error));
+        }
+      }
+    };
+
+    void syncStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setCurrentParticipant, setParticipantList]);
 
   // Tentukan state tiap tahap berdasarkan status peserta saat ini.
   const getTimelineState = (stageId: (typeof timelineStages)[number]["id"]): TimelineState => {
@@ -113,7 +229,7 @@ export default function ParticipantStatusPage() {
     }
 
     if (stageId === "administrasi") {
-      if (currentStatus === "Pending") return "pending";
+      if (currentStatus === "Pending") return isAdminVerificationInProgress ? "active" : "pending";
       return "done";
     }
 
@@ -153,6 +269,11 @@ export default function ParticipantStatusPage() {
         <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
           Pantau perkembangan seleksi Anda secara real-time.
         </p>
+        {syncError ? (
+          <p className="text-xs mt-2" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
+            Gagal sinkron status dari backend: {syncError}
+          </p>
+        ) : null}
       </div>
 
       {/* Ringkasan profil + status terkini peserta */}
@@ -160,7 +281,7 @@ export default function ParticipantStatusPage() {
         <GoldCard glow className="mb-6">
           <div className="flex items-center gap-4 flex-wrap">
             <NextImage
-              src={participant.photo || "/default-avatar.svg"}
+              src={resolveParticipantPhotoUrl(participant.photo)}
               alt={participant.name}
               width={64}
               height={64}
@@ -189,6 +310,8 @@ export default function ParticipantStatusPage() {
                     ? "linear-gradient(135deg, rgba(245,208,111,0.2), rgba(200,162,77,0.2))"
                     : currentStatus === "Rejected"
                     ? "rgba(239,68,68,0.1)"
+                    : isAdminVerificationInProgress
+                    ? "rgba(200,162,77,0.12)"
                     : currentStatus === "Pending"
                     ? "rgba(189,189,189,0.1)"
                     : "rgba(34,197,94,0.1)",
@@ -197,6 +320,8 @@ export default function ParticipantStatusPage() {
                     ? "rgba(200,162,77,0.4)"
                     : currentStatus === "Rejected"
                     ? "rgba(239,68,68,0.3)"
+                    : isAdminVerificationInProgress
+                    ? "rgba(200,162,77,0.35)"
                     : currentStatus === "Pending"
                     ? "rgba(189,189,189,0.2)"
                     : "rgba(34,197,94,0.3)"
@@ -206,6 +331,8 @@ export default function ParticipantStatusPage() {
                     ? "#C8A24D"
                     : currentStatus === "Rejected"
                     ? "#ef4444"
+                    : isAdminVerificationInProgress
+                    ? "#C8A24D"
                     : currentStatus === "Pending"
                     ? "#BDBDBD"
                     : "#22c55e",
@@ -277,6 +404,15 @@ export default function ParticipantStatusPage() {
                     <Trophy size={14} style={{ color: "#C8A24D" }} />
                     <p className="text-xs font-semibold" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
                       Selamat! Anda sudah mencapai Grand Final. Persiapkan penampilan terbaik Anda.
+                    </p>
+                  </div>
+                ) : null}
+
+                {timelineState === "active" && stage.id === "administrasi" ? (
+                  <div className="mt-3 flex items-center gap-2">
+                    <Clock size={14} style={{ color: "#C8A24D" }} />
+                    <p className="text-xs" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
+                      Berkas Anda sudah dikirim dan sedang dalam proses verifikasi administrasi oleh panitia.
                     </p>
                   </div>
                 ) : null}

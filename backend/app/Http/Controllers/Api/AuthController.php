@@ -24,9 +24,13 @@ class AuthController extends Controller
         return config('app.key') ?: env('APP_KEY', 'laravel-jwt-secret');
     }
 
-    private function tokenTtlMinutes(): int
+    private function tokenTtlMinutes(User $user): int
     {
-        return 60;
+        return match ($user->role) {
+            'participant' => 480, // 8 jam
+            'admin', 'judge', 'super_admin' => 240, // 4 jam
+            default => 240,
+        };
     }
 
     private function otpTtlMinutes(): int
@@ -47,13 +51,14 @@ class AuthController extends Controller
     private function makeToken(User $user): string
     {
         $now = time();
+        $ttlMinutes = $this->tokenTtlMinutes($user);
 
         $payload = [
             'iss' => config('app.url'),
             'sub' => $user->id,
             'email' => $user->email,
             'iat' => $now,
-            'exp' => $now + ($this->tokenTtlMinutes() * 60),
+            'exp' => $now + ($ttlMinutes * 60),
         ];
 
         return JWT::encode($payload, $this->jwtSecret(), 'HS256');
@@ -464,12 +469,13 @@ class AuthController extends Controller
         }
 
         $token = $this->makeToken($user);
+        $ttlMinutes = $this->tokenTtlMinutes($user);
 
         return response()->json([
             'message' => 'Login berhasil.',
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'expires_in_minutes' => $this->tokenTtlMinutes(),
+            'expires_in_minutes' => $ttlMinutes,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,

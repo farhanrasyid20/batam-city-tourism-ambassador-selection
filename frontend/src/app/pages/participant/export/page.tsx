@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import NextImage from "next/image";
 import { pdf } from "@react-pdf/renderer";
 import { Download, FileText } from "lucide-react";
@@ -9,6 +9,14 @@ import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import type { StageStatus } from "../../../../data/mockData";
 import ParticipantPdfDocument from "../components/ParticipantPdfDocument";
+import {
+  fetchParticipantBiodata,
+  fetchParticipantDocuments,
+  type ParticipantBiodata,
+  type ParticipantDocumentMeta,
+} from "../../../../lib/auth-api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
 
 const statusLabel: Record<StageStatus, string> = {
   Pending: "Menunggu Verifikasi",
@@ -22,21 +30,192 @@ const statusLabel: Record<StageStatus, string> = {
   Winner: "Pemenang",
 };
 
+const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
+
+function resolveAssetUrl(path?: string | null): string {
+  const value = path?.trim();
+  if (!value) return "/logo1.png";
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
+  }
+  return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
+}
+
+function mapSelectionStatusToStage(selectionStatus?: string | null, accountStatus?: string): StageStatus {
+  const allowed: StageStatus[] = [
+    "Pending",
+    "Verified",
+    "Rejected",
+    "Audition",
+    "Top20",
+    "PreCamp",
+    "Camp",
+    "GrandFinal",
+    "Winner",
+  ];
+
+  if (selectionStatus && allowed.includes(selectionStatus as StageStatus)) {
+    return selectionStatus as StageStatus;
+  }
+
+  if ((accountStatus ?? "").toLowerCase() === "suspended") return "Rejected";
+  return "Pending";
+}
+
+function buildEducationDisplayFromBiodata(data?: ParticipantBiodata | null): string {
+  if (!data) return "-";
+  const parts = [
+    data.education_category?.trim(),
+    data.education_institution?.trim(),
+    data.education_degree?.trim(),
+    data.education_major?.trim(),
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" - ") : "-";
+}
+
+function toInstagramUsername(value?: string | null): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return "-";
+
+  if (raw.includes("instagram.com")) {
+    try {
+      const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+      const segment = url.pathname.split("/").filter(Boolean)[0] ?? "";
+      return segment.replace(/^@+/, "") || "-";
+    } catch {
+      // Fall through to plain cleanup.
+    }
+  }
+
+  return raw.replace(/^@+/, "") || "-";
+}
+
+function getFrontendLogoUrl(): string {
+  if (typeof window === "undefined") return "/logo1.png";
+  return `${window.location.origin}/logo1.png`;
+}
+
+async function toDataUrlForPdf(source?: string | null): Promise<string> {
+  const src = (source ?? "").trim();
+  if (!src) return "";
+  if (src.startsWith("data:")) return src;
+
+  try {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    let response: Response;
+    try {
+      response = await fetch(src, { cache: "force-cache", signal: controller.signal });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+    if (!response.ok) return src;
+    const blob = await response.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result ?? src));
+      reader.onerror = () => reject(new Error("Failed to convert image to data URL"));
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return src;
+  }
+}
+
 export default function ExportPDFPage() {
   const { currentParticipant, user } = useApp();
   const [printing, setPrinting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [loadingDbData, setLoadingDbData] = useState(false);
+  const [dbError, setDbError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewError, setPreviewError] = useState("");
+  const [previewFingerprint, setPreviewFingerprint] = useState("");
+  const [previewFileName, setPreviewFileName] = useState("biodata-peserta.pdf");
+  const [biodataFromDb, setBiodataFromDb] = useState<ParticipantBiodata | null>(null);
+  const [documentsFromDb, setDocumentsFromDb] = useState<ParticipantDocumentMeta[]>([]);
 
   const participant = currentParticipant;
 
+  useEffect(() => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) return;
+
+    let cancelled = false;
+
+    const syncExportData = async () => {
+      setLoadingDbData(true);
+      setDbError("");
+      try {
+        const biodataTask = fetchParticipantBiodata(token)
+          .then((biodataRes) => {
+            if (!cancelled) {
+              setBiodataFromDb(biodataRes.data);
+            }
+          })
+          .catch((error) => {
+            if (!cancelled) {
+              setDbError(getReadableApiError(error));
+            }
+          });
+
+        const documentsTask = fetchParticipantDocuments(token)
+          .then((documentsRes) => {
+            if (!cancelled) {
+              setDocumentsFromDb(documentsRes.data.documents ?? []);
+            }
+          })
+          .catch((error) => {
+            if (!cancelled) {
+              setDbError((prev) => prev || getReadableApiError(error));
+            }
+          });
+
+        await Promise.allSettled([biodataTask, documentsTask]);
+      } finally {
+        if (!cancelled) {
+          setLoadingDbData(false);
+        }
+      }
+    };
+
+    void syncExportData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const effectiveStageStatus: StageStatus = useMemo(() => {
+    if (biodataFromDb) {
+      return mapSelectionStatusToStage(biodataFromDb.selection_status, biodataFromDb.account_status);
+    }
+    return participant?.status ?? "Pending";
+  }, [biodataFromDb, participant?.status]);
+
   const canDownloadPdf = Boolean(
-    participant &&
+    (participant || biodataFromDb) &&
       ["Verified", "Audition", "Top20", "PreCamp", "Camp", "GrandFinal", "Winner"].includes(
-        participant.status
+        effectiveStageStatus
       )
   );
 
-  const documentItems = useMemo(
-    () => [
+  const documentItems = useMemo(() => {
+    if (documentsFromDb.length > 0) {
+      return documentsFromDb
+        .filter((doc) => doc.required)
+        .map((doc) => ({
+          label: doc.label,
+          done: doc.status === "submitted" || doc.status === "verified",
+        }));
+    }
+
+    return [
       { label: "KTP", done: Boolean(participant?.nationalId) },
       { label: "Foto Close Up", done: Boolean(participant?.photo) },
       { label: "Foto Full Body", done: Boolean(participant?.photo) },
@@ -44,13 +223,16 @@ export default function ExportPDFPage() {
       { label: "Formulir S-02", done: Boolean(participant?.instagram) },
       { label: "Formulir S-03", done: Boolean(participant?.phone) },
       { label: "Formulir S-04", done: Boolean(participant?.birthDate && participant?.birthPlace) },
-    ],
-    [participant]
-  );
+    ];
+  }, [documentsFromDb, participant]);
 
   const doneCount = documentItems.filter((item) => item.done).length;
 
   const educationDisplay = useMemo(() => {
+    if (biodataFromDb) {
+      return buildEducationDisplayFromBiodata(biodataFromDb);
+    }
+
     const raw = participant?.education?.trim();
     if (!raw) return "-";
     const parts = raw.split(" - ").map((item) => item.trim()).filter(Boolean);
@@ -58,7 +240,10 @@ export default function ExportPDFPage() {
       parts.pop();
     }
     return parts.join(" - ");
-  }, [participant?.education]);
+  }, [
+    biodataFromDb,
+    participant?.education,
+  ]);
 
   const printedDate = useMemo(
     () =>
@@ -70,48 +255,179 @@ export default function ExportPDFPage() {
     []
   );
 
-  const assetBaseUrl = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return window.location.origin;
-  }, []);
+  const previewPhoto = resolveAssetUrl(biodataFromDb?.photo ?? participant?.photo);
+  const instagramUsername = toInstagramUsername(biodataFromDb?.instagram ?? participant?.instagram);
+  const pendingExportFields = useMemo(() => {
+    if (loadingDbData && !biodataFromDb) return [];
+    if (!biodataFromDb) return ["Biodata backend belum termuat"];
 
-  const previewPhoto = participant?.photo || "/logo1.png";
+    const pending: string[] = [];
+    if (educationDisplay === "-") pending.push("Data Pendidikan");
+    if (!(biodataFromDb.national_id ?? "").trim()) pending.push("NIK");
+    if (!(biodataFromDb.birth_place ?? "").trim()) pending.push("Tempat Lahir");
+    if (!(biodataFromDb.birth_date ?? "").trim()) pending.push("Tanggal Lahir");
+    if (!biodataFromDb.height_cm) pending.push("Tinggi Badan");
+    if (!(biodataFromDb.instagram ?? "").trim()) pending.push("Instagram");
+    if (!(biodataFromDb.photo ?? "").trim()) pending.push("Foto Profil");
+    return pending;
+  }, [biodataFromDb, educationDisplay, loadingDbData]);
+  const isExportDataReady = pendingExportFields.length === 0;
+  const isActionLocked = loadingDbData || Boolean(dbError) || !isExportDataReady;
+  const renderFingerprint = useMemo(
+    () =>
+      JSON.stringify({
+        id: biodataFromDb?.id ?? participant?.id,
+        number: biodataFromDb?.participant_number ?? participant?.number,
+        name: biodataFromDb?.name ?? participant?.name,
+        nationalId: biodataFromDb?.national_id ?? participant?.nationalId,
+        birthPlace: biodataFromDb?.birth_place ?? participant?.birthPlace,
+        birthDate: biodataFromDb?.birth_date ?? participant?.birthDate,
+        height: biodataFromDb?.height_cm ?? participant?.heightCm,
+        education: educationDisplay,
+        instagram: instagramUsername,
+        email: biodataFromDb?.email ?? participant?.email ?? user?.email,
+        status: effectiveStageStatus,
+        photo: biodataFromDb?.photo ?? participant?.photo,
+        docs: documentItems.map((item) => `${item.label}:${item.done ? "1" : "0"}`).join("|"),
+      }),
+    [
+      biodataFromDb?.id,
+      participant?.id,
+      biodataFromDb?.participant_number,
+      participant?.number,
+      biodataFromDb?.name,
+      participant?.name,
+      biodataFromDb?.national_id,
+      participant?.nationalId,
+      biodataFromDb?.birth_place,
+      participant?.birthPlace,
+      biodataFromDb?.birth_date,
+      participant?.birthDate,
+      biodataFromDb?.height_cm,
+      participant?.heightCm,
+      educationDisplay,
+      instagramUsername,
+      biodataFromDb?.email,
+      participant?.email,
+      user?.email,
+      effectiveStageStatus,
+      biodataFromDb?.photo,
+      participant?.photo,
+      documentItems,
+    ]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const buildPdfBlob = async () => {
+    const resolvedPhoto = resolveAssetUrl(biodataFromDb?.photo ?? participant?.photo);
+    const participantNumber = biodataFromDb?.participant_number ?? participant?.number ?? "-";
+    const participantName = biodataFromDb?.name ?? participant?.name ?? user?.name ?? "Peserta";
+    const participantGender = biodataFromDb?.gender ?? participant?.gender ?? "Encik";
+    const participantNationalId = biodataFromDb?.national_id ?? participant?.nationalId ?? "";
+    const participantBirthPlace = biodataFromDb?.birth_place ?? participant?.birthPlace ?? "";
+    const participantBirthDate = biodataFromDb?.birth_date ?? participant?.birthDate ?? "";
+    const participantHeight = biodataFromDb?.height_cm ?? participant?.heightCm ?? 0;
+    const participantInstagram = toInstagramUsername(
+      biodataFromDb?.instagram ?? participant?.instagram
+    );
+    const participantPhone = biodataFromDb?.phone ?? participant?.phone ?? "";
+    const participantEmail = biodataFromDb?.email ?? participant?.email ?? user?.email ?? "-";
+    const participantStatus = effectiveStageStatus;
+
+    const [logoSrcForPdf, profileSrcForPdf] = await Promise.all([
+      toDataUrlForPdf(`/api/pdf-image?src=${encodeURIComponent(getFrontendLogoUrl())}`),
+      toDataUrlForPdf(`/api/pdf-image?src=${encodeURIComponent(resolvedPhoto)}`),
+    ]);
+
+    const blob = await pdf(
+      <ParticipantPdfDocument
+        participant={{
+          ...(participant ?? {
+            id: `P_API_${biodataFromDb?.id ?? "0"}`,
+            registeredAt: new Date().toISOString().slice(0, 10),
+            scores: [],
+          }),
+          number: participantNumber,
+          name: participantName,
+          gender: participantGender,
+          nationalId: participantNationalId,
+          birthPlace: participantBirthPlace,
+          birthDate: participantBirthDate,
+          heightCm: participantHeight,
+          education: educationDisplay,
+          instagram: participantInstagram,
+          phone: participantPhone,
+          email: participantEmail,
+          status: participantStatus,
+          photo: profileSrcForPdf || resolvedPhoto,
+        }}
+        printedDate={printedDate}
+        educationDisplay={educationDisplay}
+        documentItems={documentItems}
+        doneCount={doneCount}
+        statusLabel={statusLabel}
+        logoSrc={logoSrcForPdf || getFrontendLogoUrl()}
+      />
+    ).toBlob();
+
+    return {
+      blob,
+      participantNumber,
+    };
+  };
+
+  const handlePreviewPdf = async () => {
+    if ((!participant && !biodataFromDb) || !canDownloadPdf || isActionLocked) return;
+    if (previewUrl && previewFingerprint === renderFingerprint) {
+      return;
+    }
+    setPreviewing(true);
+    setPreviewError("");
+    try {
+      const { blob, participantNumber } = await buildPdfBlob();
+      const nextUrl = URL.createObjectURL(blob);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(nextUrl);
+      setPreviewFingerprint(renderFingerprint);
+      setPreviewFileName(`biodata-${participantNumber || "peserta"}.pdf`);
+    } catch (error) {
+      setPreviewError(getReadableApiError(error));
+    } finally {
+      setPreviewing(false);
+    }
+  };
 
   const handleGeneratePdf = async () => {
-    if (!participant || !canDownloadPdf) return;
+    if ((!participant && !biodataFromDb) || !canDownloadPdf || isActionLocked) return;
+
+    if (previewUrl && previewFingerprint === renderFingerprint) {
+      const link = document.createElement("a");
+      link.href = previewUrl;
+      link.download = previewFileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
 
     setPrinting(true);
 
     try {
-      const resolvedPhoto = participant.photo
-        ? participant.photo.startsWith("http")
-          ? participant.photo
-          : `${assetBaseUrl}${participant.photo}`
-        : `${assetBaseUrl}/logo1.png`;
-
-      const blob = await pdf(
-        <ParticipantPdfDocument
-          participant={{
-            ...participant,
-            email: participant.email || user?.email || "-",
-            photo: resolvedPhoto,
-          }}
-          printedDate={printedDate}
-          educationDisplay={educationDisplay}
-          documentItems={documentItems}
-          doneCount={doneCount}
-          statusLabel={statusLabel}
-          logoSrc={`${assetBaseUrl}/logo1.png`}
-        />
-      ).toBlob();
-
+      const { blob, participantNumber } = await buildPdfBlob();
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `biodata-${participant.number || "peserta"}.pdf`;
+      link.download = `biodata-${participantNumber || "peserta"}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      setPreviewFingerprint(renderFingerprint);
+      setPreviewFileName(`biodata-${participantNumber || "peserta"}.pdf`);
       URL.revokeObjectURL(blobUrl);
     } finally {
       setPrinting(false);
@@ -138,14 +454,24 @@ export default function ExportPDFPage() {
           >
             Tinjau biodata peserta terlebih dahulu sebelum mengunduh PDF.
           </p>
+          {loadingDbData ? (
+            <p className="text-xs mt-1" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
+              Menyinkronkan data export dari database...
+            </p>
+          ) : null}
+          {dbError ? (
+            <p className="text-xs mt-1" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
+              Gagal sinkron data DB: {dbError}
+            </p>
+          ) : null}
         </div>
         <GoldButton
           variant="primary"
-          onClick={handleGeneratePdf}
-          disabled={printing || !participant || !canDownloadPdf}
+          onClick={handlePreviewPdf}
+          disabled={previewing || !participant || !canDownloadPdf || isActionLocked}
         >
           <Download size={16} />
-          {printing ? "Memproses..." : "Download PDF"}
+          {previewing ? "Menyiapkan Preview..." : "Lihat Preview PDF"}
         </GoldButton>
       </div>
 
@@ -179,8 +505,19 @@ export default function ExportPDFPage() {
         </GoldCard>
       ) : null}
 
+      {!isExportDataReady ? (
+        <GoldCard className="mb-6">
+          <p className="text-sm" style={{ color: "#f59e0b", fontFamily: "var(--font-poppins)" }}>
+            Perhatian: data export belum lengkap. Tombol preview/download dikunci sampai data sinkron.
+          </p>
+          <p className="text-xs mt-2" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+            Field pending: {pendingExportFields.join(", ")}.
+          </p>
+        </GoldCard>
+      ) : null}
+
       {participant ? (
-        <GoldCard glow>
+        <GoldCard glow className="mb-6">
           <div
             className="rounded-2xl overflow-hidden"
             style={{
@@ -219,7 +556,7 @@ export default function ExportPDFPage() {
                     Nomor Peserta
                   </p>
                   <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "1.1rem" }}>
-                    {participant.number || "-"}
+                    {biodataFromDb?.participant_number ?? participant.number ?? "-"}
                   </p>
                 </div>
               </div>
@@ -244,23 +581,25 @@ export default function ExportPDFPage() {
                     className="mb-3"
                     style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)", fontSize: "1.1rem", fontWeight: 700 }}
                   >
-                    {participant.name || user?.name || "Nama Peserta"}
+                    {biodataFromDb?.name ?? participant.name ?? user?.name ?? "Nama Peserta"}
                   </h2>
 
                   <div className="space-y-2">
                     {[
                       ["Kategori", participant.gender === "Encik" ? "ENCIK (Putra)" : "PUAN (Putri)"],
-                      ["NIK", participant.nationalId || "-"],
+                      ["NIK", biodataFromDb?.national_id ?? participant.nationalId ?? "-"],
                       [
                         "TTL",
-                        participant.birthDate
-                          ? `${participant.birthPlace || "-"}, ${participant.birthDate}`
+                        (biodataFromDb?.birth_date ?? participant.birthDate)
+                          ? `${(biodataFromDb?.birth_place ?? participant.birthPlace) || "-"}, ${
+                              biodataFromDb?.birth_date ?? participant.birthDate
+                            }`
                           : "-",
                       ],
-                      ["Tinggi Badan", participant.heightCm ? `${participant.heightCm} cm` : "-"],
+                      ["Tinggi Badan", (biodataFromDb?.height_cm ?? participant.heightCm) ? `${biodataFromDb?.height_cm ?? participant.heightCm} cm` : "-"],
                       ["Pendidikan", educationDisplay],
-                      ["Instagram", participant.instagram || "-"],
-                      ["Email", participant.email || user?.email || "-"],
+                      ["Instagram", instagramUsername],
+                      ["Email", biodataFromDb?.email ?? participant.email ?? user?.email ?? "-"],
                     ].map(([label, value]) => (
                       <div key={String(label)} className="grid grid-cols-[96px_12px_1fr] text-xs">
                         <span style={{ color: "#D9D9D9", fontFamily: "var(--font-poppins)", fontWeight: 600 }}>
@@ -311,7 +650,7 @@ export default function ExportPDFPage() {
                     Status Seleksi Saat Ini
                   </p>
                   <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}>
-                    {statusLabel[participant.status] || "Menunggu Verifikasi"}
+                    {statusLabel[effectiveStageStatus] || "Menunggu Verifikasi"}
                   </p>
                 </div>
                 <div className="text-right">
@@ -324,6 +663,45 @@ export default function ExportPDFPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </GoldCard>
+      ) : null}
+
+      {previewError ? (
+        <GoldCard className="mb-6">
+          <p className="text-xs" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
+            Gagal menyiapkan preview PDF: {previewError}
+          </p>
+        </GoldCard>
+      ) : null}
+
+      {previewUrl ? (
+        <GoldCard glow>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}>
+              Preview PDF Biodata
+            </p>
+            <div className="flex gap-2">
+              <GoldButton variant="outline" onClick={handlePreviewPdf} disabled={previewing}>
+                {previewing ? "Merefresh..." : "Refresh Preview"}
+              </GoldButton>
+              <GoldButton
+                variant="primary"
+                onClick={handleGeneratePdf}
+                disabled={printing || isActionLocked}
+              >
+                {printing ? "Mengunduh..." : "Download PDF"}
+              </GoldButton>
+            </div>
+          </div>
+
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(200,162,77,0.25)" }}>
+            <iframe
+              src={previewUrl}
+              title="Preview PDF Biodata Peserta"
+              className="w-full"
+              style={{ minHeight: 760, background: "#111" }}
+            />
           </div>
         </GoldCard>
       ) : null}
