@@ -58,25 +58,65 @@ export default function LoginPage() {
     juri: "judge",
   } as const;
 
+  const demoAccounts = [
+    {
+      role: "peserta" as LocalRole,
+      email: "ahmadrizky@email.com",
+      password: "demo123",
+      label: "Demo Peserta",
+    },
+    {
+      role: "juri" as LocalRole,
+      email: "juri1@dutawisatabatam.id",
+      password: "demo123",
+      label: "Demo Juri",
+    },
+    {
+      role: "admin" as LocalRole,
+      email: "admin@dutawisatabatam.id",
+      password: "admin123",
+      label: "Demo Admin",
+    },
+  ];
+
+  const redirectByRole = (targetRole: LocalRole) => {
+    if (targetRole === "peserta") {
+      router.push("/pages/participant/dashboard");
+      return;
+    }
+    if (targetRole === "admin") {
+      router.push("/pages/admin/dashboard");
+      return;
+    }
+    router.push("/pages/judges/dashboard");
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      if (role === "peserta") {
-        const isDemoParticipant =
-          email.trim().toLowerCase() === "ahmadrizky@email.com" && password === "demo123";
+      const normalizedEmail = email.trim().toLowerCase();
+      const selectedDemo = demoAccounts.find(
+        (acc) =>
+          acc.role === role &&
+          acc.email.toLowerCase() === normalizedEmail &&
+          acc.password === password
+      );
 
-        if (isDemoParticipant) {
-          await new Promise((r) => setTimeout(r, 400));
-          const ok = login(email, password, "participant");
-          if (ok) {
-            router.push("/pages/participant/dashboard");
-            return;
-          }
+      if (selectedDemo) {
+        await new Promise((r) => setTimeout(r, 250));
+        const ok = login(selectedDemo.email, selectedDemo.password, roleMap[selectedDemo.role]);
+        if (ok) {
+          redirectByRole(selectedDemo.role);
+          return;
         }
+        setError("Akun demo gagal diproses.");
+        return;
+      }
 
+      if (role === "peserta") {
         const response = await loginParticipant({ email, password });
 
         saveParticipantAuthSession({
@@ -89,7 +129,7 @@ export default function LoginPage() {
 
         setPasswordForEmail(email, password);
         login(email, password, "participant");
-        router.push("/pages/participant/dashboard");
+        redirectByRole("peserta");
         return;
       }
 
@@ -113,7 +153,7 @@ export default function LoginPage() {
               email: response.user.email,
               role: backendRole === "super_admin" ? "super_admin" : "admin",
             });
-            router.push("/pages/admin/dashboard");
+            redirectByRole("admin");
             return;
           }
           setError("Akun ini bukan role admin/super admin.");
@@ -144,7 +184,7 @@ export default function LoginPage() {
               email: response.user.email,
               role: "judge",
             });
-            router.push("/pages/judges/dashboard");
+            redirectByRole("juri");
             return;
           }
 
@@ -159,8 +199,7 @@ export default function LoginPage() {
       await new Promise((r) => setTimeout(r, 400));
       const ok = login(email, password, roleMap[role]);
       if (ok) {
-        if (role === "admin") router.push("/pages/admin/dashboard");
-        else router.push("/pages/judges/dashboard");
+        redirectByRole(role);
         return;
       }
 
@@ -171,27 +210,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
-  const demoAccounts = [
-    {
-      role: "peserta" as LocalRole,
-      email: "ahmadrizky@email.com",
-      password: "demo123",
-      label: "Demo Peserta",
-    },
-    {
-      role: "juri" as LocalRole,
-      email: "juri1@dutawisatabatam.id",
-      password: "demo123",
-      label: "Demo Juri",
-    },
-    {
-      role: "admin" as LocalRole,
-      email: "admin@dutawisatabatam.id",
-      password: "admin123",
-      label: "Demo Admin",
-    },
-  ];
 
   return (
     <div
