@@ -63,31 +63,49 @@ class ParticipantDocumentController extends Controller
 
         return [
             'id' => $user->id,
-            'participant_number' => $profile->participant_number,
+            'participant_number' => $profile->participant_number ?: $profile->audition_number,
+            'audition_number' => $profile->audition_number ?: $profile->participant_number,
+            'participant_code' => $profile->participant_code,
             'submitted_to_admin' => (bool) $profile->submitted_to_admin,
             'submitted_to_admin_at' => $profile->submitted_to_admin_at?->toISOString(),
+            'eliminated_in_audition' => (bool) $profile->eliminated_in_audition,
+            'eliminated_at' => $profile->eliminated_at?->toISOString(),
             'documents' => $documents,
         ];
     }
 
-    private function nextParticipantNumber(): string
+    private function nextAuditionNumber(): string
     {
         $numbers = ParticipantProfile::query()
-            ->whereNotNull('participant_number')
+            ->where(function ($query): void {
+                $query->whereNotNull('audition_number')
+                    ->orWhereNotNull('participant_number');
+            })
             ->lockForUpdate()
-            ->pluck('participant_number');
+            ->get(['audition_number', 'participant_number']);
 
         $max = 0;
         foreach ($numbers as $number) {
-            if (preg_match('/^P-(\d+)$/', (string) $number, $matches)) {
-                $current = (int) $matches[1];
-                if ($current > $max) {
-                    $max = $current;
+            foreach ([(string) ($number->audition_number ?? ''), (string) ($number->participant_number ?? '')] as $raw) {
+                if (preg_match('/^(?:AUD|P)-(\d+)$/', $raw, $matches)) {
+                    $current = (int) $matches[1];
+                    if ($current > $max) {
+                        $max = $current;
+                    }
                 }
             }
         }
 
-        return 'P-'.str_pad((string) ($max + 1), 3, '0', STR_PAD_LEFT);
+        return 'AUD-'.str_pad((string) ($max + 1), 3, '0', STR_PAD_LEFT);
+    }
+
+    private function assertNotEliminated(ParticipantProfile $profile): void
+    {
+        if ($profile->eliminated_in_audition) {
+            throw ValidationException::withMessages([
+                'selection_status' => ['Anda sudah tereliminasi pada tahap audisi dan tidak dapat melanjutkan proses berikutnya.'],
+            ]);
+        }
     }
 
     public function index(Request $request): JsonResponse
@@ -169,6 +187,7 @@ class ParticipantDocumentController extends Controller
         );
 
         $profile = $this->ensureProfile($user);
+        $this->assertNotEliminated($profile);
         $profile->submitted_to_admin = false;
         $profile->submitted_to_admin_at = null;
         $profile->save();
@@ -185,6 +204,9 @@ class ParticipantDocumentController extends Controller
         if (! $user) {
             return response()->json(['message' => 'Akses hanya untuk peserta.'], 403);
         }
+
+        $profile = $this->ensureProfile($user);
+        $this->assertNotEliminated($profile);
 
         $documents = $user->participantDocuments()
             ->whereIn('document_key', array_keys(self::DOCUMENT_DEFINITIONS))
@@ -226,9 +248,17 @@ class ParticipantDocumentController extends Controller
                 $profile = new ParticipantProfile(['user_id' => $user->id]);
             }
 
-            if (! $profile->participant_number) {
-                $profile->participant_number = $this->nextParticipantNumber();
+            if (! $profile->audition_number && ! $profile->participant_number) {
+                $auditionNumber = $this->nextAuditionNumber();
+                $profile->audition_number = $auditionNumber;
+                // Pertahankan field lama agar kompatibel dengan UI lama.
+                $profile->participant_number = $auditionNumber;
+            } elseif (! $profile->audition_number && $profile->participant_number) {
+                $profile->audition_number = $profile->participant_number;
+            } elseif ($profile->audition_number && ! $profile->participant_number) {
+                $profile->participant_number = $profile->audition_number;
             }
+
             $profile->submitted_to_admin = true;
             $profile->submitted_to_admin_at = now();
             $profile->save();

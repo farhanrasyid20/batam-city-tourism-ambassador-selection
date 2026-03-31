@@ -11,6 +11,8 @@ type DocumentItem = {
 
 type ParticipantPdfData = {
   number?: string;
+  auditionNumber?: string;
+  participantCode?: string;
   name?: string;
   gender?: string;
   nationalId?: string;
@@ -19,6 +21,7 @@ type ParticipantPdfData = {
   heightCm?: number;
   education?: string;
   instagram?: string;
+  phone?: string;
   email?: string;
   photo?: string;
   status: StageStatus;
@@ -215,8 +218,12 @@ export default function ParticipantPdfDocument({
               <Text style={styles.dept}>Dinas Kebudayaan dan Pariwisata Kota Batam</Text>
             </View>
             <View style={styles.participantNumberWrap}>
-              <Text style={styles.participantNumberLabel}>Nomor Peserta</Text>
-              <Text style={styles.participantNumber}>{participant.number || "-"}</Text>
+              <Text style={styles.participantNumberLabel}>No. Audisi</Text>
+              <Text style={styles.participantNumber}>{participant.auditionNumber || participant.number || "-"}</Text>
+              <Text style={[styles.participantNumberLabel, { marginTop: 4 }]}>Participant Code</Text>
+              <Text style={[styles.participantNumber, { fontSize: 12 }]}>
+                {participant.participantCode || "-"}
+              </Text>
             </View>
           </View>
 
@@ -251,7 +258,7 @@ export default function ParticipantPdfDocument({
             <View style={styles.badgeList}>
               {documentItems.map((item) => (
                 <Text key={item.label} style={item.done ? styles.badgeDone : styles.badgeFail}>
-                  {item.done ? "OK" : "X"} {item.label}
+                  {item.done ? "✓" : "✕"} {item.label}
                 </Text>
               ))}
             </View>

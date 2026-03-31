@@ -86,6 +86,7 @@ function mapSelectionStatus(
   const allowed: StageStatus[] = [
     "Pending",
     "Verified",
+    "TechnicalMeeting",
     "Rejected",
     "Audition",
     "Top20",
@@ -192,7 +193,9 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
 
   return {
     id: base?.id ?? `P_API_${data.id}`,
-    number: data.participant_number ?? base?.number ?? "-",
+    number: data.participant_code ?? data.audition_number ?? data.participant_number ?? base?.number ?? "-",
+    auditionNumber: data.audition_number ?? data.participant_number ?? base?.auditionNumber ?? base?.number ?? "-",
+    participantCode: data.participant_code ?? base?.participantCode,
     name: data.name ?? base?.name ?? "Peserta",
     gender: data.gender ?? base?.gender ?? "Encik",
     nationalId: data.national_id ?? base?.nationalId ?? "",
@@ -212,6 +215,7 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
     reviewItems: base?.reviewItems ?? [],
     documents: normalizedDocuments,
     submittedToAdmin: data.submitted_to_admin ?? base?.submittedToAdmin ?? false,
+    eliminatedInAudition: data.eliminated_in_audition ?? base?.eliminatedInAudition ?? false,
     rejectionReason: base?.rejectionReason,
     verificationIssues: base?.verificationIssues ?? [],
     agreementNoAgency: data.agreement_no_agency ?? base?.agreementNoAgency,
@@ -898,7 +902,6 @@ export default function BiodataPage() {
             }
             event.target.style.borderColor = "rgba(200,162,77,0.25)";
           }}
-          onFocus={() => setIsBirthDatePickerOpen(true)}
           placeholder="dd/mm/yyyy"
           aria-label="Tanggal lahir"
           className="block w-full rounded-xl border px-4 py-3 pl-10 pr-11 text-sm outline-none transition-all"
@@ -908,7 +911,10 @@ export default function BiodataPage() {
             color: "#F5E6C8",
             fontFamily: "var(--font-poppins)",
           }}
-          onFocus={(e) => (e.target.style.borderColor = "rgba(200,162,77,0.6)")}
+          onFocus={(e) => {
+            setIsBirthDatePickerOpen(true);
+            e.target.style.borderColor = "rgba(200,162,77,0.6)";
+          }}
         />
         <button
           type="button"

@@ -35,11 +35,11 @@ function toPercent(filled: number, total: number) {
 }
 
 function getStageIndex(status: string): number {
-  if (status === "PreCamp") return 2;
-  const order = ["Verified", "Audition", "Camp", "GrandFinal", "Winner"];
-  if (status === "Camp") return 3;
-  if (status === "GrandFinal") return 4;
-  if (status === "Winner") return 5;
+  if (status === "PreCamp") return 3;
+  const order = ["Verified", "TechnicalMeeting", "Audition", "Camp", "GrandFinal", "Winner"];
+  if (status === "Camp") return 4;
+  if (status === "GrandFinal") return 5;
+  if (status === "Winner") return 6;
   return order.findIndex((s) => s === status);
 }
 
@@ -64,6 +64,7 @@ function mapSelectionStatusToStage(
   const allowed: StageStatus[] = [
     "Pending",
     "Verified",
+    "TechnicalMeeting",
     "Rejected",
     "Audition",
     "Top20",
@@ -125,7 +126,9 @@ function mergeParticipantWithBackend(
 
   return {
     id: base?.id ?? defaultId,
-    number: biodata?.participant_number ?? base?.number ?? "-",
+    number: biodata?.participant_code ?? biodata?.audition_number ?? biodata?.participant_number ?? base?.number ?? "-",
+    auditionNumber: biodata?.audition_number ?? biodata?.participant_number ?? base?.auditionNumber ?? base?.number ?? "-",
+    participantCode: biodata?.participant_code ?? base?.participantCode,
     name: biodata?.name ?? backendUser.name ?? base?.name ?? "Peserta",
     gender: biodata?.gender ?? base?.gender ?? "Encik",
     nationalId: biodata?.national_id ?? base?.nationalId ?? "",
@@ -149,6 +152,7 @@ function mergeParticipantWithBackend(
     reviewItems: base?.reviewItems ?? [],
     documents: normalizedDocuments,
     submittedToAdmin: biodata?.submitted_to_admin ?? base?.submittedToAdmin ?? false,
+    eliminatedInAudition: biodata?.eliminated_in_audition ?? base?.eliminatedInAudition ?? false,
     rejectionReason: base?.rejectionReason,
     verificationIssues: base?.verificationIssues ?? [],
     agreementNoAgency: biodata?.agreement_no_agency ?? base?.agreementNoAgency,
@@ -191,6 +195,7 @@ export default function ParticipantDashboardPage() {
       Pending: { color: "#BDBDBD", bg: "rgba(189,189,189,0.1)", icon: <Clock size={14} /> },
       Verified: { color: "#22c55e", bg: "rgba(34,197,94,0.1)", icon: <CheckCircle size={14} /> },
       Rejected: { color: "#ef4444", bg: "rgba(239,68,68,0.1)", icon: <AlertCircle size={14} /> },
+      TechnicalMeeting: { color: "#0ea5e9", bg: "rgba(14,165,233,0.1)", icon: <Clock size={14} /> },
       Audition: { color: "#3b82f6", bg: "rgba(59,130,246,0.1)", icon: <Star size={14} /> },
       Top20: { color: "#3b82f6", bg: "rgba(59,130,246,0.1)", icon: <Star size={14} /> },
       PreCamp: { color: "#3b82f6", bg: "rgba(59,130,246,0.1)", icon: <Star size={14} /> },
@@ -260,7 +265,8 @@ export default function ParticipantDashboardPage() {
     Boolean(participant) && profileProgress === 100 && documentProgress === 100 && !alreadySubmitted;
   const canResubmitToAdmin =
     Boolean(participant) && profileProgress === 100 && documentProgress === 100 && allRevisionItemsReady;
-  const canSubmitToAdmin = hasVerificationIssues ? canResubmitToAdmin : canSubmitFresh;
+  const canSubmitToAdmin =
+    (hasVerificationIssues ? canResubmitToAdmin : canSubmitFresh) && !participant?.eliminatedInAudition;
 
   const statusValue = participant?.status ?? "Pending";
   const statusInfo = statusConfig[statusValue];
@@ -269,11 +275,12 @@ export default function ParticipantDashboardPage() {
   // Tahapan utama proses seleksi.
   const stages = [
     { label: "Administrasi", index: 0 },
-    { label: "Audisi", index: 1 },
-    { label: "Pra-karantina", index: 2 },
-    { label: "Karantina", index: 3 },
-    { label: "Grand Final", index: 4 },
-    { label: "Juara", index: 5 },
+    { label: "Technical Meeting", index: 1 },
+    { label: "Audisi", index: 2 },
+    { label: "Pra-karantina", index: 3 },
+    { label: "Karantina", index: 4 },
+    { label: "Grand Final", index: 5 },
+    { label: "Juara", index: 6 },
   ];
 
   const participantAlert = participant
@@ -464,6 +471,12 @@ export default function ParticipantDashboardPage() {
 
   // Kirim data peserta ke admin jika semua syarat lengkap.
   function handleSubmitToAdmin() {
+    if (participant?.eliminatedInAudition) {
+      setSubmitInfoType("error");
+      setSubmitInfo("Anda tereliminasi di tahap audisi dan tidak bisa melanjutkan ke tahap berikutnya.");
+      return;
+    }
+
     if (hasVerificationIssues && !allRevisionItemsReady) {
       setSubmitInfoType("error");
       setSubmitInfo("Upload ulang semua berkas revisi yang diminta sebelum mengirim kembali ke admin.");
@@ -546,13 +559,24 @@ export default function ParticipantDashboardPage() {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                No. Peserta
+                No. Audisi
               </p>
               <p
                 className="text-sm font-bold"
                 style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
               >
-                {participant.number}
+                {participant.auditionNumber ?? participant.number}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                Participant Code
+              </p>
+              <p
+                className="text-sm font-bold"
+                style={{ color: "#22c55e", fontFamily: "var(--font-cinzel)" }}
+              >
+                {participant.participantCode ?? "-"}
               </p>
             </div>
             <div
@@ -632,7 +656,10 @@ export default function ParticipantDashboardPage() {
           }}
         >
           <p className="text-sm" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
-            Alasan penolakan: {participant.rejectionReason ?? "Berkas atau data belum memenuhi ketentuan panitia. Silakan perbaiki dan kirim ulang sesuai arahan admin."}
+            Alasan penolakan: {participant.rejectionReason ??
+              (participant.eliminatedInAudition
+                ? "Anda tereliminasi pada tahap audisi dan tidak dapat melanjutkan ke tahapan berikutnya."
+                : "Berkas atau data belum memenuhi ketentuan panitia. Silakan perbaiki dan kirim ulang sesuai arahan admin.")}
           </p>
         </div>
       ) : null}
@@ -823,7 +850,13 @@ export default function ParticipantDashboardPage() {
             {stages.map((stage, index) => {
               const state =
                 participant?.status === "Rejected"
-                  ? stage.index === 0
+                  ? participant?.eliminatedInAudition
+                    ? stage.index === 0
+                      ? "done"
+                      : stage.index === 1
+                      ? "failed"
+                      : "pending"
+                    : stage.index === 0
                     ? "failed"
                     : "pending"
                   : stage.index < stageIndex

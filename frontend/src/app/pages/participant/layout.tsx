@@ -33,6 +33,7 @@ function mapSelectionStatusToStage(
   const allowed: StageStatus[] = [
     "Pending",
     "Verified",
+    "TechnicalMeeting",
     "Rejected",
     "Audition",
     "Top20",
@@ -72,9 +73,13 @@ export default function ParticipantPagesLayout({
 
         const data = response.data;
         const email = (data.email ?? "").trim().toLowerCase();
+        const auditionNumber = data.audition_number ?? data.participant_number ?? "-";
+        const participantCode = data.participant_code ?? undefined;
         const nextParticipant: Participant = {
           id: `P_API_${data.id}`,
-          number: data.participant_number ?? "-",
+          number: participantCode ?? auditionNumber,
+          auditionNumber,
+          participantCode,
           name: data.name ?? "Peserta",
           gender: data.gender ?? "Encik",
           nationalId: data.national_id ?? "",
@@ -102,6 +107,7 @@ export default function ParticipantPagesLayout({
               note: doc.note ?? undefined,
             })) ?? [],
           submittedToAdmin: data.submitted_to_admin ?? false,
+          eliminatedInAudition: data.eliminated_in_audition ?? false,
           agreementNoAgency: data.agreement_no_agency ?? undefined,
           agencyName: data.agency_name ?? undefined,
           agreementParentPermission: data.agreement_parent_permission ?? undefined,

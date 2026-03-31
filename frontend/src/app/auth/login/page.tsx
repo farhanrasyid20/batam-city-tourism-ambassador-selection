@@ -51,6 +51,7 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const canQuickReset = role === "peserta" && email.trim().length > 0;
 
   const roleMap = {
     peserta: "participant",
@@ -397,7 +398,11 @@ export default function LoginPage() {
               <div className="mt-2 text-right">
                 <button
                   type="button"
-                  onClick={() => router.push("/auth/forgot-password")}
+                  onClick={() =>
+                    router.push(
+                      `/auth/forgot-password${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ""}`
+                    )
+                  }
                   className="text-xs"
                   style={{
                     color: "#C8A24D",
@@ -414,9 +419,30 @@ export default function LoginPage() {
             </div>
 
             {error ? (
-              <p className="text-xs text-red-400" style={{ fontFamily: "var(--font-poppins)" }}>
-                {error}
-              </p>
+              <div>
+                <p className="text-xs text-red-400" style={{ fontFamily: "var(--font-poppins)" }}>
+                  {error}
+                </p>
+                {canQuickReset ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(`/auth/forgot-password?email=${encodeURIComponent(email.trim())}`)
+                    }
+                    className="text-xs mt-2"
+                    style={{
+                      color: "#F5D06F",
+                      fontFamily: "var(--font-poppins)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Password salah? Ganti password sekarang
+                  </button>
+                ) : null}
+              </div>
             ) : null}
 
             <GoldButton type="submit" variant="primary" fullWidth disabled={loading}>

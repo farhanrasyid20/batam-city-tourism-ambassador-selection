@@ -108,11 +108,16 @@ export default function ParticipantDocumentsPage() {
 
     setCurrentParticipant((prev) => {
       if (!prev) return prev;
+      const auditionNumber = data.audition_number ?? data.participant_number ?? prev.auditionNumber ?? prev.number;
+      const participantCode = data.participant_code ?? prev.participantCode;
       return {
         ...prev,
-        number: data.participant_number ?? prev.number ?? "-",
+        number: participantCode ?? auditionNumber ?? prev.number ?? "-",
+        auditionNumber: auditionNumber ?? prev.auditionNumber ?? prev.number ?? "-",
+        participantCode,
         documents: normalizedDocs,
         submittedToAdmin: data.submitted_to_admin,
+        eliminatedInAudition: data.eliminated_in_audition ?? prev.eliminatedInAudition ?? false,
       };
     });
     setParticipantList((prev) =>
@@ -120,9 +125,12 @@ export default function ParticipantDocumentsPage() {
         item.id === participant?.id
           ? ({
               ...item,
-              number: data.participant_number ?? item.number ?? "-",
+              number: data.participant_code ?? data.audition_number ?? data.participant_number ?? item.number ?? "-",
+              auditionNumber: data.audition_number ?? data.participant_number ?? item.auditionNumber ?? item.number ?? "-",
+              participantCode: data.participant_code ?? item.participantCode,
               documents: normalizedDocs,
               submittedToAdmin: data.submitted_to_admin,
+              eliminatedInAudition: data.eliminated_in_audition ?? item.eliminatedInAudition ?? false,
             } as Participant)
           : item
       )
@@ -256,7 +264,7 @@ export default function ParticipantDocumentsPage() {
       syncParticipantDocumentState(response.data);
       setNoticeType("success");
       setNoticeMessage(
-        `Berkas berhasil dikirim ke admin. Nomor peserta Anda: ${response.data.participant_number ?? "-"}`
+        `Berkas berhasil dikirim ke admin. No. Audisi Anda: ${response.data.audition_number ?? response.data.participant_number ?? "-"}`
       );
     } catch (error) {
       setNoticeType("error");
@@ -473,14 +481,19 @@ export default function ParticipantDocumentsPage() {
               Submit Berkas ke Admin
             </p>
             <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-              Nomor peserta akan dibuat otomatis setelah berkas wajib lengkap dan Anda submit.
+              No. Audisi dibuat otomatis setelah berkas wajib lengkap dan Anda submit.
             </p>
+            {participant?.eliminatedInAudition ? (
+              <p className="text-xs mt-1" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
+                Anda tereliminasi di tahap audisi, sehingga proses tidak dapat dilanjutkan.
+              </p>
+            ) : null}
           </div>
           <GoldButton
             variant="primary"
             size="sm"
             onClick={handleSubmitToAdmin}
-            disabled={submittingToAdmin || completedRequired !== totalRequired}
+            disabled={submittingToAdmin || completedRequired !== totalRequired || Boolean(participant?.eliminatedInAudition)}
           >
             {submittingToAdmin ? "Mengirim..." : "Kirim Berkas ke Admin"}
           </GoldButton>

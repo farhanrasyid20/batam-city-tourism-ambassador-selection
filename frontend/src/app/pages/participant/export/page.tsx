@@ -21,6 +21,7 @@ import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
 const statusLabel: Record<StageStatus, string> = {
   Pending: "Menunggu Verifikasi",
   Verified: "Lolos Administrasi",
+  TechnicalMeeting: "Technical Meeting",
   Rejected: "Ditolak",
   Audition: "Audition",
   Top20: "Top 20",
@@ -50,6 +51,7 @@ function mapSelectionStatusToStage(selectionStatus?: string | null, accountStatu
   const allowed: StageStatus[] = [
     "Pending",
     "Verified",
+    "TechnicalMeeting",
     "Rejected",
     "Audition",
     "Top20",
@@ -198,11 +200,13 @@ export default function ExportPDFPage() {
     return participant?.status ?? "Pending";
   }, [biodataFromDb, participant?.status]);
 
+  const canPreviewForTechnicalMeeting = effectiveStageStatus === "TechnicalMeeting";
   const canDownloadPdf = Boolean(
     (participant || biodataFromDb) &&
-      ["Verified", "Audition", "Top20", "PreCamp", "Camp", "GrandFinal", "Winner"].includes(
-        effectiveStageStatus
-      )
+      (canPreviewForTechnicalMeeting ||
+        ["Verified", "Audition", "Top20", "PreCamp", "Camp", "GrandFinal", "Winner"].includes(
+          effectiveStageStatus
+        ))
   );
 
   const documentItems = useMemo(() => {
@@ -278,6 +282,8 @@ export default function ExportPDFPage() {
       JSON.stringify({
         id: biodataFromDb?.id ?? participant?.id,
         number: biodataFromDb?.participant_number ?? participant?.number,
+        auditionNumber: biodataFromDb?.audition_number ?? biodataFromDb?.participant_number ?? participant?.auditionNumber ?? participant?.number,
+        participantCode: biodataFromDb?.participant_code ?? participant?.participantCode,
         name: biodataFromDb?.name ?? participant?.name,
         nationalId: biodataFromDb?.national_id ?? participant?.nationalId,
         birthPlace: biodataFromDb?.birth_place ?? participant?.birthPlace,
@@ -325,7 +331,8 @@ export default function ExportPDFPage() {
 
   const buildPdfBlob = async () => {
     const resolvedPhoto = resolveAssetUrl(biodataFromDb?.photo ?? participant?.photo);
-    const participantNumber = biodataFromDb?.participant_number ?? participant?.number ?? "-";
+    const auditionNumber = biodataFromDb?.audition_number ?? biodataFromDb?.participant_number ?? participant?.auditionNumber ?? participant?.number ?? "-";
+    const participantCode = biodataFromDb?.participant_code ?? participant?.participantCode ?? "-";
     const participantName = biodataFromDb?.name ?? participant?.name ?? user?.name ?? "Peserta";
     const participantGender = biodataFromDb?.gender ?? participant?.gender ?? "Encik";
     const participantNationalId = biodataFromDb?.national_id ?? participant?.nationalId ?? "";
@@ -352,7 +359,9 @@ export default function ExportPDFPage() {
             registeredAt: new Date().toISOString().slice(0, 10),
             scores: [],
           }),
-          number: participantNumber,
+          number: participantCode !== "-" ? participantCode : auditionNumber,
+          auditionNumber,
+          participantCode,
           name: participantName,
           gender: participantGender,
           nationalId: participantNationalId,
@@ -377,7 +386,7 @@ export default function ExportPDFPage() {
 
     return {
       blob,
-      participantNumber,
+      participantNumber: auditionNumber,
     };
   };
 
@@ -553,10 +562,16 @@ export default function ExportPDFPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-[11px]" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
-                    Nomor Peserta
+                    No. Audisi
                   </p>
-                  <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "1.1rem" }}>
-                    {biodataFromDb?.participant_number ?? participant.number ?? "-"}
+                  <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "1rem" }}>
+                    {biodataFromDb?.audition_number ?? biodataFromDb?.participant_number ?? participant.auditionNumber ?? participant.number ?? "-"}
+                  </p>
+                  <p className="text-[11px] mt-1" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
+                    Participant Code
+                  </p>
+                  <p style={{ color: "#22c55e", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "0.95rem" }}>
+                    {biodataFromDb?.participant_code ?? participant.participantCode ?? "-"}
                   </p>
                 </div>
               </div>
@@ -632,7 +647,7 @@ export default function ExportPDFPage() {
                         fontFamily: "var(--font-poppins)",
                       }}
                     >
-                      {item.done ? "OK" : "X"} {item.label}
+                      {item.done ? "✓" : "✕"} {item.label}
                     </span>
                   ))}
                 </div>

@@ -16,6 +16,7 @@ type TimelineState = "done" | "active" | "failed" | "pending";
 const stageOrder: StageStatus[] = [
   "Pending",
   "Verified",
+  "TechnicalMeeting",
   "Audition",
   "Top20",
   "PreCamp",
@@ -28,6 +29,7 @@ const stageOrder: StageStatus[] = [
 const statusDisplayMap: Record<StageStatus, string> = {
   Pending: "Menunggu Verifikasi",
   Verified: "Lolos Administrasi",
+  TechnicalMeeting: "Technical Meeting",
   Rejected: "Ditolak",
   Audition: "Audition",
   Top20: "Top 20",
@@ -43,6 +45,11 @@ const timelineStages = [
     id: "administrasi",
     label: "Seleksi Administrasi",
     description: "Verifikasi kelengkapan berkas dan persyaratan oleh admin panitia.",
+  },
+  {
+    id: "technical_meeting",
+    label: "Technical Meeting",
+    description: "Briefing teknis jadwal, aturan, dan ketentuan audisi oleh panitia.",
   },
   {
     id: "audition",
@@ -122,6 +129,7 @@ function mapSelectionStatusToStage(selectionStatus?: string | null, accountStatu
   const allowed: StageStatus[] = [
     "Pending",
     "Verified",
+    "TechnicalMeeting",
     "Rejected",
     "Audition",
     "Top20",
@@ -163,9 +171,13 @@ export default function ParticipantStatusPage() {
         const mappedStatus = mapSelectionStatusToStage(data.selection_status, data.account_status);
 
         setCurrentParticipant((prev) => {
+          const auditionNumber = data.audition_number ?? data.participant_number ?? prev?.auditionNumber ?? prev?.number ?? "-";
+          const participantCode = data.participant_code ?? prev?.participantCode;
           const fallback: Participant = {
             id: `P_API_${data.id}`,
-            number: data.participant_number ?? "-",
+            number: participantCode ?? auditionNumber,
+            auditionNumber,
+            participantCode,
             name: data.name ?? "Peserta",
             gender: data.gender ?? "Encik",
             nationalId: data.national_id ?? "",
@@ -182,6 +194,7 @@ export default function ParticipantStatusPage() {
             status: mappedStatus,
             registeredAt: new Date().toISOString().slice(0, 10),
             scores: [],
+            eliminatedInAudition: data.eliminated_in_audition ?? false,
           };
 
           return {
@@ -189,7 +202,10 @@ export default function ParticipantStatusPage() {
             ...fallback,
             ...(prev ?? {}),
             status: mappedStatus,
-            number: data.participant_number ?? prev?.number ?? "-",
+            number: participantCode ?? auditionNumber,
+            auditionNumber,
+            participantCode,
+            eliminatedInAudition: data.eliminated_in_audition ?? prev?.eliminatedInAudition ?? false,
             photo: data.photo ?? prev?.photo ?? "",
           };
         });
@@ -200,7 +216,10 @@ export default function ParticipantStatusPage() {
               ? {
                   ...item,
                   status: mappedStatus,
-                  number: data.participant_number ?? item.number,
+                  number: data.participant_code ?? data.audition_number ?? data.participant_number ?? item.number,
+                  auditionNumber: data.audition_number ?? data.participant_number ?? item.auditionNumber ?? item.number,
+                  participantCode: data.participant_code ?? item.participantCode,
+                  eliminatedInAudition: data.eliminated_in_audition ?? item.eliminatedInAudition ?? false,
                   photo: data.photo ?? item.photo,
                 }
               : item
@@ -225,6 +244,11 @@ export default function ParticipantStatusPage() {
   // Tentukan state tiap tahap berdasarkan status peserta saat ini.
   const getTimelineState = (stageId: (typeof timelineStages)[number]["id"]): TimelineState => {
     if (currentStatus === "Rejected") {
+      if (participant?.eliminatedInAudition) {
+        if (stageId === "administrasi") return "done";
+        if (stageId === "audition") return "failed";
+        return "pending";
+      }
       return stageId === "administrasi" ? "failed" : "pending";
     }
 
@@ -236,6 +260,12 @@ export default function ParticipantStatusPage() {
     if (stageId === "audition") {
       if (currentStatus === "Audition") return "active";
       if (["Top20", "PreCamp", "Camp", "GrandFinal", "Winner"].includes(currentStatus)) return "done";
+      return "pending";
+    }
+
+    if (stageId === "technical_meeting") {
+      if (currentStatus === "TechnicalMeeting") return "active";
+      if (["Audition", "Top20", "PreCamp", "Camp", "GrandFinal", "Winner"].includes(currentStatus)) return "done";
       return "pending";
     }
 
@@ -292,7 +322,7 @@ export default function ParticipantStatusPage() {
 
             <div className="flex-1">
               <p className="text-xs mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                {participant.number}
+                No. Audisi: {participant.auditionNumber ?? participant.number} | Participant Code: {participant.participantCode ?? "-"}
               </p>
               <h2 className="text-base font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
                 {participant.name}

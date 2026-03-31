@@ -16,8 +16,17 @@ class UserManagementController extends Controller
     private const PARTICIPANT_SELECTION_STATUSES = [
         'Pending',
         'Verified',
+        'TechnicalMeeting',
         'Rejected',
         'Audition',
+        'Top20',
+        'PreCamp',
+        'Camp',
+        'GrandFinal',
+        'Winner',
+    ];
+
+    private const PARTICIPANT_CODE_ELIGIBLE_STATUSES = [
         'Top20',
         'PreCamp',
         'Camp',
@@ -28,6 +37,36 @@ class UserManagementController extends Controller
     private function allowedRolesFor(?string $requesterRole): array
     {
         return $requesterRole === 'admin' ? ['judge'] : ['admin', 'judge'];
+    }
+
+    private function isParticipantCodeEligibleStatus(string $status): bool
+    {
+        return in_array($status, self::PARTICIPANT_CODE_ELIGIBLE_STATUSES, true);
+    }
+
+    private function nextParticipantCodeForGender(string $gender): string
+    {
+        $normalizedGender = strtolower($gender) === 'puan' ? 'Puan' : 'Encik';
+        $prefix = $normalizedGender === 'Puan' ? 'PUA' : 'ECK';
+
+        $codes = ParticipantProfile::query()
+            ->where('gender', $normalizedGender)
+            ->whereNotNull('participant_code')
+            ->lockForUpdate()
+            ->pluck('participant_code');
+
+        $maxOdd = 0;
+        foreach ($codes as $code) {
+            if (preg_match('/^'.$prefix.'-(\d+)$/', (string) $code, $matches)) {
+                $current = (int) $matches[1];
+                if ($current % 2 === 1 && $current > $maxOdd) {
+                    $maxOdd = $current;
+                }
+            }
+        }
+
+        $next = $maxOdd > 0 ? ($maxOdd + 2) : 1;
+        return $prefix.'-'.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
     public function index(Request $request): JsonResponse
@@ -283,6 +322,20 @@ class UserManagementController extends Controller
         $profile->selection_status = $payload['selection_status'];
         $profile->selection_status_note = $payload['selection_status_note'] ?? null;
         $profile->selection_status_updated_at = Carbon::now();
+
+        if ($payload['selection_status'] === 'Rejected') {
+            // Rejected pada fase ini dianggap eliminasi audisi (tidak lanjut tahap berikutnya).
+            $profile->eliminated_in_audition = true;
+            $profile->eliminated_at = Carbon::now();
+        } elseif ($this->isParticipantCodeEligibleStatus($payload['selection_status'])) {
+            $profile->eliminated_in_audition = false;
+            $profile->eliminated_at = null;
+
+            if (! $profile->participant_code && ! empty($profile->gender)) {
+                $profile->participant_code = $this->nextParticipantCodeForGender($profile->gender);
+            }
+        }
+
         $profile->save();
 
         return response()->json([
@@ -292,6 +345,9 @@ class UserManagementController extends Controller
                 'selection_status' => $profile->selection_status,
                 'selection_status_note' => $profile->selection_status_note,
                 'selection_status_updated_at' => $profile->selection_status_updated_at?->toISOString(),
+                'participant_code' => $profile->participant_code,
+                'eliminated_in_audition' => (bool) $profile->eliminated_in_audition,
+                'eliminated_at' => $profile->eliminated_at?->toISOString(),
             ],
         ]);
     }

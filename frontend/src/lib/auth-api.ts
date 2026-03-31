@@ -15,6 +15,8 @@ export type BackendAuthUser = {
 export type ParticipantBiodata = {
   id: number;
   participant_number?: string | null;
+  audition_number?: string | null;
+  participant_code?: string | null;
   name: string;
   email: string;
   phone?: string | null;
@@ -48,6 +50,7 @@ export type ParticipantBiodata = {
   selection_status?:
     | "Pending"
     | "Verified"
+    | "TechnicalMeeting"
     | "Rejected"
     | "Audition"
     | "Top20"
@@ -58,6 +61,8 @@ export type ParticipantBiodata = {
     | null;
   selection_status_note?: string | null;
   selection_status_updated_at?: string | null;
+  eliminated_in_audition?: boolean;
+  eliminated_at?: string | null;
 };
 
 export type ParticipantDocumentMeta = {
@@ -112,8 +117,12 @@ export type ParticipantDocumentsResponse = {
   data: {
     id: number;
     participant_number?: string | null;
+    audition_number?: string | null;
+    participant_code?: string | null;
     submitted_to_admin: boolean;
     submitted_to_admin_at?: string | null;
+    eliminated_in_audition?: boolean;
+    eliminated_at?: string | null;
     documents: ParticipantDocumentMeta[];
   };
 };
@@ -129,8 +138,6 @@ export type RegisterParticipantPayload = {
 export type RegisterParticipantResponse = {
   message: string;
   user: BackendAuthUser;
-  otp_expires_in_minutes: number;
-  resend_available_in_seconds: number;
 };
 
 export type VerifyOtpPayload = {
@@ -203,7 +210,6 @@ export type ForgotPasswordVerifyOtpResponse = {
 
 export type ForgotPasswordResetPayload = {
   email: string;
-  otp: string;
   password: string;
   password_confirmation: string;
 };

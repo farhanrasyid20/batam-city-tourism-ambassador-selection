@@ -7,6 +7,7 @@ export type Gender = "Encik" | "Puan";
 export type StageStatus =
   | "Pending"
   | "Verified"
+  | "TechnicalMeeting"
   | "Rejected"
   | "Audition"
   | "Top20"
@@ -108,6 +109,8 @@ export interface ParticipantDocumentItem {
 export interface Participant {
   id: string;
   number: string; // ex: ECK-001
+  auditionNumber?: string;
+  participantCode?: string;
   name: string;
   gender: Gender;
 
@@ -130,6 +133,7 @@ export interface Participant {
   reviewItems?: ParticipantReviewItem[];
   documents?: ParticipantDocumentItem[];
   submittedToAdmin?: boolean;
+  eliminatedInAudition?: boolean;
   rejectionReason?: string;
   verificationIssues?: ParticipantVerificationIssue[];
   agreementNoAgency?: "yes" | "no";
@@ -396,7 +400,7 @@ export function getParticipantAdminStageScore(
 
 function legacyStageToVerificationStatus(status: StageStatus): VerificationStatus {
   if (status === "Rejected") return "Rejected";
-  if (status === "Verified" || status === "Audition" || status === "Top20" || status === "PreCamp" || status === "Camp" || status === "GrandFinal" || status === "Winner") {
+  if (status === "Verified" || status === "TechnicalMeeting" || status === "Audition" || status === "Top20" || status === "PreCamp" || status === "Camp" || status === "GrandFinal" || status === "Winner") {
     return "Verified";
   }
   return "Pending";
@@ -406,7 +410,7 @@ function legacyStageToSelectionStage(status: StageStatus): SelectionStageKey {
   if (status === "GrandFinal") return "Grand Final";
   if (status === "Winner") return "Final Result";
   if (status === "Camp" || status === "PreCamp" || status === "Top20") return "Camp";
-  if (status === "Audition" || status === "Verified") return "Audition";
+  if (status === "TechnicalMeeting" || status === "Audition" || status === "Verified") return "Audition";
   return "Verification";
 }
 
@@ -506,6 +510,7 @@ export const winnerCategories: WinnerCategory[] = [
 export const statusLabelsId: Record<StageStatus, string> = {
   Pending: "Menunggu Verifikasi",
   Verified: "Terverifikasi",
+  TechnicalMeeting: "Technical Meeting",
   Rejected: "Ditolak",
   Audition: "Lolos Administrasi – Audisi",
   Top20: "Top 20",
@@ -518,6 +523,7 @@ export const statusLabelsId: Record<StageStatus, string> = {
 export const statusColors: Record<StageStatus, string> = {
   Pending: "#6B7280",
   Verified: "#3B82F6",
+  TechnicalMeeting: "#0ea5e9",
   Rejected: "#EF4444",
   Audition: "#8B5CF6",
   Top20: "#C8A24D",

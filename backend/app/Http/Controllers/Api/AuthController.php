@@ -264,40 +264,26 @@ class AuthController extends Controller
             ], 422);
         }
 
-        try {
-            [$user] = DB::transaction(function () use ($request) {
-                $user = User::create([
-                    'name' => $request->string('name')->toString(),
-                    'email' => $request->string('email')->toString(),
-                    'phone' => $request->string('phone')->toString(),
-                    'password' => $request->string('password')->toString(),
-                    'role' => 'participant',
-                    'account_status' => 'pending_verification',
-                ]);
-
-                $this->createOrRefreshOtp($user);
-
-                return [$user];
-            });
-        } catch (Throwable $exception) {
-            report($exception);
-
-            return response()->json([
-                'message' => 'Registrasi gagal karena email OTP tidak dapat dikirim. Periksa konfigurasi email lalu coba lagi.',
-            ], 500);
-        }
+        $user = User::create([
+            'name' => $request->string('name')->toString(),
+            'email' => $request->string('email')->toString(),
+            'phone' => $request->string('phone')->toString(),
+            'password' => $request->string('password')->toString(),
+            'role' => 'participant',
+            'account_status' => 'active',
+            'email_verified_at' => Carbon::now(),
+        ]);
 
         $response = [
-            'message' => 'Registrasi berhasil. Kode OTP telah dikirim ke email Anda.',
+            'message' => 'Registrasi berhasil. Akun peserta Anda sudah aktif dan siap digunakan.',
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'account_status' => $user->account_status,
+                'email_verified_at' => $user->email_verified_at,
             ],
-            'otp_expires_in_minutes' => $this->otpTtlMinutes(),
-            'resend_available_in_seconds' => $this->resendCooldownSeconds(),
         ];
 
         return response()->json($response, 201);
@@ -461,9 +447,16 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if (! $user->email_verified_at || $user->account_status !== 'active') {
+        if ($user->role === 'participant' && $user->account_status === 'pending_verification') {
+            $user->forceFill([
+                'account_status' => 'active',
+                'email_verified_at' => $user->email_verified_at ?? Carbon::now(),
+            ])->save();
+        }
+
+        if ($user->account_status !== 'active') {
             return response()->json([
-                'message' => 'Email belum diverifikasi. Silakan verifikasi OTP terlebih dahulu.',
+                'message' => 'Akun belum aktif. Hubungi panitia untuk bantuan.',
                 'account_status' => $user->account_status,
             ], 403);
         }
@@ -605,11 +598,10 @@ class AuthController extends Controller
         ]);
     }
 
-    public function resetPasswordWithOtp(Request $request): JsonResponse
+    public function resetPasswordDirect(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email'],
-            'otp' => ['required', 'digits:6'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -629,40 +621,9 @@ class AuthController extends Controller
             ], 422);
         }
 
-        /** @var PasswordResetOtp|null $record */
-        $record = PasswordResetOtp::query()
-            ->where('user_id', $user->id)
-            ->whereNull('used_at')
-            ->latest('id')
-            ->first();
-
-        if (! $record) {
-            return response()->json([
-                'message' => 'OTP reset password belum tersedia. Silakan kirim OTP terlebih dahulu.',
-            ], 404);
-        }
-
-        if ($record->expires_at->isPast()) {
-            return response()->json([
-                'message' => 'Kode OTP reset password sudah kedaluwarsa. Silakan kirim ulang OTP.',
-            ], 422);
-        }
-
-        if (! hash_equals($record->otp_hash, $this->hashOtp($request->string('otp')->toString()))) {
-            $record->increment('attempt_count');
-
-            return response()->json([
-                'message' => 'Kode OTP reset password tidak valid.',
-                'attempt_count' => $record->fresh()->attempt_count,
-            ], 422);
-        }
-
         $user->forceFill([
             'password' => $request->string('password')->toString(),
         ])->save();
-
-        $record->used_at = Carbon::now();
-        $record->save();
 
         return response()->json([
             'message' => 'Password berhasil diubah. Silakan login dengan password baru.',

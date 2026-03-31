@@ -11,6 +11,8 @@ class ParticipantProfile extends Model
     protected $fillable = [
         'user_id',
         'participant_number',
+        'audition_number',
+        'participant_code',
         'gender',
         'national_id',
         'birth_place',
@@ -39,6 +41,8 @@ class ParticipantProfile extends Model
         'selection_status',
         'selection_status_note',
         'selection_status_updated_at',
+        'eliminated_in_audition',
+        'eliminated_at',
     ];
 
     protected function casts(): array
@@ -49,6 +53,8 @@ class ParticipantProfile extends Model
             'submitted_to_admin' => 'boolean',
             'submitted_to_admin_at' => 'datetime',
             'selection_status_updated_at' => 'datetime',
+            'eliminated_in_audition' => 'boolean',
+            'eliminated_at' => 'datetime',
         ];
     }
 

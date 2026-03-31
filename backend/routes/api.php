@@ -22,7 +22,7 @@ Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password/request-otp', [AuthController::class, 'requestPasswordResetOtp']);
 Route::post('/forgot-password/verify-otp', [AuthController::class, 'verifyPasswordResetOtp']);
-Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordWithOtp']);
+Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordDirect']);
 
 Route::prefix('participant')->middleware(['jwt.auth', 'role:participant'])->group(function (): void {
     Route::get('/biodata', [ParticipantBiodataController::class, 'show']);

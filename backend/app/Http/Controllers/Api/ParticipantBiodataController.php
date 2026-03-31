@@ -99,7 +99,9 @@ class ParticipantBiodataController extends Controller
 
         return [
             'id' => $user->id,
-            'participant_number' => $profile->participant_number,
+            'participant_number' => $profile->participant_number ?: $profile->audition_number,
+            'audition_number' => $profile->audition_number ?: $profile->participant_number,
+            'participant_code' => $profile->participant_code,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
@@ -131,8 +133,9 @@ class ParticipantBiodataController extends Controller
             'submitted_to_admin' => (bool) $profile->submitted_to_admin,
             'submitted_to_admin_at' => $profile->submitted_to_admin_at?->toISOString(),
             'selection_status' => $profile->selection_status,
-            'selection_status_note' => $profile->selection_status_note,
             'selection_status_updated_at' => $profile->selection_status_updated_at?->toISOString(),
+            'eliminated_in_audition' => (bool) $profile->eliminated_in_audition,
+            'eliminated_at' => $profile->eliminated_at?->toISOString(),
         ];
     }
 
