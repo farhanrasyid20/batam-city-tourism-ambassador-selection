@@ -4,10 +4,13 @@ import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { GoldButton } from "../../components/ui/GoldButton";
+import { useApp } from "../../context/AppContext";
 
 export default function Hero() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { landingPageContent } = useApp();
+  const heroContent = landingPageContent.hero;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -189,7 +192,7 @@ export default function Hero() {
           className="text-sm sm:text-base mb-3 tracking-widest uppercase"
           style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
         >
-          Dinas Kebudayaan & Pariwisata Kota Batam
+          {heroContent.organizerLabel}
         </p>
 
         {/* Main Title */}
@@ -206,7 +209,7 @@ export default function Hero() {
             letterSpacing: "0.05em",
           }}
         >
-          PEMILIHAN DUTA WISATA
+          {heroContent.titleLine1}
         </h1>
 
         <h2
@@ -222,7 +225,7 @@ export default function Hero() {
             letterSpacing: "0.08em",
           }}
         >
-          ENCIK & PUAN
+          {heroContent.titleLine2}
         </h2>
 
         <h3
@@ -235,24 +238,23 @@ export default function Hero() {
             letterSpacing: "0.12em",
           }}
         >
-          KOTA BATAM 2026
+          {heroContent.titleLine3}
         </h3>
 
         <p
           className="mb-10 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed"
           style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
         >
-          Platform digital resmi pemilihan Encik & Puan Duta Wisata Kota Batam 2026.
-          Daftarkan diri Anda dan jadilah representasi terbaik Kota Batam!
+          {heroContent.description}
         </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <GoldButton variant="primary" size="md" onClick={() => router.push("/auth/register")}>
-            ✦ Daftar Sekarang
+            {heroContent.primaryButtonLabel}
           </GoldButton>
           <GoldButton variant="outline" size="md" onClick={() => router.push("/auth/login")}>
-            Login Peserta
+            {heroContent.secondaryButtonLabel}
           </GoldButton>
         </div>
 

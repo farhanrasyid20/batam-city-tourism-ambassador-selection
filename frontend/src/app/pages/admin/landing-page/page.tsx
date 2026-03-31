@@ -1,0 +1,466 @@
+"use client";
+
+import React, { useState } from "react";
+import { Plus, Save, Trash2 } from "lucide-react";
+import GoldCard from "../../../../components/dashboard/GoldCard";
+import { GoldButton } from "../../../../components/ui/GoldButton";
+import { useApp, type LandingPageContent } from "../../../../context/AppContext";
+
+const inputStyle: React.CSSProperties = {
+  background: "#111",
+  border: "1px solid rgba(212,175,55,0.25)",
+  color: "#F5E6C8",
+  fontFamily: "var(--font-poppins)",
+};
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label
+      className="block text-xs mb-1.5"
+      style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)", fontWeight: 600 }}
+    >
+      {children}
+    </label>
+  );
+}
+
+type StringListEditorProps = {
+  title: string;
+  items: string[];
+  placeholder: string;
+  onChange: (items: string[]) => void;
+  addLabel: string;
+};
+
+function StringListEditor({ title, items, placeholder, onChange, addLabel }: StringListEditorProps) {
+  const updateItem = (index: number, value: string) => {
+    onChange(items.map((item, itemIndex) => (itemIndex === index ? value : item)));
+  };
+
+  const removeItem = (index: number) => {
+    onChange(items.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const addItem = () => {
+    onChange([...items, ""]);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <FieldLabel>{title}</FieldLabel>
+        <button
+          type="button"
+          onClick={addItem}
+          className="px-3 py-2 rounded-xl text-xs flex items-center gap-1"
+          style={{
+            background: "rgba(212,175,55,0.1)",
+            border: "1px solid rgba(212,175,55,0.2)",
+            color: "#D4AF37",
+            fontFamily: "var(--font-poppins)",
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={12} />
+          {addLabel}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {items.map((item, index) => (
+          <div key={`${title}-${index}`} className="flex gap-3 items-start">
+            <textarea
+              value={item}
+              onChange={(event) => updateItem(index, event.target.value)}
+              rows={2}
+              placeholder={`${placeholder} ${index + 1}`}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              onClick={() => removeItem(index)}
+              className="mt-1 px-3 py-3 rounded-xl"
+              style={{
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.2)",
+                color: "#ef4444",
+                cursor: "pointer",
+              }}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function AdminLandingPageContentPage() {
+  const { landingPageContent, setLandingPageContent } = useApp();
+  const [form, setForm] = useState<LandingPageContent>(landingPageContent);
+  const [saveMessage, setSaveMessage] = useState("");
+
+  const updateHero = (key: keyof LandingPageContent["hero"], value: string) => {
+    setForm((prev) => ({ ...prev, hero: { ...prev.hero, [key]: value } }));
+    if (saveMessage) setSaveMessage("");
+  };
+
+  const updateAbout = (key: keyof LandingPageContent["about"], value: string | string[]) => {
+    setForm((prev) => ({ ...prev, about: { ...prev.about, [key]: value } }));
+    if (saveMessage) setSaveMessage("");
+  };
+
+  const updateRegistration = (
+    key: keyof LandingPageContent["registration"],
+    value: string | string[] | LandingPageContent["registration"]["scheduleItems"]
+  ) => {
+    setForm((prev) => ({ ...prev, registration: { ...prev.registration, [key]: value } }));
+    if (saveMessage) setSaveMessage("");
+  };
+
+  const updateScheduleItem = (
+    index: number,
+    field: "activity" | "date",
+    value: string
+  ) => {
+    updateRegistration(
+      "scheduleItems",
+      form.registration.scheduleItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const addScheduleItem = () => {
+    updateRegistration("scheduleItems", [
+      ...form.registration.scheduleItems,
+      {
+        id: `schedule-${Date.now()}`,
+        activity: "",
+        date: "",
+      },
+    ]);
+  };
+
+  const removeScheduleItem = (index: number) => {
+    updateRegistration(
+      "scheduleItems",
+      form.registration.scheduleItems.filter((_, itemIndex) => itemIndex !== index)
+    );
+  };
+
+  const handleSave = () => {
+    setLandingPageContent({
+      ...form,
+      about: {
+        ...form.about,
+        missionItems: form.about.missionItems.map((item) => item.trim()).filter(Boolean),
+      },
+      registration: {
+        ...form.registration,
+        steps: form.registration.steps.map((item) => item.trim()).filter(Boolean),
+        scheduleItems: form.registration.scheduleItems
+          .map((item, index) => ({
+            ...item,
+            id: item.id || `schedule-${index + 1}`,
+            activity: item.activity.trim(),
+            date: item.date.trim(),
+          }))
+          .filter((item) => item.activity || item.date),
+      },
+    });
+    setSaveMessage("Konten landing page berhasil diperbarui.");
+  };
+
+  return (
+    <div>
+      <div className="mb-8">
+        <h1 style={{ fontFamily: "var(--font-cinzel)", color: "#D4AF37", fontSize: "1.5rem", fontWeight: 700 }}>
+          Kelola Landing Page
+        </h1>
+        <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+          Ubah isi konten landing page tanpa mengubah posisi dan layout section yang sudah ada.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <GoldCard glow>
+          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+            Hero Section
+          </h3>
+          <div className="grid lg:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>Label Instansi</FieldLabel>
+              <input
+                value={form.hero.organizerLabel}
+                onChange={(event) => updateHero("organizerLabel", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Tombol Utama</FieldLabel>
+              <input
+                value={form.hero.primaryButtonLabel}
+                onChange={(event) => updateHero("primaryButtonLabel", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Judul Baris 1</FieldLabel>
+              <input
+                value={form.hero.titleLine1}
+                onChange={(event) => updateHero("titleLine1", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Tombol Kedua</FieldLabel>
+              <input
+                value={form.hero.secondaryButtonLabel}
+                onChange={(event) => updateHero("secondaryButtonLabel", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Judul Baris 2</FieldLabel>
+              <input
+                value={form.hero.titleLine2}
+                onChange={(event) => updateHero("titleLine2", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Judul Baris 3</FieldLabel>
+              <input
+                value={form.hero.titleLine3}
+                onChange={(event) => updateHero("titleLine3", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <FieldLabel>Deskripsi Hero</FieldLabel>
+            <textarea
+              value={form.hero.description}
+              onChange={(event) => updateHero("description", event.target.value)}
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={inputStyle}
+            />
+          </div>
+        </GoldCard>
+
+        <GoldCard>
+          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+            Tentang, Visi, dan Misi
+          </h3>
+          <div className="grid lg:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>Label Section</FieldLabel>
+              <input
+                value={form.about.sectionLabel}
+                onChange={(event) => updateAbout("sectionLabel", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Judul Section</FieldLabel>
+              <input
+                value={form.about.sectionTitle}
+                onChange={(event) => updateAbout("sectionTitle", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Judul Kartu Tentang</FieldLabel>
+              <input
+                value={form.about.aboutCardTitle}
+                onChange={(event) => updateAbout("aboutCardTitle", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Judul Kartu Visi & Misi</FieldLabel>
+              <input
+                value={form.about.visionMissionCardTitle}
+                onChange={(event) => updateAbout("visionMissionCardTitle", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <FieldLabel>Deskripsi Tentang Program</FieldLabel>
+            <textarea
+              value={form.about.aboutCardDescription}
+              onChange={(event) => updateAbout("aboutCardDescription", event.target.value)}
+              rows={4}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={inputStyle}
+            />
+          </div>
+          <div className="mt-4">
+            <FieldLabel>Visi</FieldLabel>
+            <textarea
+              value={form.about.visionText}
+              onChange={(event) => updateAbout("visionText", event.target.value)}
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={inputStyle}
+            />
+          </div>
+          <div className="mt-4">
+            <StringListEditor
+              title="Daftar Misi"
+              items={form.about.missionItems}
+              placeholder="Tulis misi"
+              onChange={(items) => updateAbout("missionItems", items)}
+              addLabel="Tambah Misi"
+            />
+          </div>
+        </GoldCard>
+
+        <GoldCard>
+          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+            Tata Cara & Jadwal
+          </h3>
+          <div className="grid lg:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>Label Section</FieldLabel>
+              <input
+                value={form.registration.sectionLabel}
+                onChange={(event) => updateRegistration("sectionLabel", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Judul Section</FieldLabel>
+              <input
+                value={form.registration.sectionTitle}
+                onChange={(event) => updateRegistration("sectionTitle", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Judul Langkah</FieldLabel>
+              <input
+                value={form.registration.stepsTitle}
+                onChange={(event) => updateRegistration("stepsTitle", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <FieldLabel>Teks Tombol Daftar</FieldLabel>
+              <input
+                value={form.registration.registerButtonLabel}
+                onChange={(event) => updateRegistration("registerButtonLabel", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div className="lg:col-span-2">
+              <FieldLabel>Judul Jadwal</FieldLabel>
+              <input
+                value={form.registration.scheduleTitle}
+                onChange={(event) => updateRegistration("scheduleTitle", event.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <StringListEditor
+              title="Langkah Pendaftaran"
+              items={form.registration.steps}
+              placeholder="Langkah"
+              onChange={(items) => updateRegistration("steps", items)}
+              addLabel="Tambah Langkah"
+            />
+          </div>
+
+          <div className="mt-6">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <FieldLabel>Jadwal Penting</FieldLabel>
+              <button
+                type="button"
+                onClick={addScheduleItem}
+                className="px-3 py-2 rounded-xl text-xs flex items-center gap-1"
+                style={{
+                  background: "rgba(212,175,55,0.1)",
+                  border: "1px solid rgba(212,175,55,0.2)",
+                  color: "#D4AF37",
+                  fontFamily: "var(--font-poppins)",
+                  cursor: "pointer",
+                }}
+              >
+                <Plus size={12} />
+                Tambah Jadwal
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {form.registration.scheduleItems.map((item, index) => (
+                <div key={item.id} className="grid lg:grid-cols-[1fr_0.8fr_auto] gap-3 items-start">
+                  <input
+                    value={item.activity}
+                    onChange={(event) => updateScheduleItem(index, "activity", event.target.value)}
+                    placeholder="Nama kegiatan"
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                    style={inputStyle}
+                  />
+                  <input
+                    value={item.date}
+                    onChange={(event) => updateScheduleItem(index, "date", event.target.value)}
+                    placeholder="Tanggal atau rentang jadwal"
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                    style={inputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeScheduleItem(index)}
+                    className="px-3 py-3 rounded-xl"
+                    style={{
+                      background: "rgba(239,68,68,0.1)",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                      color: "#ef4444",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </GoldCard>
+
+        <div className="flex items-center gap-3">
+          <GoldButton variant="primary" size="sm" onClick={handleSave}>
+            <Save size={14} />
+            Simpan Perubahan
+          </GoldButton>
+          {saveMessage ? (
+            <p className="text-xs" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
+              {saveMessage}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}

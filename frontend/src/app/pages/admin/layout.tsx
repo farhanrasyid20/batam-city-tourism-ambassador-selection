@@ -43,6 +43,7 @@ const adminNavItems = [
     icon: <Newspaper size={16} />,
     children: [
       { label: "Kelola Berita", href: "/pages/admin/news", icon: <Newspaper size={14} /> },
+      { label: "Landing Page", href: "/pages/admin/landing-page", icon: <BookOpen size={14} /> },
       { label: "Pusat Dokumen Peserta", href: "/pages/admin/participant-resources", icon: <BookOpen size={14} /> },
       { label: "FAQ", href: "/pages/admin/faq", icon: <Newspaper size={14} /> },
       { label: "Feedback", href: "/pages/admin/feedback", icon: <MessageSquare size={14} /> },

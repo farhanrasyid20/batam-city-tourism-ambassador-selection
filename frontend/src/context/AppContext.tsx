@@ -127,6 +127,42 @@ export type ParticipantResources = {
   additionalNote: string;
 };
 
+export type LandingScheduleItem = {
+  id: string;
+  activity: string;
+  date: string;
+};
+
+export type LandingPageContent = {
+  hero: {
+    organizerLabel: string;
+    titleLine1: string;
+    titleLine2: string;
+    titleLine3: string;
+    description: string;
+    primaryButtonLabel: string;
+    secondaryButtonLabel: string;
+  };
+  about: {
+    sectionLabel: string;
+    sectionTitle: string;
+    aboutCardTitle: string;
+    aboutCardDescription: string;
+    visionMissionCardTitle: string;
+    visionText: string;
+    missionItems: string[];
+  };
+  registration: {
+    sectionLabel: string;
+    sectionTitle: string;
+    stepsTitle: string;
+    steps: string[];
+    registerButtonLabel: string;
+    scheduleTitle: string;
+    scheduleItems: LandingScheduleItem[];
+  };
+};
+
 type AppContextType = {
   authInitialized: boolean;
   user: AuthUser | null;
@@ -182,6 +218,9 @@ type AppContextType = {
 
   participantResources: ParticipantResources;
   setParticipantResources: React.Dispatch<React.SetStateAction<ParticipantResources>>;
+
+  landingPageContent: LandingPageContent;
+  setLandingPageContent: React.Dispatch<React.SetStateAction<LandingPageContent>>;
 };
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -222,6 +261,66 @@ const defaultParticipantResources: ParticipantResources = {
     "Wajib posting twibbon di Instagram dan mention akun resmi yang telah ditentukan oleh panitia.",
   additionalNote: "",
 };
+
+const defaultLandingPageContent: LandingPageContent = {
+  hero: {
+    organizerLabel: "Dinas Kebudayaan & Pariwisata Kota Batam",
+    titleLine1: "PEMILIHAN DUTA WISATA",
+    titleLine2: "ENCIK & PUAN",
+    titleLine3: "KOTA BATAM 2026",
+    description:
+      "Platform digital resmi pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Daftarkan diri Anda dan jadilah representasi terbaik Kota Batam!",
+    primaryButtonLabel: "✦ Daftar Sekarang",
+    secondaryButtonLabel: "Login Peserta",
+  },
+  about: {
+    sectionLabel: "Tentang Program",
+    sectionTitle: "ENCIK & PUAN DUTA WISATA BATAM",
+    aboutCardTitle: "Tentang Program",
+    aboutCardDescription:
+      "Encik & Puan Duta Wisata Kota Batam adalah program tahunan yang diselenggarakan oleh Dinas Kebudayaan dan Pariwisata Kota Batam untuk menjaring generasi muda terbaik sebagai representasi dan promotor pariwisata Batam.",
+    visionMissionCardTitle: "Visi & Misi",
+    visionText:
+      "Mewujudkan generasi muda Batam sebagai duta pariwisata yang unggul, berkarakter, dan berdaya saing.",
+    missionItems: [
+      "Mempromosikan destinasi wisata Batam ke tingkat nasional dan internasional.",
+      "Menumbuhkan generasi muda yang aktif, inspiratif, dan peduli terhadap potensi daerah.",
+    ],
+  },
+  registration: {
+    sectionLabel: "Pendaftaran",
+    sectionTitle: "TATA CARA PENDAFTARAN",
+    stepsTitle: "Langkah Pendaftaran",
+    steps: ["Buat akun peserta", "Lengkapi biodata", "Unggah berkas", "Submit pendaftaran"],
+    registerButtonLabel: "Daftar Sekarang",
+    scheduleTitle: "Jadwal Penting",
+    scheduleItems: [
+      { id: "schedule-1", activity: "Pendaftaran Online", date: "1 Mei - 31 Mei 2026" },
+      { id: "schedule-2", activity: "Seleksi Administrasi", date: "2 Juni - 5 Juni 2026" },
+      { id: "schedule-3", activity: "Pengumuman Finalis", date: "10 Juni 2026" },
+      { id: "schedule-4", activity: "Grand Final", date: "27 Juni 2026" },
+    ],
+  },
+};
+
+const NEWS_STORAGE_KEY = "duta-wisata-news-list";
+const FAQ_STORAGE_KEY = "duta-wisata-faq-list";
+const PARTICIPANT_RESOURCES_STORAGE_KEY = "duta-wisata-participant-resources";
+const LANDING_PAGE_CONTENT_STORAGE_KEY = "duta-wisata-landing-page-content";
+
+function readStoredJson<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    window.localStorage.removeItem(key);
+    return null;
+  }
+}
 
 function normalizeInstagram(raw: string) {
   const value = raw.trim();
@@ -419,17 +518,85 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
   const [participantResources, setParticipantResources] =
     useState<ParticipantResources>(defaultParticipantResources);
+  const [landingPageContent, setLandingPageContent] =
+    useState<LandingPageContent>(defaultLandingPageContent);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       const bootstrap = getStoredParticipantBootstrap(mockParticipants);
       setUser(bootstrap.user);
       setCurrentParticipant(bootstrap.participant);
+
+      const storedNews = readStoredJson<NewsItem[]>(NEWS_STORAGE_KEY);
+      const storedFaq = readStoredJson<FAQItem[]>(FAQ_STORAGE_KEY);
+      const storedParticipantResources = readStoredJson<ParticipantResources>(PARTICIPANT_RESOURCES_STORAGE_KEY);
+      const storedLandingPageContent = readStoredJson<LandingPageContent>(LANDING_PAGE_CONTENT_STORAGE_KEY);
+
+      if (storedNews) setNewsList(storedNews);
+      if (storedFaq) setFaqList(storedFaq);
+      if (storedParticipantResources) setParticipantResources(storedParticipantResources);
+      if (storedLandingPageContent) {
+        setLandingPageContent({
+          ...defaultLandingPageContent,
+          ...storedLandingPageContent,
+          hero: {
+            ...defaultLandingPageContent.hero,
+            ...storedLandingPageContent.hero,
+          },
+          about: {
+            ...defaultLandingPageContent.about,
+            ...storedLandingPageContent.about,
+            missionItems:
+              storedLandingPageContent.about?.missionItems?.length
+                ? storedLandingPageContent.about.missionItems
+                : defaultLandingPageContent.about.missionItems,
+          },
+          registration: {
+            ...defaultLandingPageContent.registration,
+            ...storedLandingPageContent.registration,
+            steps:
+              storedLandingPageContent.registration?.steps?.length
+                ? storedLandingPageContent.registration.steps
+                : defaultLandingPageContent.registration.steps,
+            scheduleItems:
+              storedLandingPageContent.registration?.scheduleItems?.length
+                ? storedLandingPageContent.registration.scheduleItems
+                : defaultLandingPageContent.registration.scheduleItems,
+          },
+        });
+      }
+
       setAuthInitialized(true);
     });
 
     return () => window.cancelAnimationFrame(frameId);
   }, []);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    window.localStorage.setItem(NEWS_STORAGE_KEY, JSON.stringify(newsList));
+  }, [authInitialized, newsList]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    window.localStorage.setItem(FAQ_STORAGE_KEY, JSON.stringify(faqList));
+  }, [authInitialized, faqList]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    window.localStorage.setItem(
+      PARTICIPANT_RESOURCES_STORAGE_KEY,
+      JSON.stringify(participantResources)
+    );
+  }, [authInitialized, participantResources]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    window.localStorage.setItem(
+      LANDING_PAGE_CONTENT_STORAGE_KEY,
+      JSON.stringify(landingPageContent)
+    );
+  }, [authInitialized, landingPageContent]);
 
   const [passwordStore, setPasswordStore] = useState<Record<string, string>>({
     "admin@dutawisatabatam.id": "admin123",
@@ -677,6 +844,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       participantResources,
       setParticipantResources,
+
+      landingPageContent,
+      setLandingPageContent,
     }),
     [
       authInitialized,
@@ -703,6 +873,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       feedbackList,
       addFeedbackEntry,
       participantResources,
+      landingPageContent,
     ]
   );
 

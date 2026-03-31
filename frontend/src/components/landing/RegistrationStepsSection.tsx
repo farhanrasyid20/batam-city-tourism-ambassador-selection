@@ -1,14 +1,12 @@
-﻿import Link from "next/link";
-import { schedule } from "../../data/mockData";
+"use client";
 
-const stepLabels = [
-  "Buat akun peserta",
-  "Lengkapi biodata",
-  "Unggah berkas",
-  "Submit pendaftaran",
-];
+import Link from "next/link";
+import { useApp } from "../../context/AppContext";
 
 export default function RegistrationStepsSection() {
+  const { landingPageContent } = useApp();
+  const registrationContent = landingPageContent.registration;
+
   return (
     <section id="registration" className="py-20 lg:py-28">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -17,7 +15,7 @@ export default function RegistrationStepsSection() {
             className="text-sm tracking-widest uppercase mb-3"
             style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
           >
-            Pendaftaran
+            {registrationContent.sectionLabel}
           </p>
           <h2
             style={{
@@ -30,7 +28,7 @@ export default function RegistrationStepsSection() {
               fontWeight: 700,
             }}
           >
-            TATA CARA PENDAFTARAN
+            {registrationContent.sectionTitle}
           </h2>
           <div
             className="w-24 h-[2px] mx-auto mt-4"
@@ -52,13 +50,13 @@ export default function RegistrationStepsSection() {
               className="mb-5"
               style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
             >
-              Langkah Pendaftaran
+              {registrationContent.stepsTitle}
             </h3>
 
             <div className="space-y-3">
-              {stepLabels.map((step, index) => (
+              {registrationContent.steps.map((step, index) => (
                 <div
-                  key={step}
+                  key={`${step}-${index}`}
                   className="rounded-xl px-4 py-3 flex items-center gap-3"
                   style={{
                     background: "rgba(200,162,77,0.08)",
@@ -90,7 +88,7 @@ export default function RegistrationStepsSection() {
                   fontFamily: "var(--font-cinzel)",
                 }}
               >
-                Daftar Sekarang
+                {registrationContent.registerButtonLabel}
               </Link>
             </div>
           </div>
@@ -106,12 +104,12 @@ export default function RegistrationStepsSection() {
               className="mb-5"
               style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
             >
-              Jadwal Penting
+              {registrationContent.scheduleTitle}
             </h3>
             <div className="space-y-3">
-              {schedule.map((item) => (
+              {registrationContent.scheduleItems.map((item, index) => (
                 <div
-                  key={item.activity}
+                  key={item.id || `${item.activity}-${index}`}
                   className="rounded-xl px-4 py-3"
                   style={{
                     background: "rgba(200,162,77,0.08)",
@@ -136,5 +134,3 @@ export default function RegistrationStepsSection() {
     </section>
   );
 }
-
-

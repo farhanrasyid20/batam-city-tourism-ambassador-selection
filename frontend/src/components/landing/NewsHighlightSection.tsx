@@ -1,6 +1,8 @@
-﻿import Link from "next/link";
+"use client";
+
+import Link from "next/link";
 import { Calendar } from "lucide-react";
-import { mockNews } from "../../data/mockData";
+import { useApp } from "../../context/AppContext";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("id-ID", {
@@ -11,7 +13,8 @@ function formatDate(dateStr: string) {
 }
 
 export default function NewsHighlightSection() {
-  const items = mockNews.slice(0, 4);
+  const { newsList } = useApp();
+  const items = newsList.slice(0, 4);
 
   return (
     <section id="news" className="py-20 lg:py-28">
@@ -116,5 +119,3 @@ export default function NewsHighlightSection() {
     </section>
   );
 }
-
-

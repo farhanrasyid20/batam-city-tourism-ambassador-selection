@@ -17,6 +17,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { winnerCategories } from "../../../data/mockData";
+import { useApp } from "../../../context/AppContext";
 
 const AboutGuideInlineViewer = dynamic(() => import("./AboutGuideInlineViewer"), {
   ssr: false,
@@ -53,6 +54,8 @@ const favoriteCategoryTitles = ["Duta Favorit Encik", "Duta Favorit Puan"];
 
 export function AboutSection() {
   const [guideOpen, setGuideOpen] = useState(false);
+  const { landingPageContent } = useApp();
+  const aboutContent = landingPageContent.about;
 
   const soloWinnerCategories = useMemo(
     () =>
@@ -86,7 +89,7 @@ export function AboutSection() {
             className="text-sm tracking-widest uppercase mb-3"
             style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
           >
-            Tentang Program
+            {aboutContent.sectionLabel}
           </p>
 
           <h2
@@ -100,7 +103,7 @@ export function AboutSection() {
               fontWeight: 700,
             }}
           >
-            ENCIK &amp; PUAN DUTA WISATA BATAM
+            {aboutContent.sectionTitle}
           </h2>
 
           <div
@@ -116,14 +119,11 @@ export function AboutSection() {
                 <Users size={18} color="#0F0F0F" />
               </div>
               <h3 className="text-lg font-semibold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-                Tentang Program
+                {aboutContent.aboutCardTitle}
               </h3>
             </div>
 
-            <p className="text-sm text-gray-400 leading-relaxed">
-              <strong className="text-[#C8A24D]">Encik &amp; Puan Duta Wisata Kota Batam</strong>{" "}
-              adalah program tahunan yang diselenggarakan oleh Dinas Kebudayaan dan Pariwisata Kota Batam untuk menjaring generasi muda terbaik sebagai representasi dan promotor pariwisata Batam.
-            </p>
+            <p className="text-sm text-gray-400 leading-relaxed">{aboutContent.aboutCardDescription}</p>
           </div>
 
           <div className="rounded-2xl p-8 bg-[#1A1A1A] border border-yellow-700/30">
@@ -132,7 +132,7 @@ export function AboutSection() {
                 <Target size={18} color="#0F0F0F" />
               </div>
               <h3 className="text-lg font-semibold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-                Visi &amp; Misi
+                {aboutContent.visionMissionCardTitle}
               </h3>
             </div>
 
@@ -141,14 +141,16 @@ export function AboutSection() {
                 <span className="mt-0.5 w-4 h-4 flex items-center justify-center shrink-0">
                   <Star size={12} style={{ color: "#C8A24D" }} fill="#C8A24D" />
                 </span>
-                Mewujudkan generasi muda Batam sebagai duta pariwisata yang unggul, berkarakter, dan berdaya saing.
+                {aboutContent.visionText}
               </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 w-4 h-4 flex items-center justify-center shrink-0">
-                  <Star size={12} style={{ color: "#C8A24D" }} fill="#C8A24D" />
-                </span>
-                Mempromosikan destinasi wisata Batam ke tingkat nasional dan internasional.
-              </li>
+              {aboutContent.missionItems.map((item, index) => (
+                <li key={`${item}-${index}`} className="flex items-start gap-2">
+                  <span className="mt-0.5 w-4 h-4 flex items-center justify-center shrink-0">
+                    <Star size={12} style={{ color: "#C8A24D" }} fill="#C8A24D" />
+                  </span>
+                  {item}
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -374,3 +376,4 @@ export function AboutSection() {
     </section>
   );
 }
+
