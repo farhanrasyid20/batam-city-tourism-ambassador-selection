@@ -113,6 +113,9 @@ function mergeParticipantWithBackend(
           ? doc.status
           : ("submitted" as const),
       note: doc.note ?? undefined,
+      url: resolveParticipantPhotoUrl(doc.url) ?? doc.url ?? undefined,
+      mimeType: doc.mime_type ?? undefined,
+      originalName: doc.original_name ?? undefined,
     })) ?? base?.documents ?? [];
 
   const educationFromBiodata = [
@@ -898,7 +901,7 @@ export default function ParticipantDashboardPage() {
                       fontFamily: "var(--font-cinzel)",
                     }}
                   >
-                    {state === "done" ? "✓" : state === "failed" ? "✗" : index + 1}
+                    {state === "done" ? "âœ“" : state === "failed" ? "âœ—" : index + 1}
                   </div>
                   <div className="flex-1">
                     <p
@@ -941,7 +944,7 @@ export default function ParticipantDashboardPage() {
                 border: `1px solid ${doc.done ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.2)"}`,
               }}
             >
-              <div className="text-base mb-1">{doc.done ? "✅" : "❌"}</div>
+              <div className="text-base mb-1">{doc.done ? "âœ…" : "âŒ"}</div>
               <p className="text-xs" style={{ color: doc.done ? "#22c55e" : "#ef4444", fontFamily: "var(--font-poppins)" }}>
                 {doc.label}
               </p>

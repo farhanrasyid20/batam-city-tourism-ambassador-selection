@@ -1,10 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
-import { useApp, type LandingPageContent } from "../../../../context/AppContext";
+import PartnershipEditor from "./components/PartnershipEditor";
+import {
+  defaultLandingPageContent,
+  saveLandingPageContent,
+  useLandingPageContent,
+  type LandingPageContent,
+} from "../../../../lib/landing-page-content";
 
 const inputStyle: React.CSSProperties = {
   background: "#111",
@@ -72,9 +78,9 @@ function StringListEditor({ title, items, placeholder, onChange, addLabel }: Str
             <textarea
               value={item}
               onChange={(event) => updateItem(index, event.target.value)}
-              rows={2}
+              rows={1}
               placeholder={`${placeholder} ${index + 1}`}
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
               style={inputStyle}
             />
             <button
@@ -98,9 +104,13 @@ function StringListEditor({ title, items, placeholder, onChange, addLabel }: Str
 }
 
 export default function AdminLandingPageContentPage() {
-  const { landingPageContent, setLandingPageContent } = useApp();
-  const [form, setForm] = useState<LandingPageContent>(landingPageContent);
+  const landingPageContent = useLandingPageContent();
+  const [form, setForm] = useState<LandingPageContent>(defaultLandingPageContent);
   const [saveMessage, setSaveMessage] = useState("");
+
+  useEffect(() => {
+    setForm(landingPageContent);
+  }, [landingPageContent]);
 
   const updateHero = (key: keyof LandingPageContent["hero"], value: string) => {
     setForm((prev) => ({ ...prev, hero: { ...prev.hero, [key]: value } }));
@@ -152,7 +162,7 @@ export default function AdminLandingPageContentPage() {
   };
 
   const handleSave = () => {
-    setLandingPageContent({
+    saveLandingPageContent({
       ...form,
       about: {
         ...form.about,
@@ -181,7 +191,7 @@ export default function AdminLandingPageContentPage() {
           Kelola Landing Page
         </h1>
         <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-          Ubah isi konten landing page tanpa mengubah posisi dan layout section yang sudah ada.
+          Ubah isi konten landing page tanpa mengubah label section dan tombol sistem yang sudah tetap.
         </p>
       </div>
 
@@ -191,20 +201,11 @@ export default function AdminLandingPageContentPage() {
             Hero Section
           </h3>
           <div className="grid lg:grid-cols-2 gap-4">
-            <div>
+            <div className="lg:col-span-2">
               <FieldLabel>Label Instansi</FieldLabel>
               <input
                 value={form.hero.organizerLabel}
                 onChange={(event) => updateHero("organizerLabel", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <FieldLabel>Tombol Utama</FieldLabel>
-              <input
-                value={form.hero.primaryButtonLabel}
-                onChange={(event) => updateHero("primaryButtonLabel", event.target.value)}
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                 style={inputStyle}
               />
@@ -219,15 +220,6 @@ export default function AdminLandingPageContentPage() {
               />
             </div>
             <div>
-              <FieldLabel>Tombol Kedua</FieldLabel>
-              <input
-                value={form.hero.secondaryButtonLabel}
-                onChange={(event) => updateHero("secondaryButtonLabel", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div>
               <FieldLabel>Judul Baris 2</FieldLabel>
               <input
                 value={form.hero.titleLine2}
@@ -236,7 +228,7 @@ export default function AdminLandingPageContentPage() {
                 style={inputStyle}
               />
             </div>
-            <div>
+            <div className="lg:col-span-2">
               <FieldLabel>Judul Baris 3</FieldLabel>
               <input
                 value={form.hero.titleLine3}
@@ -252,7 +244,7 @@ export default function AdminLandingPageContentPage() {
               value={form.hero.description}
               onChange={(event) => updateHero("description", event.target.value)}
               rows={4}
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
               style={inputStyle}
             />
           </div>
@@ -262,51 +254,13 @@ export default function AdminLandingPageContentPage() {
           <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
             Tentang, Visi, dan Misi
           </h3>
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div>
-              <FieldLabel>Label Section</FieldLabel>
-              <input
-                value={form.about.sectionLabel}
-                onChange={(event) => updateAbout("sectionLabel", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <FieldLabel>Judul Section</FieldLabel>
-              <input
-                value={form.about.sectionTitle}
-                onChange={(event) => updateAbout("sectionTitle", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <FieldLabel>Judul Kartu Tentang</FieldLabel>
-              <input
-                value={form.about.aboutCardTitle}
-                onChange={(event) => updateAbout("aboutCardTitle", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <FieldLabel>Judul Kartu Visi & Misi</FieldLabel>
-              <input
-                value={form.about.visionMissionCardTitle}
-                onChange={(event) => updateAbout("visionMissionCardTitle", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-          </div>
-          <div className="mt-4">
-            <FieldLabel>Deskripsi Tentang Program</FieldLabel>
+          <div>
+            <FieldLabel>Tentang Program</FieldLabel>
             <textarea
               value={form.about.aboutCardDescription}
               onChange={(event) => updateAbout("aboutCardDescription", event.target.value)}
               rows={4}
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
               style={inputStyle}
             />
           </div>
@@ -316,7 +270,7 @@ export default function AdminLandingPageContentPage() {
               value={form.about.visionText}
               onChange={(event) => updateAbout("visionText", event.target.value)}
               rows={3}
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
               style={inputStyle}
             />
           </div>
@@ -334,62 +288,14 @@ export default function AdminLandingPageContentPage() {
         <GoldCard>
           <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
             Tata Cara & Jadwal
-          </h3>
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div>
-              <FieldLabel>Label Section</FieldLabel>
-              <input
-                value={form.registration.sectionLabel}
-                onChange={(event) => updateRegistration("sectionLabel", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <FieldLabel>Judul Section</FieldLabel>
-              <input
-                value={form.registration.sectionTitle}
-                onChange={(event) => updateRegistration("sectionTitle", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <FieldLabel>Judul Langkah</FieldLabel>
-              <input
-                value={form.registration.stepsTitle}
-                onChange={(event) => updateRegistration("stepsTitle", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <FieldLabel>Teks Tombol Daftar</FieldLabel>
-              <input
-                value={form.registration.registerButtonLabel}
-                onChange={(event) => updateRegistration("registerButtonLabel", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-            <div className="lg:col-span-2">
-              <FieldLabel>Judul Jadwal</FieldLabel>
-              <input
-                value={form.registration.scheduleTitle}
-                onChange={(event) => updateRegistration("scheduleTitle", event.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                style={inputStyle}
-              />
-            </div>
-          </div>
-
-          <div className="mt-4">
+          </h3>          <div className="mt-4">
             <StringListEditor
               title="Langkah Pendaftaran"
               items={form.registration.steps}
               placeholder="Langkah"
               onChange={(items) => updateRegistration("steps", items)}
               addLabel="Tambah Langkah"
+              compact
             />
           </div>
 
@@ -447,6 +353,175 @@ export default function AdminLandingPageContentPage() {
               ))}
             </div>
           </div>
+        </GoldCard>
+
+        <GoldCard>
+          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+            Kategori Pemenang
+          </h3>
+
+          <div className="space-y-5">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.35em] mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+                Kategori Utama
+              </p>
+              <p className="text-xs mb-3" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                Susun deskripsi pemenang utama seperti tampilan kartu di landing page, dengan Encik di kiri dan Puan di kanan.
+              </p>
+              <div className="grid lg:grid-cols-2 gap-4">
+                {form.winnerCategories.soloItems.map((item, index) => (
+                  <div
+                    key={item.title}
+                    className="rounded-2xl p-4"
+                    style={{
+                      border: "1px solid rgba(212,175,55,0.18)",
+                      background: "rgba(255,255,255,0.02)",
+                    }}
+                  >
+                    <FieldLabel>{item.title}</FieldLabel>
+                    <textarea
+                      value={item.description}
+                      onChange={(event) => setForm((prev) => ({
+                        ...prev,
+                        winnerCategories: {
+                          ...prev.winnerCategories,
+                          soloItems: prev.winnerCategories.soloItems.map((entry, itemIndex) =>
+                            itemIndex === index ? { ...entry, description: event.target.value } : entry
+                          ),
+                        },
+                      }))}
+                      rows={2}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
+                      style={inputStyle}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.35em] mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+                Kategori Pasangan
+              </p>
+              <p className="text-xs mb-3" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                Bagian ini tetap full width seperti kartu pasangan utama di landing page.
+              </p>
+              <div
+                className="rounded-2xl p-4"
+                style={{
+                  border: "1px solid rgba(212,175,55,0.18)",
+                  background: "rgba(255,255,255,0.02)",
+                }}
+              >
+                <FieldLabel>{form.winnerCategories.pairItem.title}</FieldLabel>
+                <textarea
+                  value={form.winnerCategories.pairItem.description}
+                  onChange={(event) => setForm((prev) => ({
+                    ...prev,
+                    winnerCategories: {
+                      ...prev.winnerCategories,
+                      pairItem: { ...prev.winnerCategories.pairItem, description: event.target.value },
+                    },
+                  }))}
+                  rows={2}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.35em] mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+                Kategori Favorit
+              </p>
+              <p className="text-xs mb-3" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                Susun pemenang favorit dengan pola kartu kiri dan kanan yang lebih ringkas untuk memudahkan input admin.
+              </p>
+              <div className="grid lg:grid-cols-2 gap-4">
+                {form.winnerCategories.favoriteItems.map((item, index) => (
+                  <div
+                    key={item.title}
+                    className="rounded-2xl p-4"
+                    style={{
+                      border: "1px solid rgba(212,175,55,0.18)",
+                      background: "rgba(255,255,255,0.02)",
+                    }}
+                  >
+                    <FieldLabel>{item.title}</FieldLabel>
+                    <textarea
+                      value={item.description}
+                      onChange={(event) => setForm((prev) => ({
+                        ...prev,
+                        winnerCategories: {
+                          ...prev.winnerCategories,
+                          favoriteItems: prev.winnerCategories.favoriteItems.map((entry, itemIndex) =>
+                            itemIndex === index ? { ...entry, description: event.target.value } : entry
+                          ),
+                        },
+                      }))}
+                      rows={2}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
+                      style={inputStyle}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </GoldCard>
+
+        <GoldCard>
+          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+            Syarat Pendaftaran
+          </h3>
+          <div>
+            <FieldLabel>Teks Pengantar</FieldLabel>
+            <textarea
+              value={form.requirements.introText}
+              onChange={(event) => setForm((prev) => ({ ...prev, requirements: { ...prev.requirements, introText: event.target.value } }))}
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={inputStyle}
+            />
+          </div>
+          <div className="mt-4 grid xl:grid-cols-2 gap-6 items-start">
+            <div>
+              <StringListEditor
+                title="Persyaratan Umum"
+                items={form.requirements.generalItems}
+                placeholder="Tulis syarat umum"
+                onChange={(items) => setForm((prev) => ({ ...prev, requirements: { ...prev.requirements, generalItems: items } }))}
+                addLabel="Tambah Syarat"
+              />
+            </div>
+            <div>
+              <StringListEditor
+                title="Persyaratan Khusus"
+                items={form.requirements.specialItems}
+                placeholder="Tulis syarat khusus"
+                onChange={(items) => setForm((prev) => ({ ...prev, requirements: { ...prev.requirements, specialItems: items } }))}
+                addLabel="Tambah Syarat"
+              />
+            </div>
+          </div>
+        </GoldCard>
+
+        <GoldCard>
+          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+            Partnership
+          </h3>
+          <PartnershipEditor
+            partners={form.partnership.partners}
+            onChange={(partners) =>
+              setForm((prev) => ({
+                ...prev,
+                partnership: {
+                  ...prev.partnership,
+                  partners,
+                },
+              }))
+            }
+          />
         </GoldCard>
 
         <div className="flex items-center gap-3">

@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useApp } from "../../context/AppContext";
+import { useLandingPageContent } from "../../lib/landing-page-content";
 
 export default function RegistrationStepsSection() {
-  const { landingPageContent } = useApp();
-  const registrationContent = landingPageContent.registration;
+  const registrationContent = useLandingPageContent().registration;
 
   return (
     <section id="registration" className="py-20 lg:py-28">
@@ -15,7 +14,7 @@ export default function RegistrationStepsSection() {
             className="text-sm tracking-widest uppercase mb-3"
             style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
           >
-            {registrationContent.sectionLabel}
+            Pendaftaran
           </p>
           <h2
             style={{
@@ -28,7 +27,7 @@ export default function RegistrationStepsSection() {
               fontWeight: 700,
             }}
           >
-            {registrationContent.sectionTitle}
+            TATA CARA PENDAFTARAN
           </h2>
           <div
             className="w-24 h-[2px] mx-auto mt-4"
@@ -50,7 +49,7 @@ export default function RegistrationStepsSection() {
               className="mb-5"
               style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
             >
-              {registrationContent.stepsTitle}
+              Langkah Pendaftaran
             </h3>
 
             <div className="space-y-3">
@@ -88,7 +87,7 @@ export default function RegistrationStepsSection() {
                   fontFamily: "var(--font-cinzel)",
                 }}
               >
-                {registrationContent.registerButtonLabel}
+                Daftar Sekarang
               </Link>
             </div>
           </div>
@@ -104,7 +103,7 @@ export default function RegistrationStepsSection() {
               className="mb-5"
               style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
             >
-              {registrationContent.scheduleTitle}
+              Jadwal Penting
             </h3>
             <div className="space-y-3">
               {registrationContent.scheduleItems.map((item, index) => (

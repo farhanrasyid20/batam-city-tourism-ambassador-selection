@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -86,6 +86,9 @@ export default function ParticipantDocumentsPage() {
             ? doc.status
             : ("submitted" as const),
         note: doc.note ?? undefined,
+        url: toAssetUrl(doc.url) ?? undefined,
+        mimeType: doc.mime_type ?? undefined,
+        originalName: doc.original_name ?? undefined,
       })) ?? [];
 
     setServerDoneKeys(

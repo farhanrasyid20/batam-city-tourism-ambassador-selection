@@ -28,6 +28,7 @@ const adminNavItems = [
       { label: "Data Peserta", href: "/pages/admin/participants", icon: <Users size={14} /> },
       { label: "Verifikasi Berkas", href: "/pages/admin/verification", icon: <ShieldCheck size={14} /> },
       { label: "Tahapan & Nilai", href: "/pages/admin/scoring", icon: <Award size={14} /> },
+      { label: "Pusat Dokumen Peserta", href: "/pages/admin/participant-resources", icon: <BookOpen size={14} /> },
     ],
   },
   {
@@ -44,7 +45,6 @@ const adminNavItems = [
     children: [
       { label: "Kelola Berita", href: "/pages/admin/news", icon: <Newspaper size={14} /> },
       { label: "Landing Page", href: "/pages/admin/landing-page", icon: <BookOpen size={14} /> },
-      { label: "Pusat Dokumen Peserta", href: "/pages/admin/participant-resources", icon: <BookOpen size={14} /> },
       { label: "FAQ", href: "/pages/admin/faq", icon: <Newspaper size={14} /> },
       { label: "Feedback", href: "/pages/admin/feedback", icon: <MessageSquare size={14} /> },
     ],

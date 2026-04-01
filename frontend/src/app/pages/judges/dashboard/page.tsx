@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Star, Users, ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, Star, Users } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import { useApp } from "../../../../context/AppContext";
@@ -18,11 +18,14 @@ export default function JudgeDashboardPage() {
   const router = useRouter();
   const judgeInfo = judgeList.find((judge) => judge.id === user?.judgeId) ?? judgeList[0];
   const assignedStages = getJudgeAssignedStages(judgeInfo);
-  const judgeType = judgeInfo?.judgeType ?? "main";
 
   const totalParticipants = participantList.filter((participant) =>
     assignedStages.some((stage) =>
-      judgeType === "mentor" ? stage === "Camp" && isParticipantEligibleForScoreStage(participant, "Camp") : isParticipantEligibleForScoreStage(participant, stage)
+      stage === "Pre Camp"
+        ? ["Pre Camp", "Camp", "Grand Final", "Final Result"].includes(
+            participant.selectionStage,
+          )
+        : isParticipantEligibleForScoreStage(participant, stage)
     )
   ).length;
 
@@ -43,8 +46,8 @@ export default function JudgeDashboardPage() {
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>Dewan Juri</p>
-              <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: judgeType === "mentor" ? "rgba(59,130,246,0.12)" : "rgba(212,175,55,0.12)", color: judgeType === "mentor" ? "#60A5FA" : "#D4AF37", border: `1px solid ${judgeType === "mentor" ? "rgba(96,165,250,0.25)" : "rgba(212,175,55,0.25)"}`, fontFamily: "var(--font-poppins)" }}>
-                {judgeType === "mentor" ? "Juri Mentor" : "Juri Utama"}
+              <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(212,175,55,0.12)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.25)", fontFamily: "var(--font-poppins)" }}>
+                Juri
               </span>
             </div>
             <h2 className="text-base font-bold mb-1" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>{judgeInfo?.name}</h2>
@@ -73,11 +76,11 @@ export default function JudgeDashboardPage() {
         </GoldCard>
 
         <GoldCard className="text-center">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: judgeType === "mentor" ? "rgba(59,130,246,0.15)" : "rgba(34,197,94,0.15)", color: judgeType === "mentor" ? "#60A5FA" : "#22c55e" }}>
-            {judgeType === "mentor" ? <ShieldCheck size={18} /> : <Star size={18} />}
+          <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e" }}>
+            <Star size={18} />
           </div>
           <p className="text-2xl font-bold mb-1" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>{assignedStages.length}</p>
-          <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>{judgeType === "mentor" ? "Tahap Mentoring" : "Tahap Ditugaskan"}</p>
+          <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>Tahap Ditugaskan</p>
         </GoldCard>
       </div>
 
@@ -88,10 +91,8 @@ export default function JudgeDashboardPage() {
         <ul className="space-y-2">
           {[
             "Nilai yang telah di-submit tidak dapat diubah kembali.",
-            judgeType === "mentor"
-              ? "Juri mentor hanya mengisi observasi pendukung dan tidak melihat nilai mentor lain."
-              : "Juri utama dapat melihat catatan mentor pada tahap karantina sebelum memberi nilai resmi.",
-            "Audisi dan grand final hanya menggunakan penilaian juri utama.",
+            "Pra karantina dipakai untuk menulis catatan peserta tanpa nilai angka.",
+            "Audisi, karantina, dan grand final menggunakan penilaian resmi juri.",
             "Nilai akhir dihitung dari karantina 30% dan grand final 70%.",
           ].map((note) => (
             <li key={note} className="flex items-start gap-2 text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
@@ -106,10 +107,10 @@ export default function JudgeDashboardPage() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h3 className="text-base font-bold mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
-              {judgeType === "mentor" ? "Mulai Observasi Mentor" : "Mulai Penilaian"}
+              Mulai Penilaian
             </h3>
             <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-              {judgeType === "mentor" ? "Masuk ke halaman observasi pendukung karantina." : "Masuk ke halaman input nilai resmi sesuai tahap penugasan."}
+              Masuk ke halaman input nilai resmi dan catatan sesuai tahap penugasan.
             </p>
           </div>
           <GoldButton variant="primary" onClick={() => router.push("/pages/judges/scoring")}>

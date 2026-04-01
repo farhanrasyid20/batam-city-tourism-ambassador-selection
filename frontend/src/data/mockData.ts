@@ -20,13 +20,25 @@ export type ScheduleStatus = "active" | "upcoming" | "done";
 
 export type CriteriaKey = string;
 
-export type JudgeType = "main" | "mentor";
+export type JudgeType = "judge" | "main" | "mentor";
 export type VerificationStatus = "Pending" | "NeedsRevision" | "Verified" | "Rejected";
-export type SelectionStageKey = "Verification" | "Audition" | "Camp" | "Grand Final" | "Final Result";
+export type SelectionStageKey =
+  | "Verification"
+  | "Technical Meeting"
+  | "Audition"
+  | "Pre Camp"
+  | "Camp"
+  | "Grand Final"
+  | "Final Result";
 export type ScoreStageKey = "Audition" | "Camp" | "Grand Final";
-export type AdminScoreStage = ScoreStageKey | "Final Result";
+export type JudgeAssignedStageKey = "Audition" | "Pre Camp" | "Camp" | "Grand Final";
+export type ParticipantProgressStageKey = "Technical Meeting" | "Audition" | "Pre Camp" | "Camp" | "Grand Final";
+export type AdminScoreStage = "Technical Meeting" | ScoreStageKey | "Pre Camp" | "Final Result";
 export type ScoreType = "official" | "mentor_observation";
 export type ScoreVisibility = "panel" | "private" | "main_judges";
+export type ParticipantStageProgress = Record<ParticipantProgressStageKey, boolean>;
+export type ParticipantNoteStageKey = Exclude<AdminScoreStage, "Final Result">;
+export type ParticipantNoteAuthorRole = "admin" | "judge" | "committee";
 
 export interface CriteriaItem {
   key: CriteriaKey;
@@ -104,6 +116,9 @@ export interface ParticipantDocumentItem {
   label: string;
   status: "missing" | "submitted" | "revision_required" | "verified";
   note?: string;
+  url?: string;
+  mimeType?: string;
+  originalName?: string;
 }
 
 export interface Participant {
@@ -128,6 +143,7 @@ export interface Participant {
   status: StageStatus;
   verificationStatus?: VerificationStatus;
   selectionStage?: SelectionStageKey;
+  stageProgress?: ParticipantStageProgress;
   adminVerificationNote?: string;
   adminRevisionNote?: string;
   reviewItems?: ParticipantReviewItem[];
@@ -155,7 +171,7 @@ export interface Judge {
   title: string;
   organization: string;
   stages: string[];
-  assignedStages?: ScoreStageKey[];
+  assignedStages?: JudgeAssignedStageKey[];
   avatar: string;
   judgeType?: JudgeType;
 }
@@ -183,6 +199,17 @@ export interface ScoreRecord {
   submittedAt: string;
 }
 
+export interface ParticipantStageNote {
+  id: string;
+  participantId: string;
+  participantName: string;
+  stage: ParticipantNoteStageKey;
+  authorName: string;
+  authorRole: ParticipantNoteAuthorRole;
+  content: string;
+  createdAt: string;
+}
+
 // =============================================
 // CONSTANTS
 // =============================================
@@ -192,10 +219,24 @@ const malePhoto =
 const femalePhoto =
   "https://images.unsplash.com/photo-1642629428997-422b3181aedd?w=400&q=80";
 
-export const stages: ScoreStageKey[] = ["Audition", "Camp", "Grand Final"];
+export const stages: JudgeAssignedStageKey[] = [
+  "Audition",
+  "Pre Camp",
+  "Camp",
+  "Grand Final",
+];
+export const participantProgressStages: ParticipantProgressStageKey[] = [
+  "Technical Meeting",
+  "Audition",
+  "Pre Camp",
+  "Camp",
+  "Grand Final",
+];
 export const selectionStages: SelectionStageKey[] = [
   "Verification",
+  "Technical Meeting",
   "Audition",
+  "Pre Camp",
   "Camp",
   "Grand Final",
   "Final Result",
@@ -208,11 +249,55 @@ export const verificationStatusLabels: Record<VerificationStatus, string> = {
 };
 export const selectionStageLabels: Record<SelectionStageKey, string> = {
   Verification: "Verifikasi",
+  "Technical Meeting": "Technical Meeting",
   Audition: "Audisi",
+  "Pre Camp": "Pra Karantina",
   Camp: "Karantina",
   "Grand Final": "Grand Final",
   "Final Result": "Nilai Akhir",
 };
+
+export function buildParticipantStageProgress(selectionStage: SelectionStageKey): ParticipantStageProgress {
+  return {
+    "Technical Meeting":
+      selectionStage === "Audition" ||
+      selectionStage === "Pre Camp" ||
+      selectionStage === "Camp" ||
+      selectionStage === "Grand Final" ||
+      selectionStage === "Final Result",
+    Audition:
+      selectionStage === "Pre Camp" ||
+      selectionStage === "Camp" ||
+      selectionStage === "Grand Final" ||
+      selectionStage === "Final Result",
+    "Pre Camp": selectionStage === "Camp" || selectionStage === "Grand Final" || selectionStage === "Final Result",
+    Camp: selectionStage === "Grand Final" || selectionStage === "Final Result",
+    "Grand Final": selectionStage === "Final Result",
+  };
+}
+
+export function getParticipantStageProgress(participant: Participant): ParticipantStageProgress {
+  const fallbackProgress = buildParticipantStageProgress(getParticipantSelectionStage(participant));
+  return participant.stageProgress
+    ? {
+        ...fallbackProgress,
+        ...participant.stageProgress,
+      }
+    : fallbackProgress;
+}
+
+export function getSelectionStageFromStageProgress(
+  progress: ParticipantStageProgress,
+  verificationStatus: VerificationStatus
+): SelectionStageKey {
+  if (verificationStatus !== "Verified") return "Verification";
+  if (!progress["Technical Meeting"]) return "Technical Meeting";
+  if (!progress.Audition) return "Audition";
+  if (!progress["Pre Camp"]) return "Pre Camp";
+  if (!progress.Camp) return "Camp";
+  if (!progress["Grand Final"]) return "Grand Final";
+  return "Final Result";
+}
 
 export const stageCriteriaMap: Record<string, CriteriaItem[]> = {
   Audition: [
@@ -280,7 +365,13 @@ export function isParticipantEligibleForScoreStage(participant: Participant, sta
   const selectionStage = getParticipantSelectionStage(participant);
 
   if (stageName === "Audition") {
-    return selectionStage === "Audition" || selectionStage === "Camp" || selectionStage === "Grand Final" || selectionStage === "Final Result";
+    return (
+      selectionStage === "Audition" ||
+      selectionStage === "Pre Camp" ||
+      selectionStage === "Camp" ||
+      selectionStage === "Grand Final" ||
+      selectionStage === "Final Result"
+    );
   }
 
   if (stageName === "Camp") {
@@ -322,11 +413,34 @@ export function calculateFinalWeightedScore(campScore: number, grandFinalScore: 
 }
 
 export const adminScoreStageLabels: Record<AdminScoreStage, string> = {
+  "Technical Meeting": "Technical Meeting",
   Audition: "Audisi",
+  "Pre Camp": "Pra Karantina",
   Camp: "Karantina",
   "Grand Final": "Grand Final",
   "Final Result": "Nilai Akhir",
 };
+
+export const participantNoteStageOrder: ParticipantNoteStageKey[] = [
+  "Technical Meeting",
+  "Audition",
+  "Pre Camp",
+  "Camp",
+  "Grand Final",
+];
+
+export function getAvailableNoteStages(activeStage: AdminScoreStage): ParticipantNoteStageKey[] {
+  if (activeStage === "Final Result") {
+    return participantNoteStageOrder;
+  }
+
+  const activeIndex = participantNoteStageOrder.indexOf(activeStage as ParticipantNoteStageKey);
+  if (activeIndex === -1) {
+    return participantNoteStageOrder;
+  }
+
+  return participantNoteStageOrder.slice(0, activeIndex + 1);
+}
 
 export function getAdminScoreStageLabel(stage: AdminScoreStage) {
   return adminScoreStageLabels[stage];
@@ -336,25 +450,41 @@ export function sortScoreStages(stageList: ScoreStageKey[]) {
   return [...stageList].sort((a, b) => stages.indexOf(a) - stages.indexOf(b));
 }
 
-export function getJudgeAssignedStages(judge?: Pick<Judge, "assignedStages" | "stages"> | null) {
-  const source = judge?.assignedStages ?? (judge?.stages as ScoreStageKey[] | undefined) ?? [];
-  const filtered = source.filter(
-    (stage): stage is ScoreStageKey => stage === "Audition" || stage === "Camp" || stage === "Grand Final"
-  );
-
-  return sortScoreStages(Array.from(new Set(filtered)));
+export function sortJudgeAssignedStages(stageList: JudgeAssignedStageKey[]) {
+  return [...stageList].sort((a, b) => stages.indexOf(a) - stages.indexOf(b));
 }
 
-export function normalizeJudgeAssignment(assignedStages: ScoreStageKey[], judgeType: JudgeType) {
-  const normalizedStages = sortScoreStages(Array.from(new Set(assignedStages)));
-  const normalizedJudgeType = judgeType === "mentor" && normalizedStages.length === 1 && normalizedStages[0] === "Camp"
-    ? "mentor"
-    : "main";
+export function getJudgeAssignedStages(
+  judge?: Pick<Judge, "assignedStages" | "stages"> | null,
+) {
+  const source =
+    judge?.assignedStages ??
+    (judge?.stages as JudgeAssignedStageKey[] | undefined) ??
+    [];
+  const filtered = source.filter(
+    (stage): stage is JudgeAssignedStageKey =>
+      stage === "Audition" ||
+      stage === "Pre Camp" ||
+      stage === "Camp" ||
+      stage === "Grand Final",
+  );
+
+  return sortJudgeAssignedStages(Array.from(new Set(filtered)));
+}
+
+export function normalizeJudgeAssignment(
+  assignedStages: JudgeAssignedStageKey[],
+  judgeType: JudgeType,
+) {
+  const normalizedStages = sortJudgeAssignedStages(
+    Array.from(new Set(assignedStages)),
+  );
+  const normalizedJudgeType = judgeType === "mentor" ? "judge" : "judge";
 
   return {
-    assignedStages: normalizedJudgeType === "mentor" ? ["Camp"] : normalizedStages,
+    assignedStages: normalizedStages,
     judgeType: normalizedJudgeType,
-  } as { assignedStages: ScoreStageKey[]; judgeType: JudgeType };
+  } as { assignedStages: JudgeAssignedStageKey[]; judgeType: JudgeType };
 }
 
 export function getStageCriteriaAverages(
@@ -381,19 +511,23 @@ export function getParticipantAdminStageScore(
 ) {
   if (stage === "Final Result") {
     const campScore = getAverageStageScore(scoreList, participantId, "Camp", {
-      judgeRole: "main",
+      judgeRole: "judge",
       scoreType: "official",
     });
     const grandFinalScore = getAverageStageScore(scoreList, participantId, "Grand Final", {
-      judgeRole: "main",
+      judgeRole: "judge",
       scoreType: "official",
     });
 
     return calculateFinalWeightedScore(campScore, grandFinalScore);
   }
 
+  if (stage === "Pre Camp") {
+    return 0;
+  }
+
   return getAverageStageScore(scoreList, participantId, stage, {
-    judgeRole: "main",
+    judgeRole: "judge",
     scoreType: "official",
   });
 }
@@ -409,8 +543,9 @@ function legacyStageToVerificationStatus(status: StageStatus): VerificationStatu
 function legacyStageToSelectionStage(status: StageStatus): SelectionStageKey {
   if (status === "GrandFinal") return "Grand Final";
   if (status === "Winner") return "Final Result";
-  if (status === "Camp" || status === "PreCamp" || status === "Top20") return "Camp";
-  if (status === "TechnicalMeeting" || status === "Audition" || status === "Verified") return "Audition";
+  if (status === "Camp") return "Camp";
+  if (status === "PreCamp" || status === "Top20") return "Pre Camp";
+  if (status === "Audition" || status === "Verified") return "Audition";
   return "Verification";
 }
 
@@ -512,7 +647,7 @@ export const statusLabelsId: Record<StageStatus, string> = {
   Verified: "Terverifikasi",
   TechnicalMeeting: "Technical Meeting",
   Rejected: "Ditolak",
-  Audition: "Lolos Administrasi – Audisi",
+  Audition: "Lolos Administrasi â€“ Audisi",
   Top20: "Top 20",
   PreCamp: "Pra-Karantina",
   Camp: "Karantina",
@@ -551,7 +686,7 @@ export const mockNews: NewsItem[] = [
       {
         type: "paragraph",
         text:
-          "BATAM — Dinas Kebudayaan dan Pariwisata (Disbudpar) Kota Batam resmi membuka pendaftaran Pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Pendaftaran dilakukan secara online melalui platform resmi panitia.",
+          "BATAM â€” Dinas Kebudayaan dan Pariwisata (Disbudpar) Kota Batam resmi membuka pendaftaran Pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Pendaftaran dilakukan secara online melalui platform resmi panitia.",
       },
       {
         type: "paragraph",
@@ -562,11 +697,11 @@ export const mockNews: NewsItem[] = [
       {
         type: "list",
         items: [
-          "Pendaftaran online: 1 Februari – 1 April 2026",
+          "Pendaftaran online: 1 Februari â€“ 1 April 2026",
           "Technical meeting: 2 April 2026",
           "Audisi: 4 April 2026",
-          "Pra-karantina: 6 – 17 April 2026",
-          "Karantina: 22 – 24 April 2026",
+          "Pra-karantina: 6 â€“ 17 April 2026",
+          "Karantina: 22 â€“ 24 April 2026",
           "Grand final: 25 April 2026",
         ],
       },
@@ -1190,6 +1325,7 @@ export const mockParticipants: Participant[] = [
     ...participant,
     verificationStatus,
     selectionStage: legacyStageToSelectionStage(participant.status),
+    stageProgress: buildParticipantStageProgress(legacyStageToSelectionStage(participant.status)),
     adminVerificationNote:
       verificationStatus === "NeedsRevision"
         ? "Masih ada item yang perlu diperbaiki sebelum verifikasi diselesaikan."
@@ -1218,63 +1354,49 @@ export const mockJudges: Judge[] = [
     email: "juri1@dutawisatabatam.id",
     title: "Ketua Dewan Juri",
     organization: "Disbudpar Kota Batam",
-    stages: ["Audition", "Camp", "Grand Final"],
+    stages: ["Audition", "Pre Camp", "Camp", "Grand Final"],
     avatar: femalePhoto,
-    judgeType: "main",
+    judgeType: "judge",
   },
   {
     id: "J002",
     name: "Bpk. Hendri Kusuma, S.Par",
     email: "juri2@dutawisatabatam.id",
-    title: "Juri Utama Pariwisata",
+    title: "Juri Pariwisata",
     organization: "Politeknik Negeri Batam",
-    stages: ["Audition", "Camp", "Grand Final"],
+    stages: ["Audition", "Pre Camp", "Camp", "Grand Final"],
     avatar: malePhoto,
-    judgeType: "main",
+    judgeType: "judge",
   },
   {
     id: "J003",
     name: "Ibu Dewi Sartika, M.M",
     email: "juri3@dutawisatabatam.id",
-    title: "Juri Utama Etika & Komunikasi",
+    title: "Juri Etika & Komunikasi",
     organization: "Batam Event Pro",
-    stages: ["Audition", "Camp", "Grand Final"],
+    stages: ["Audition", "Pre Camp", "Camp", "Grand Final"],
     avatar: femalePhoto,
-    judgeType: "main",
+    judgeType: "judge",
   },
   {
     id: "J004",
     name: "Bpk. Rasyid Pranata, M.I.Kom",
     email: "juri4@dutawisatabatam.id",
-    title: "Juri Utama Public Speaking",
+    title: "Juri Public Speaking",
     organization: "Komunitas Public Speaking Batam",
-    stages: ["Audition", "Camp", "Grand Final"],
+    stages: ["Audition", "Pre Camp", "Camp", "Grand Final"],
     avatar: malePhoto,
-    judgeType: "main",
-  },
-  {
-    id: "J005",
-    name: "Kak Nadia Lestari",
-    email: "mentor1@dutawisatabatam.id",
-    title: "Juri Mentor Karantina",
-    organization: "Mentor Pembinaan Finalis",
-    stages: ["Camp"],
-    avatar: femalePhoto,
-    judgeType: "mentor",
-  },
-  {
-    id: "J006",
-    name: "Kak Fajar Ramadhan",
-    email: "mentor2@dutawisatabatam.id",
-    title: "Juri Mentor Karantina",
-    organization: "Mentor Kepribadian Finalis",
-    stages: ["Camp"],
-    avatar: malePhoto,
-    judgeType: "mentor",
+    judgeType: "judge",
   },
 ].map((judge) => ({
   ...judge,
-  assignedStages: judge.stages.filter((stage): stage is ScoreStageKey => stage === "Audition" || stage === "Camp" || stage === "Grand Final"),
+  assignedStages: judge.stages.filter(
+    (stage): stage is JudgeAssignedStageKey =>
+      stage === "Audition" ||
+      stage === "Pre Camp" ||
+      stage === "Camp" ||
+      stage === "Grand Final",
+  ),
 }));
 
 // =============================================
@@ -1338,7 +1460,7 @@ export const mockScoreRecords: ScoreRecord[] = [
     judgeName: "Dr. Hj. Siti Rahayu, M.Par",
     stage: "Audition",
     stageKey: "Audition",
-    judgeRole: "main",
+    judgeRole: "judge",
     scoreType: "official",
     visibility: "panel",
     score: {
@@ -1364,7 +1486,7 @@ export const mockScoreRecords: ScoreRecord[] = [
     judgeName: "Dr. Hj. Siti Rahayu, M.Par",
     stage: "Camp",
     stageKey: "Camp",
-    judgeRole: "main",
+    judgeRole: "judge",
     scoreType: "official",
     visibility: "panel",
     score: {
@@ -1407,7 +1529,7 @@ export const mockScoreRecords: ScoreRecord[] = [
     judgeName: "Bpk. Hendri Kusuma, S.Par",
     stage: "Grand Final",
     stageKey: "Grand Final",
-    judgeRole: "main",
+    judgeRole: "judge",
     scoreType: "official",
     visibility: "panel",
     score: {
@@ -1420,10 +1542,581 @@ export const mockScoreRecords: ScoreRecord[] = [
     totalScore: 89,
     submittedAt: "2026-04-25T20:10:00",
   },
+  {
+    id: "sr005",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    judgeId: "J001",
+    judgeName: "Dr. Hj. Siti Rahayu, M.Par",
+    stage: "Audition",
+    stageKey: "Audition",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      auditionAppearanceGrooming: 90,
+      auditionConfidenceBodyLanguage: 89,
+      auditionEthicsPersonality: 91,
+      auditionBatamTourismKnowledge: 88,
+      auditionMalayCultureWisdom: 87,
+      auditionCommunicationPublicSpeaking: 92,
+      auditionIdeaDeliveryAnswering: 90,
+      auditionForeignLanguage: 86,
+      auditionSupportingTalent: 88,
+      auditionVisionMotivationCommitment: 93,
+    },
+    totalScore: 89.4,
+    submittedAt: "2026-04-11T13:45:00",
+  },
+  {
+    id: "sr006",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    judgeId: "J002",
+    judgeName: "Bpk. Hendri Kusuma, S.Par",
+    stage: "Audition",
+    stageKey: "Audition",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      auditionAppearanceGrooming: 88,
+      auditionConfidenceBodyLanguage: 87,
+      auditionEthicsPersonality: 90,
+      auditionBatamTourismKnowledge: 89,
+      auditionMalayCultureWisdom: 88,
+      auditionCommunicationPublicSpeaking: 91,
+      auditionIdeaDeliveryAnswering: 89,
+      auditionForeignLanguage: 85,
+      auditionSupportingTalent: 87,
+      auditionVisionMotivationCommitment: 92,
+    },
+    totalScore: 88.6,
+    submittedAt: "2026-04-11T14:05:00",
+  },
+  {
+    id: "sr007",
+    participantId: "P011",
+    participantName: "Encik Joan",
+    judgeId: "J001",
+    judgeName: "Dr. Hj. Siti Rahayu, M.Par",
+    stage: "Audition",
+    stageKey: "Audition",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      auditionAppearanceGrooming: 82,
+      auditionConfidenceBodyLanguage: 81,
+      auditionEthicsPersonality: 85,
+      auditionBatamTourismKnowledge: 80,
+      auditionMalayCultureWisdom: 79,
+      auditionCommunicationPublicSpeaking: 83,
+      auditionIdeaDeliveryAnswering: 82,
+      auditionForeignLanguage: 76,
+      auditionSupportingTalent: 80,
+      auditionVisionMotivationCommitment: 86,
+    },
+    totalScore: 81.4,
+    submittedAt: "2026-04-11T14:30:00",
+  },
+  {
+    id: "sr008",
+    participantId: "P013",
+    participantName: "Encik Evan",
+    judgeId: "J003",
+    judgeName: "Ibu Dewi Sartika, M.M",
+    stage: "Audition",
+    stageKey: "Audition",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      auditionAppearanceGrooming: 86,
+      auditionConfidenceBodyLanguage: 88,
+      auditionEthicsPersonality: 87,
+      auditionBatamTourismKnowledge: 84,
+      auditionMalayCultureWisdom: 83,
+      auditionCommunicationPublicSpeaking: 90,
+      auditionIdeaDeliveryAnswering: 88,
+      auditionForeignLanguage: 82,
+      auditionSupportingTalent: 84,
+      auditionVisionMotivationCommitment: 89,
+    },
+    totalScore: 86.1,
+    submittedAt: "2026-04-11T15:10:00",
+  },
+  {
+    id: "sr009",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    judgeId: "J001",
+    judgeName: "Dr. Hj. Siti Rahayu, M.Par",
+    stage: "Camp",
+    stageKey: "Camp",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      campDisciplinePunctuality: 91,
+      campAttitudeEthics: 92,
+      campTeamwork: 90,
+      campActivenessInitiative: 91,
+      campTaskResponsibility: 92,
+    },
+    totalScore: 91.2,
+    submittedAt: "2026-04-20T18:15:00",
+  },
+  {
+    id: "sr010",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    judgeId: "J004",
+    judgeName: "Bpk. Rasyid Pranata, M.I.Kom",
+    stage: "Camp",
+    stageKey: "Camp",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      campDisciplinePunctuality: 90,
+      campAttitudeEthics: 91,
+      campTeamwork: 89,
+      campActivenessInitiative: 92,
+      campTaskResponsibility: 90,
+    },
+    totalScore: 90.4,
+    submittedAt: "2026-04-20T18:40:00",
+  },
+  {
+    id: "sr011",
+    participantId: "P013",
+    participantName: "Encik Evan",
+    judgeId: "J002",
+    judgeName: "Bpk. Hendri Kusuma, S.Par",
+    stage: "Camp",
+    stageKey: "Camp",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      campDisciplinePunctuality: 88,
+      campAttitudeEthics: 89,
+      campTeamwork: 90,
+      campActivenessInitiative: 87,
+      campTaskResponsibility: 89,
+    },
+    totalScore: 88.6,
+    submittedAt: "2026-04-20T17:55:00",
+  },
+  {
+    id: "sr012",
+    participantId: "P012",
+    participantName: "Puan Dzakira",
+    judgeId: "J003",
+    judgeName: "Ibu Dewi Sartika, M.M",
+    stage: "Camp",
+    stageKey: "Camp",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      campDisciplinePunctuality: 89,
+      campAttitudeEthics: 91,
+      campTeamwork: 90,
+      campActivenessInitiative: 88,
+      campTaskResponsibility: 90,
+    },
+    totalScore: 89.6,
+    submittedAt: "2026-04-20T19:10:00",
+  },
+  {
+    id: "sr013",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    judgeId: "J001",
+    judgeName: "Dr. Hj. Siti Rahayu, M.Par",
+    stage: "Grand Final",
+    stageKey: "Grand Final",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      grandFinalAppearancePersonality: 92,
+      grandFinalTourismCultureInsight: 90,
+      grandFinalCommunicationPublicSpeaking: 93,
+      grandFinalIntelligenceAttitude: 91,
+      grandFinalDutaPotential: 94,
+    },
+    totalScore: 92,
+    submittedAt: "2026-04-25T20:45:00",
+  },
+  {
+    id: "sr014",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    judgeId: "J004",
+    judgeName: "Bpk. Rasyid Pranata, M.I.Kom",
+    stage: "Grand Final",
+    stageKey: "Grand Final",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      grandFinalAppearancePersonality: 91,
+      grandFinalTourismCultureInsight: 89,
+      grandFinalCommunicationPublicSpeaking: 94,
+      grandFinalIntelligenceAttitude: 90,
+      grandFinalDutaPotential: 93,
+    },
+    totalScore: 91.4,
+    submittedAt: "2026-04-25T21:00:00",
+  },
+  {
+    id: "sr015",
+    participantId: "P013",
+    participantName: "Encik Evan",
+    judgeId: "J002",
+    judgeName: "Bpk. Hendri Kusuma, S.Par",
+    stage: "Grand Final",
+    stageKey: "Grand Final",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      grandFinalAppearancePersonality: 88,
+      grandFinalTourismCultureInsight: 87,
+      grandFinalCommunicationPublicSpeaking: 90,
+      grandFinalIntelligenceAttitude: 88,
+      grandFinalDutaPotential: 89,
+    },
+    totalScore: 88.4,
+    submittedAt: "2026-04-25T20:35:00",
+  },
+  {
+    id: "sr016",
+    participantId: "P012",
+    participantName: "Puan Dzakira",
+    judgeId: "J003",
+    judgeName: "Ibu Dewi Sartika, M.M",
+    stage: "Grand Final",
+    stageKey: "Grand Final",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      grandFinalAppearancePersonality: 90,
+      grandFinalTourismCultureInsight: 88,
+      grandFinalCommunicationPublicSpeaking: 91,
+      grandFinalIntelligenceAttitude: 90,
+      grandFinalDutaPotential: 92,
+    },
+    totalScore: 90.2,
+    submittedAt: "2026-04-25T20:55:00",
+  },
+  {
+    id: "sr017",
+    participantId: "P012",
+    participantName: "Puan Dzakira",
+    judgeId: "J002",
+    judgeName: "Bpk. Hendri Kusuma, S.Par",
+    stage: "Audition",
+    stageKey: "Audition",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      auditionAppearanceGrooming: 87,
+      auditionConfidenceBodyLanguage: 86,
+      auditionEthicsPersonality: 89,
+      auditionBatamTourismKnowledge: 85,
+      auditionMalayCultureWisdom: 84,
+      auditionCommunicationPublicSpeaking: 90,
+      auditionIdeaDeliveryAnswering: 88,
+      auditionForeignLanguage: 82,
+      auditionSupportingTalent: 86,
+      auditionVisionMotivationCommitment: 90,
+    },
+    totalScore: 86.7,
+    submittedAt: "2026-04-11T15:20:00",
+  },
+  {
+    id: "sr018",
+    participantId: "P001",
+    participantName: "Encik Firdaus",
+    judgeId: "J004",
+    judgeName: "Bpk. Rasyid Pranata, M.I.Kom",
+    stage: "Audition",
+    stageKey: "Audition",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      auditionAppearanceGrooming: 89,
+      auditionConfidenceBodyLanguage: 88,
+      auditionEthicsPersonality: 91,
+      auditionBatamTourismKnowledge: 87,
+      auditionMalayCultureWisdom: 86,
+      auditionCommunicationPublicSpeaking: 90,
+      auditionIdeaDeliveryAnswering: 89,
+      auditionForeignLanguage: 85,
+      auditionSupportingTalent: 87,
+      auditionVisionMotivationCommitment: 92,
+    },
+    totalScore: 88.4,
+    submittedAt: "2026-04-11T13:55:00",
+  },
+  {
+    id: "sr019",
+    participantId: "P011",
+    participantName: "Encik Joan",
+    judgeId: "J003",
+    judgeName: "Ibu Dewi Sartika, M.M",
+    stage: "Camp",
+    stageKey: "Camp",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      campDisciplinePunctuality: 84,
+      campAttitudeEthics: 86,
+      campTeamwork: 85,
+      campActivenessInitiative: 83,
+      campTaskResponsibility: 86,
+    },
+    totalScore: 84.8,
+    submittedAt: "2026-04-20T17:35:00",
+  },
+  {
+    id: "sr020",
+    participantId: "P001",
+    participantName: "Encik Firdaus",
+    judgeId: "J001",
+    judgeName: "Dr. Hj. Siti Rahayu, M.Par",
+    stage: "Camp",
+    stageKey: "Camp",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      campDisciplinePunctuality: 90,
+      campAttitudeEthics: 91,
+      campTeamwork: 89,
+      campActivenessInitiative: 88,
+      campTaskResponsibility: 90,
+    },
+    totalScore: 89.6,
+    submittedAt: "2026-04-20T18:05:00",
+  },
+  {
+    id: "sr021",
+    participantId: "P001",
+    participantName: "Encik Firdaus",
+    judgeId: "J003",
+    judgeName: "Ibu Dewi Sartika, M.M",
+    stage: "Grand Final",
+    stageKey: "Grand Final",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      grandFinalAppearancePersonality: 90,
+      grandFinalTourismCultureInsight: 89,
+      grandFinalCommunicationPublicSpeaking: 91,
+      grandFinalIntelligenceAttitude: 88,
+      grandFinalDutaPotential: 92,
+    },
+    totalScore: 90,
+    submittedAt: "2026-04-25T20:50:00",
+  },
+  {
+    id: "sr022",
+    participantId: "P011",
+    participantName: "Encik Joan",
+    judgeId: "J004",
+    judgeName: "Bpk. Rasyid Pranata, M.I.Kom",
+    stage: "Grand Final",
+    stageKey: "Grand Final",
+    judgeRole: "judge",
+    scoreType: "official",
+    visibility: "panel",
+    score: {
+      grandFinalAppearancePersonality: 84,
+      grandFinalTourismCultureInsight: 83,
+      grandFinalCommunicationPublicSpeaking: 86,
+      grandFinalIntelligenceAttitude: 84,
+      grandFinalDutaPotential: 85,
+    },
+    totalScore: 84.4,
+    submittedAt: "2026-04-25T20:25:00",
+  },
 ];
 
 // alias for AppContext earlier (if you want scoreList as ScoreRecord[])
 export const mockScores = mockScoreRecords;
+
+export const mockParticipantStageNotes: ParticipantStageNote[] = [
+  {
+    id: "note-001",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    stage: "Technical Meeting",
+    authorName: "Rika - Panitia Registrasi",
+    authorRole: "committee",
+    content: "Hadir tepat waktu, melengkapi berkas fisik, dan aktif bertanya soal rundown kegiatan.",
+    createdAt: "2026-04-10T08:30:00",
+  },
+  {
+    id: "note-002",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    stage: "Audition",
+    authorName: "Dr. Hj. Siti Rahayu, M.Par",
+    authorRole: "judge",
+    content: "Pembawaan tenang, jawaban rapi, dan punya potensi kuat pada komunikasi publik.",
+    createdAt: "2026-04-11T14:15:00",
+  },
+  {
+    id: "note-002a",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    stage: "Pre Camp",
+    authorName: "Admin Seleksi",
+    authorRole: "admin",
+    content: "Dokumen lanjutan sudah lengkap dan peserta responsif saat diminta konfirmasi jadwal pra karantina.",
+    createdAt: "2026-04-13T09:10:00",
+  },
+  {
+    id: "note-002b",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    stage: "Camp",
+    authorName: "Bpk. Hendri Kusuma, S.Par",
+    authorRole: "judge",
+    content: "Stabil selama sesi pembekalan, mampu menjaga komunikasi tim, dan cukup menonjol saat simulasi tugas kelompok.",
+    createdAt: "2026-04-20T16:40:00",
+  },
+  {
+    id: "note-002c",
+    participantId: "P010",
+    participantName: "Puan Fanya",
+    stage: "Grand Final",
+    authorName: "Ibu Dewi Sartika, M.M",
+    authorRole: "judge",
+    content: "Penampilan panggung matang, artikulasi jelas, dan jawaban final menunjukkan kesiapan sebagai representasi duta wisata.",
+    createdAt: "2026-04-25T21:05:00",
+  },
+  {
+    id: "note-003",
+    participantId: "P011",
+    participantName: "Encik Joan",
+    stage: "Technical Meeting",
+    authorName: "Yogi - Panitia Teknis",
+    authorRole: "committee",
+    content: "Perlu diingatkan kembali terkait dress code dan ketepatan hadir saat sesi pembukaan.",
+    createdAt: "2026-04-10T08:50:00",
+  },
+  {
+    id: "note-004",
+    participantId: "P011",
+    participantName: "Encik Joan",
+    stage: "Pre Camp",
+    authorName: "Bpk. Hendri Kusuma, S.Par",
+    authorRole: "judge",
+    content: "Mulai terlihat konsisten saat simulasi tugas kelompok dan cepat beradaptasi.",
+    createdAt: "2026-04-14T11:05:00",
+  },
+  {
+    id: "note-004a",
+    participantId: "P011",
+    participantName: "Encik Joan",
+    stage: "Camp",
+    authorName: "Dr. Hj. Siti Rahayu, M.Par",
+    authorRole: "judge",
+    content: "Perkembangan sikap cukup baik, lebih disiplin dari tahap sebelumnya, namun masih perlu dikuatkan pada kepercayaan diri saat tampil.",
+    createdAt: "2026-04-20T14:30:00",
+  },
+  {
+    id: "note-004b",
+    participantId: "P011",
+    participantName: "Encik Joan",
+    stage: "Grand Final",
+    authorName: "Admin Panggung",
+    authorRole: "admin",
+    content: "Siap mengikuti gladi bersih dengan baik dan mampu mengikuti perubahan rundown tanpa kendala berarti.",
+    createdAt: "2026-04-25T18:45:00",
+  },
+  {
+    id: "note-005",
+    participantId: "P012",
+    participantName: "Puan Dzakira",
+    stage: "Camp",
+    authorName: "Ibu Dewi Sartika, M.M",
+    authorRole: "judge",
+    content: "Mampu menjaga etika selama kegiatan karantina dan menonjol saat presentasi tim.",
+    createdAt: "2026-04-20T19:20:00",
+  },
+  {
+    id: "note-005a",
+    participantId: "P012",
+    participantName: "Puan Dzakira",
+    stage: "Grand Final",
+    authorName: "Bpk. Rasyid Pranata, M.I.Kom",
+    authorRole: "judge",
+    content: "Jawaban sesi tanya final kuat, vokal terdengar mantap, dan penguasaan panggung sangat baik dibanding tahap sebelumnya.",
+    createdAt: "2026-04-25T21:20:00",
+  },
+  {
+    id: "note-006",
+    participantId: "P013",
+    participantName: "Encik Evan",
+    stage: "Technical Meeting",
+    authorName: "Nina - Panitia Acara",
+    authorRole: "committee",
+    content: "Datang lebih awal, membantu mengondisikan peserta lain, dan mengikuti arahan technical meeting dengan baik.",
+    createdAt: "2026-04-10T08:15:00",
+  },
+  {
+    id: "note-007",
+    participantId: "P013",
+    participantName: "Encik Evan",
+    stage: "Audition",
+    authorName: "Bpk. Rasyid Pranata, M.I.Kom",
+    authorRole: "judge",
+    content: "Memiliki public speaking yang cukup menonjol, namun perlu memperdalam jawaban terkait wawasan pariwisata lokal.",
+    createdAt: "2026-04-11T15:00:00",
+  },
+  {
+    id: "note-008",
+    participantId: "P013",
+    participantName: "Encik Evan",
+    stage: "Pre Camp",
+    authorName: "Admin Seleksi",
+    authorRole: "admin",
+    content: "Konfirmasi kehadiran lancar dan peserta aktif menanyakan kebutuhan perlengkapan untuk tahap berikutnya.",
+    createdAt: "2026-04-13T10:00:00",
+  },
+  {
+    id: "note-009",
+    participantId: "P013",
+    participantName: "Encik Evan",
+    stage: "Camp",
+    authorName: "Ibu Dewi Sartika, M.M",
+    authorRole: "judge",
+    content: "Konsisten selama masa karantina, cukup dewasa dalam kerja sama kelompok, dan cepat menerima evaluasi.",
+    createdAt: "2026-04-20T18:10:00",
+  },
+  {
+    id: "note-010",
+    participantId: "P013",
+    participantName: "Encik Evan",
+    stage: "Grand Final",
+    authorName: "Dr. Hj. Siti Rahayu, M.Par",
+    authorRole: "judge",
+    content: "Closing statement kuat, pembawaan elegan, dan secara keseluruhan tampil stabil dari awal hingga akhir grand final.",
+    createdAt: "2026-04-25T21:35:00",
+  },
+];
 
 // =============================================
 // HELPER FUNCTIONS

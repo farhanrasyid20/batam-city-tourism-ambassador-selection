@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore } from "lucide-react";
+import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore, ImagePlus, X } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { useApp } from "../../../../context/AppContext";
 import {
@@ -23,6 +23,7 @@ const stageFilterOptions: Array<{ value: StageFilterValue; label: string }> = [
   { value: "all", label: "Semua Tahap" },
   { value: "Verification", label: selectionStageLabels.Verification },
   { value: "Audition", label: selectionStageLabels.Audition },
+  { value: "Pre Camp", label: selectionStageLabels["Pre Camp"] },
   { value: "Camp", label: selectionStageLabels.Camp },
   { value: "Grand Final", label: selectionStageLabels["Grand Final"] },
   { value: "Final Result", label: selectionStageLabels["Final Result"] },
@@ -37,12 +38,15 @@ const verificationFilterOptions: Array<{ value: VerificationFilterValue; label: 
 ];
 
 export default function AdminParticipantsPage() {
-  const { participantList } = useApp();
+  const { participantList, setParticipantList } = useApp();
   const [searchKeyword, setSearchKeyword] = useState("");
   const [stageFilter, setStageFilter] = useState<StageFilterValue>("all");
   const [verificationFilter, setVerificationFilter] = useState<VerificationFilterValue>("all");
   const [genderFilter, setGenderFilter] = useState<GenderFilterValue>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [participantPhotoMenuOpen, setParticipantPhotoMenuOpen] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; name: string } | null>(null);
+  const participantPhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   const filteredParticipants = useMemo(() => {
     return participantList.filter((participant) => {
@@ -63,6 +67,24 @@ export default function AdminParticipantsPage() {
   const selectedParticipant = selectedId
     ? participantList.find((participant) => participant.id === selectedId) ?? null
     : null;
+
+  const handleParticipantPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedParticipant) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setParticipantList((prev) =>
+        prev.map((participant) =>
+          participant.id === selectedParticipant.id ? { ...participant, photo: result } : participant
+        )
+      );
+      setParticipantPhotoMenuOpen(false);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
 
   const getDocumentSummary = (participant: Participant) => {
     const documents = participant.documents ?? [];
@@ -224,7 +246,10 @@ export default function AdminParticipantsPage() {
                           borderBottom: "1px solid rgba(255,255,255,0.04)",
                           background: selectedId === participant.id ? "rgba(212,175,55,0.08)" : "transparent",
                         }}
-                        onClick={() => setSelectedId(participant.id)}
+                        onClick={() => {
+                          setSelectedId(participant.id);
+                          setParticipantPhotoMenuOpen(false);
+                        }}
                       >
                         <td className="px-4 py-3 text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
                           {index + 1}
@@ -288,6 +313,7 @@ export default function AdminParticipantsPage() {
                             onClick={(event) => {
                               event.stopPropagation();
                               setSelectedId(participant.id);
+                              setParticipantPhotoMenuOpen(false);
                             }}
                             className="p-1.5 rounded-lg transition-all"
                             style={{
@@ -322,15 +348,66 @@ export default function AdminParticipantsPage() {
           {selectedParticipant ? (
             <GoldCard glow>
               <div className="text-center mb-5">
-                <Image
-                  src={selectedParticipant.photo}
-                  alt={selectedParticipant.name}
-                  width={80}
-                  height={80}
-                  unoptimized
-                  className="w-20 h-20 rounded-2xl object-cover object-top mx-auto mb-3"
-                  style={{ border: "2px solid rgba(212,175,55,0.5)" }}
-                />
+                <div className="relative w-20 mx-auto mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setParticipantPhotoMenuOpen((prev) => !prev)}
+                    className="relative block w-20 h-20 rounded-2xl overflow-hidden group"
+                    style={{ border: "2px solid rgba(212,175,55,0.5)", cursor: "pointer" }}
+                  >
+                    <Image
+                      src={selectedParticipant.photo}
+                      alt={selectedParticipant.name}
+                      width={80}
+                      height={80}
+                      unoptimized
+                      className="w-20 h-20 object-cover object-top"
+                    />
+                    <span
+                      className="absolute inset-0 flex items-end justify-center pb-2 text-[10px] transition-opacity opacity-0 group-hover:opacity-100"
+                      style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.7))", color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
+                    >
+                      Klik foto
+                    </span>
+                  </button>
+
+                  {participantPhotoMenuOpen ? (
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-40 rounded-xl p-2 z-20"
+                      style={{ background: "#141414", border: "1px solid rgba(212,175,55,0.2)", boxShadow: "0 18px 36px rgba(0,0,0,0.35)" }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewPhoto({ src: selectedParticipant.photo, name: selectedParticipant.name });
+                          setParticipantPhotoMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2"
+                        style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)", background: "transparent", border: "none", cursor: "pointer" }}
+                      >
+                        <Eye size={13} />
+                        Lihat Foto
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => participantPhotoInputRef.current?.click()}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2"
+                        style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)", background: "transparent", border: "none", cursor: "pointer" }}
+                      >
+                        <ImagePlus size={13} />
+                        Pilih Foto Baru
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <input
+                    ref={participantPhotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleParticipantPhotoChange}
+                  />
+                </div>
                 <p className="text-xs mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
                   {selectedParticipant.number}
                 </p>
@@ -516,6 +593,36 @@ export default function AdminParticipantsPage() {
           )}
         </div>
       </div>
+
+      {previewPhoto ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.72)" }}
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-3xl p-5"
+            style={{ background: "#141414", border: "1px solid rgba(212,175,55,0.2)" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.08)", border: "none", color: "#F5E6C8", cursor: "pointer" }}
+            >
+              <X size={16} />
+            </button>
+            <p className="text-sm mb-4 pr-10" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}>
+              {previewPhoto.name}
+            </p>
+            <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid rgba(212,175,55,0.2)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={previewPhoto.src} alt={previewPhoto.name} className="w-full h-auto object-cover" />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

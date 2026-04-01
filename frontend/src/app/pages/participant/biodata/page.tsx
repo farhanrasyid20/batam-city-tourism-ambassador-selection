@@ -189,6 +189,9 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
           ? doc.status
           : ("submitted" as const),
       note: doc.note ?? undefined,
+      url: doc.url ? resolveParticipantPhotoUrl(doc.url) ?? doc.url : undefined,
+      mimeType: doc.mime_type ?? undefined,
+      originalName: doc.original_name ?? undefined,
     })) ?? base?.documents ?? [];
 
   return {
@@ -363,7 +366,7 @@ export default function BiodataPage() {
   // Parsing string pendidikan lama ke format field terpisah.
   const parseEducation = (value: string | undefined) => {
     if (!value) return { institution: "", major: "" };
-    const normalized = value.replace(" ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ ", " - ").replace(" | ", " - ");
+    const normalized = value.replace(" ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ ", " - ").replace(" | ", " - ");
     const parts = normalized.split(" - ");
     const rawCategory = parts[0]?.trim();
     return {
