@@ -23,7 +23,7 @@ export default function JudgeDashboardPage() {
     assignedStages.some((stage) =>
       stage === "Pre Camp"
         ? ["Pre Camp", "Camp", "Grand Final", "Final Result"].includes(
-            participant.selectionStage,
+            participant.selectionStage ?? "Verification",
           )
         : isParticipantEligibleForScoreStage(participant, stage)
     )

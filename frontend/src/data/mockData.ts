@@ -210,6 +210,12 @@ export interface ParticipantStageNote {
   createdAt: string;
 }
 
+type MockParticipantSeed = Participant;
+type MockJudgeSeed = Omit<Judge, "assignedStages"> & {
+  stages: JudgeAssignedStageKey[];
+  judgeType: JudgeType;
+};
+
 // =============================================
 // CONSTANTS
 // =============================================
@@ -522,7 +528,7 @@ export function getParticipantAdminStageScore(
     return calculateFinalWeightedScore(campScore, grandFinalScore);
   }
 
-  if (stage === "Pre Camp") {
+  if (stage === "Technical Meeting" || stage === "Pre Camp") {
     return 0;
   }
 
@@ -915,7 +921,7 @@ export const mockNews: NewsItem[] = [
 // MOCK PARTICIPANTS (NEW FORMAT)
 // =============================================
 
-export const mockParticipants: Participant[] = [
+export const mockParticipants: Participant[] = ([
   {
     id: "P001",
     number: "ECK-001",
@@ -1311,7 +1317,7 @@ export const mockParticipants: Participant[] = [
     scores: [],
     likes: 2950,
   },
-].map((participant) => {
+] as MockParticipantSeed[]).map((participant): Participant => {
   const verificationStatus =
     participant.status === "Rejected"
       ? "Rejected"
@@ -1320,12 +1326,13 @@ export const mockParticipants: Participant[] = [
       : participant.status === "Pending"
       ? "Pending"
       : "Verified";
+  const selectionStage = legacyStageToSelectionStage(participant.status);
 
   return {
     ...participant,
     verificationStatus,
-    selectionStage: legacyStageToSelectionStage(participant.status),
-    stageProgress: buildParticipantStageProgress(legacyStageToSelectionStage(participant.status)),
+    selectionStage,
+    stageProgress: buildParticipantStageProgress(selectionStage),
     adminVerificationNote:
       verificationStatus === "NeedsRevision"
         ? "Masih ada item yang perlu diperbaiki sebelum verifikasi diselesaikan."
@@ -1340,14 +1347,14 @@ export const mockParticipants: Participant[] = [
         : "",
     reviewItems: buildParticipantReviewItems(participant.verificationIssues),
     documents: buildParticipantDocuments(participant.verificationIssues),
-  } satisfies Participant;
+  };
 });
 
 // =============================================
 // MOCK JUDGES (ENGLISH KEYS)
 // =============================================
 
-export const mockJudges: Judge[] = [
+export const mockJudges: Judge[] = ([
   {
     id: "J001",
     name: "Dr. Hj. Siti Rahayu, M.Par",
@@ -1388,7 +1395,7 @@ export const mockJudges: Judge[] = [
     avatar: malePhoto,
     judgeType: "judge",
   },
-].map((judge) => ({
+] as MockJudgeSeed[]).map((judge): Judge => ({
   ...judge,
   assignedStages: judge.stages.filter(
     (stage): stage is JudgeAssignedStageKey =>
