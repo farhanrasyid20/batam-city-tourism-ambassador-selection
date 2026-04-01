@@ -224,7 +224,7 @@ export default function AdminJudgesPage() {
               }}
             >
               {stage === "Semua" ? "Semua" : getAdminScoreStageLabel(stage)}
-            </button>
+            </button> 
           ))}
         </div>
       </GoldCard>
