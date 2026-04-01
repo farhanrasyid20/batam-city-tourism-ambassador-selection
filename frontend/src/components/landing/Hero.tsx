@@ -4,13 +4,12 @@ import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { GoldButton } from "../../components/ui/GoldButton";
-import { useApp } from "../../context/AppContext";
+import { useLandingPageContent } from "../../lib/landing-page-content";
 
 export default function Hero() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { landingPageContent } = useApp();
-  const heroContent = landingPageContent.hero;
+  const heroContent = useLandingPageContent().hero;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -251,10 +250,10 @@ export default function Hero() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <GoldButton variant="primary" size="md" onClick={() => router.push("/auth/register")}>
-            {heroContent.primaryButtonLabel}
+            ✦ Daftar Sekarang
           </GoldButton>
           <GoldButton variant="outline" size="md" onClick={() => router.push("/auth/login")}>
-            {heroContent.secondaryButtonLabel}
+            Login Peserta
           </GoldButton>
         </div>
 

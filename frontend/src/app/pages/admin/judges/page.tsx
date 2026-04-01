@@ -12,18 +12,17 @@ import {
   normalizeJudgeAssignment,
   stages,
   type Judge,
-  type JudgeType,
-  type ScoreStageKey,
+  type JudgeAssignedStageKey,
 } from "../../../../data/mockData";
 
 type JudgeAccessFormState = {
-  assignedStages: ScoreStageKey[];
-  judgeType: JudgeType;
+  assignedStages: JudgeAssignedStageKey[];
 };
+
+type StageFilter = "Semua" | JudgeAssignedStageKey;
 
 const emptyForm: JudgeAccessFormState = {
   assignedStages: [],
-  judgeType: "main",
 };
 
 export default function AdminJudgesPage() {
@@ -31,17 +30,25 @@ export default function AdminJudgesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<JudgeAccessFormState>(emptyForm);
+  const [stageFilter, setStageFilter] = useState<StageFilter>("Semua");
 
   const campMainJudges = useMemo(
     () =>
       judgeList.filter((judge) => {
         const assignedStages = getJudgeAssignedStages(judge);
-        return (judge.judgeType ?? "main") === "main" && assignedStages.includes("Camp");
+        return assignedStages.includes("Camp");
       }),
     [judgeList]
   );
 
-  const mentorModeAvailable = form.assignedStages.length === 1 && form.assignedStages[0] === "Camp";
+  const filteredJudges = useMemo(
+    () =>
+      judgeList.filter((judge) => {
+        if (stageFilter === "Semua") return true;
+        return getJudgeAssignedStages(judge).includes(stageFilter);
+      }),
+    [judgeList, stageFilter],
+  );
 
   const resetForm = () => {
     setForm(emptyForm);
@@ -49,16 +56,15 @@ export default function AdminJudgesPage() {
     setShowForm(false);
   };
 
-  const toggleStage = (stage: ScoreStageKey) => {
+  const toggleStage = (stage: JudgeAssignedStageKey) => {
     setForm((prev) => {
       const nextStages = prev.assignedStages.includes(stage)
         ? prev.assignedStages.filter((item) => item !== stage)
         : [...prev.assignedStages, stage];
-      const normalized = normalizeJudgeAssignment(nextStages, prev.judgeType);
+      const normalized = normalizeJudgeAssignment(nextStages, "judge");
 
       return {
         assignedStages: normalized.assignedStages,
-        judgeType: normalized.judgeType,
       };
     });
   };
@@ -66,7 +72,7 @@ export default function AdminJudgesPage() {
   const saveJudgeAccess = () => {
     if (!editId || form.assignedStages.length === 0) return;
 
-    const normalized = normalizeJudgeAssignment(form.assignedStages, form.judgeType);
+    const normalized = normalizeJudgeAssignment(form.assignedStages, "judge");
 
     setJudgeList((prev) =>
       prev.map((judge) =>
@@ -75,7 +81,7 @@ export default function AdminJudgesPage() {
               ...judge,
               stages: normalized.assignedStages,
               assignedStages: normalized.assignedStages,
-              judgeType: normalized.judgeType,
+              judgeType: "judge",
             }
           : judge
       )
@@ -86,7 +92,12 @@ export default function AdminJudgesPage() {
 
   const editJudgeAccess = (judge: Judge) => {
     setEditId(judge.id);
-    setForm(normalizeJudgeAssignment(getJudgeAssignedStages(judge), judge.judgeType ?? "main"));
+    setForm({
+      assignedStages: normalizeJudgeAssignment(
+        getJudgeAssignedStages(judge),
+        "judge",
+      ).assignedStages,
+    });
     setShowForm(true);
   };
 
@@ -98,7 +109,7 @@ export default function AdminJudgesPage() {
             Data Juri
           </h1>
           <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-            Halaman ini hanya untuk melihat dan mengatur hak akses penilaian juri (audisi, karantina, grand final).
+            Halaman ini untuk mengatur tahapan penugasan juri, termasuk pra karantina yang hanya memakai catatan peserta.
           </p>
         </div>
       </div>
@@ -131,25 +142,8 @@ export default function AdminJudgesPage() {
                 </button>
               ))}
             </div>
-
-            <select
-              value={form.judgeType}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...normalizeJudgeAssignment(prev.assignedStages, event.target.value as JudgeType),
-                }))
-              }
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-              style={{ background: "#111", border: "1px solid rgba(212,175,55,0.25)", color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
-            >
-              <option value="main">Juri Utama</option>
-              {mentorModeAvailable ? <option value="mentor">Juri Mentor</option> : null}
-            </select>
-
-            <p className="text-xs mt-2" style={{ color: mentorModeAvailable ? "#888" : "#B45309", fontFamily: "var(--font-poppins)" }}>
-              {mentorModeAvailable
-                ? "Mode mentor tersedia karena penugasan hanya pada tahap karantina."
-                : "Juri mentor hanya boleh ditugaskan pada satu tahap, yaitu karantina."}
+            <p className="text-xs mt-2" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+              Pra karantina aktif untuk catatan peserta, sedangkan audisi, karantina, dan grand final tetap memakai penilaian resmi.
             </p>
           </div>
 
@@ -167,7 +161,7 @@ export default function AdminJudgesPage() {
               Ringkasan Penugasan Karantina
             </h3>
             <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-              Saat ini ada {campMainJudges.length} juri utama yang bertugas di tahap karantina.
+              Saat ini ada {campMainJudges.length} juri yang bertugas di tahap karantina.
             </p>
           </div>
           <span
@@ -179,28 +173,79 @@ export default function AdminJudgesPage() {
               fontFamily: "var(--font-poppins)",
             }}
           >
-            {campMainJudges.length === 4 ? "Jumlah juri utama karantina sudah ideal" : "Target ideal: 4 juri utama karantina"}
+            {campMainJudges.length === 4 ? "Jumlah juri karantina sudah ideal" : "Target ideal: 4 juri karantina"}
           </span>
         </div>
       </GoldCard>
 
+      <GoldCard className="mb-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="text-sm font-bold mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+              Filter Tahap Juri
+            </h3>
+            <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+              Gunakan filter ini untuk melihat juri berdasarkan tahapan penugasan.
+            </p>
+          </div>
+
+          <span
+            className="text-xs px-3 py-1 rounded-full"
+            style={{
+              background: "rgba(212,175,55,0.12)",
+              color: "#D4AF37",
+              border: "1px solid rgba(212,175,55,0.22)",
+              fontFamily: "var(--font-poppins)",
+            }}
+          >
+            {filteredJudges.length} juri tampil
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mt-4">
+          {(["Semua", ...stages] as const).map((stage) => (
+            <button
+              key={stage}
+              type="button"
+              onClick={() => setStageFilter(stage)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+              style={{
+                background:
+                  stageFilter === stage
+                    ? "rgba(212,175,55,0.2)"
+                    : "rgba(255,255,255,0.05)",
+                border: `1px solid ${
+                  stageFilter === stage
+                    ? "rgba(212,175,55,0.45)"
+                    : "rgba(255,255,255,0.08)"
+                }`,
+                color: stageFilter === stage ? "#D4AF37" : "#888",
+                fontFamily: "var(--font-cinzel)",
+              }}
+            >
+              {stage === "Semua" ? "Semua" : getAdminScoreStageLabel(stage)}
+            </button>
+          ))}
+        </div>
+      </GoldCard>
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {judgeList.map((judge) => (
+        {filteredJudges.map((judge) => (
           <GoldCard key={judge.id}>
             <div className="flex items-start gap-4">
               <Image src={judge.avatar} alt={judge.name} width={56} height={56} unoptimized className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h4 className="text-sm font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>{judge.name}</h4>
-                  <span
-                    className="text-[10px] px-2 py-0.5 rounded-full"
-                    style={{
-                      background: judge.judgeType === "mentor" ? "rgba(59,130,246,0.14)" : "rgba(212,175,55,0.14)",
-                      color: judge.judgeType === "mentor" ? "#60a5fa" : "#D4AF37",
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{
+                      background: "rgba(212,175,55,0.14)",
+                      color: "#D4AF37",
                       fontFamily: "var(--font-poppins)",
                     }}
                   >
-                    {judge.judgeType === "mentor" ? "Juri Mentor" : "Juri Utama"}
+                    Juri
                   </span>
                 </div>
                 <p className="text-xs mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>{judge.title}</p>

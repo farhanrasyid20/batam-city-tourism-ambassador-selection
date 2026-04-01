@@ -17,31 +17,13 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { winnerCategories } from "../../../data/mockData";
-import { useApp } from "../../../context/AppContext";
+import { useLandingPageContent } from "../../../lib/landing-page-content";
 
 const AboutGuideInlineViewer = dynamic(() => import("./AboutGuideInlineViewer"), {
   ssr: false,
 });
 
 const guideBookHref = "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf";
-
-const generalRequirements = [
-  "Warga Negara Indonesia dan berdomisili di Kota Batam",
-  "Berusia 18 - 25 tahun pada saat pendaftaran",
-  "Belum menikah",
-  "Pendidikan minimal SMA/SMK/sederajat",
-  "Tinggi badan minimal: Pria 175 cm, Wanita 165 cm",
-  "Sehat jasmani dan rohani",
-];
-
-const specialRequirements = [
-  "Memiliki akun Instagram aktif dan tidak di-private",
-  "Bersedia mengikuti seluruh tahapan seleksi",
-  "Tidak sedang menjabat sebagai Duta aktif",
-  "Mampu berkomunikasi dalam Bahasa Indonesia dan Bahasa Inggris",
-  "Memiliki wawasan luas tentang pariwisata Kota Batam",
-  "Bersedia mempromosikan pariwisata Kota Batam selama masa jabatan",
-];
 
 const soloCategoryTitles = [
   "Encik Duta Wisata Kota Batam 2026",
@@ -54,31 +36,50 @@ const favoriteCategoryTitles = ["Duta Favorit Encik", "Duta Favorit Puan"];
 
 export function AboutSection() {
   const [guideOpen, setGuideOpen] = useState(false);
-  const { landingPageContent } = useApp();
+  const landingPageContent = useLandingPageContent();
   const aboutContent = landingPageContent.about;
+  const requirementsContent = landingPageContent.requirements;
+  const winnerContent = landingPageContent.winnerCategories;
 
   const soloWinnerCategories = useMemo(
     () =>
       soloCategoryTitles
-        .map((title) => winnerCategories.find((item) => item.title === title) ?? null)
+        .map((title, index) => {
+          const item = winnerCategories.find((entry) => entry.title === title) ?? null;
+          if (!item) return null;
+          return {
+            ...item,
+            description: winnerContent.soloItems[index]?.description ?? item.description,
+          };
+        })
         .filter((item): item is NonNullable<typeof item> => item !== null),
-    []
+    [winnerContent.soloItems]
   );
 
   const pairWinnerCategory = useMemo(
     () =>
-      winnerCategories.find(
-        (item) => item.title === "Encik & Puan Duta Wisata Kota Batam 2026"
-      ) ?? null,
-    []
+      winnerCategories.find((item) => item.title === "Encik & Puan Duta Wisata Kota Batam 2026")
+        ? {
+            ...(winnerCategories.find((item) => item.title === "Encik & Puan Duta Wisata Kota Batam 2026") as NonNullable<(typeof winnerCategories)[number]>),
+            description: winnerContent.pairItem.description,
+          }
+        : null,
+    [winnerContent.pairItem.description]
   );
 
   const favoriteWinnerCategories = useMemo(
     () =>
       favoriteCategoryTitles
-        .map((title) => winnerCategories.find((item) => item.title === title) ?? null)
+        .map((title, index) => {
+          const item = winnerCategories.find((entry) => entry.title === title) ?? null;
+          if (!item) return null;
+          return {
+            ...item,
+            description: winnerContent.favoriteItems[index]?.description ?? item.description,
+          };
+        })
         .filter((item): item is NonNullable<typeof item> => item !== null),
-    []
+    [winnerContent.favoriteItems]
   );
 
   return (
@@ -89,7 +90,7 @@ export function AboutSection() {
             className="text-sm tracking-widest uppercase mb-3"
             style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
           >
-            {aboutContent.sectionLabel}
+            Tentang Program
           </p>
 
           <h2
@@ -103,7 +104,7 @@ export function AboutSection() {
               fontWeight: 700,
             }}
           >
-            {aboutContent.sectionTitle}
+            ENCIK &amp; PUAN DUTA WISATA BATAM
           </h2>
 
           <div
@@ -119,7 +120,7 @@ export function AboutSection() {
                 <Users size={18} color="#0F0F0F" />
               </div>
               <h3 className="text-lg font-semibold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-                {aboutContent.aboutCardTitle}
+                Tentang Program
               </h3>
             </div>
 
@@ -132,7 +133,7 @@ export function AboutSection() {
                 <Target size={18} color="#0F0F0F" />
               </div>
               <h3 className="text-lg font-semibold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-                {aboutContent.visionMissionCardTitle}
+                Visi &amp; Misi
               </h3>
             </div>
 
@@ -344,14 +345,14 @@ export function AboutSection() {
               PERSYARATAN PESERTA DUTA WISATA KOTA BATAM 2026
             </h3>
             <p className="text-sm sm:text-base mt-3 max-w-3xl mx-auto" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
-              Pastikan seluruh syarat umum dan syarat khusus di bawah ini dipenuhi sebelum melakukan pendaftaran dan pengumpulan berkas.
+              {requirementsContent.introText}
             </p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
             {[
-              { title: "PERSYARATAN UMUM", items: generalRequirements },
-              { title: "PERSYARATAN KHUSUS", items: specialRequirements },
+              { title: "PERSYARATAN UMUM", items: requirementsContent.generalItems },
+              { title: "PERSYARATAN KHUSUS", items: requirementsContent.specialItems },
             ].map((block) => (
               <div key={block.title} className="rounded-2xl p-8 bg-[#1A1A1A] border border-yellow-700/30">
                 <h3 className="text-lg font-semibold mb-5" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>

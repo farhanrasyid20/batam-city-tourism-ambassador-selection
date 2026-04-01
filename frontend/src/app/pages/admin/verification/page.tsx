@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import React, { useMemo, useState } from "react";
 import Image from "next/image";
 import { CheckCircle, XCircle, Clock, FileText, Eye, AlertTriangle, MessageSquareMore } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
+import VerificationDocumentLink, { getVerificationDocumentMeta } from "./components/VerificationDocumentLink";
 import { useApp } from "../../../../context/AppContext";
 import {
   getParticipantVerificationStatus,
@@ -51,7 +52,7 @@ function getSelectionStageAfterVerification(status: VerificationStatus): Selecti
 }
 
 export default function AdminVerificationPage() {
-  const { participantList, setParticipantList, currentParticipant, setCurrentParticipant } = useApp();
+  const { participantList, setParticipantList, currentParticipant, setCurrentParticipant, participantResources } = useApp();
   const [activeTab, setActiveTab] = useState<VerificationStatus>("Pending");
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [noteDraftById, setNoteDraftById] = useState<Record<string, string>>({});
@@ -275,7 +276,7 @@ export default function AdminVerificationPage() {
                       </span>
                     </div>
                     <p className="text-xs mt-0.5" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-                      {participant.number} • {participant.education} • Daftar: {participant.registeredAt}
+                      {participant.number} - {participant.education} - Daftar: {participant.registeredAt}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-2">
                       {(participant.documents ?? []).map((document) => (
@@ -295,7 +296,7 @@ export default function AdminVerificationPage() {
                                 : "1px solid rgba(34,197,94,0.2)",
                           }}
                         >
-                          {document.status === "revision_required" ? "Perlu revisi" : "Tersubmit"} • {document.label}
+                          {document.status === "revision_required" ? "Perlu revisi" : "Tersubmit"} - {document.label}
                         </span>
                       ))}
                     </div>
@@ -502,16 +503,24 @@ export default function AdminVerificationPage() {
                           Status Dokumen
                         </p>
                         <div className="space-y-2">
-                          {(participant.documents ?? []).map((document) => (
+                          {(participant.documents ?? []).map((document) => {
+                            const documentMeta = getVerificationDocumentMeta(participant, document, participantResources);
+
+                            return (
                             <div
                               key={`${participant.id}-${document.key}`}
                               className="rounded-xl p-3"
                               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                                <VerificationDocumentLink
+                                  participant={participant}
+                                  document={document}
+                                  className="text-xs font-semibold text-left"
+                                  style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)", background: "transparent", border: "none", padding: 0 }}
+                                >
                                   {document.label}
-                                </p>
+                                </VerificationDocumentLink>
                                 <span
                                   className="text-[10px] px-2 py-0.5 rounded-full"
                                   style={{
@@ -524,7 +533,29 @@ export default function AdminVerificationPage() {
                                   {document.status === "revision_required" ? "Perlu revisi" : "Tersubmit"}
                                 </span>
                               </div>
-                              <div className="flex gap-2 mt-2 mb-2">
+                              <div className="mt-2 mb-2 flex flex-wrap items-start justify-between gap-2">
+                                <div
+                                  className="min-w-0 flex-1 rounded-lg px-3 py-2"
+                                  style={{
+                                    background: "rgba(17,17,17,0.88)",
+                                    border: `1px solid ${documentMeta.fileName ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.08)"}`,
+                                  }}
+                                >
+                                  <p
+                                    className="text-[10px] uppercase tracking-[0.2em] mb-1"
+                                    style={{ color: "#8F8F8F", fontFamily: "var(--font-poppins)" }}
+                                  >
+                                    File Peserta
+                                  </p>
+                                  <p
+                                    className="text-xs truncate"
+                                    style={{ color: documentMeta.fileName ? "#F5E6C8" : "#888", fontFamily: "var(--font-poppins)" }}
+                                    title={documentMeta.fileName || "File belum diisi"}
+                                  >
+                                    {documentMeta.fileName || "File belum diisi"}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
                                 <button
                                   type="button"
                                   onClick={() => updateDocumentReview(participant.id, document.key, { status: "submitted" })}
@@ -553,6 +584,7 @@ export default function AdminVerificationPage() {
                                 >
                                   Revisi
                                 </button>
+                                </div>
                               </div>
                               <textarea
                                 value={document.note ?? ""}
@@ -570,7 +602,7 @@ export default function AdminVerificationPage() {
                                 }}
                               />
                             </div>
-                          ))}
+                          )})}
                         </div>
                       </div>
                     </div>

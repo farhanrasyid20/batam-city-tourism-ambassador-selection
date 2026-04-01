@@ -100,6 +100,9 @@ export default function ParticipantPagesLayout({
                   ? doc.status
                   : ("submitted" as const),
               note: doc.note ?? undefined,
+              url: doc.url ?? undefined,
+              mimeType: doc.mime_type ?? undefined,
+              originalName: doc.original_name ?? undefined,
             })) ?? [],
           submittedToAdmin: data.submitted_to_admin ?? false,
           agreementNoAgency: data.agreement_no_agency ?? undefined,

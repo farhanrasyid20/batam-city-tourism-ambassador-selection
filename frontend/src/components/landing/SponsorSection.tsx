@@ -1,21 +1,12 @@
-﻿import Image from "next/image";
+"use client";
 
-const partnerLogos = [
-  { id: "logo-site", src: "/logo1.png", alt: "Duta Wisata Batam" },
-  { id: "batam", src: "/partners/dinas_kebudayaan.png", alt: "Dinas Pariwisata Kota Batam" },
-  { id: "vbi", src: "/partners/vbi.png", alt: "Visit Batam Indonesia" },
-  { id: "bbi", src: "/partners/bbi.png", alt: "Bangga Buatan Indonesia" },
-  {
-    id: "wonderful-indonesia",
-    src: "/partners/wonderful.png",
-    alt: "Wonderful Indonesia",
-  },
-  { id: "kementrian-pariwisata", src: "/partners/kemenpar.png", alt: "Kementrian Pariwisata" },
-];
-
-const loopedLogos = [...partnerLogos, ...partnerLogos];
+import Image from "next/image";
+import { useLandingPageContent } from "../../lib/landing-page-content";
 
 export default function SponsorSection() {
+  const partnerLogos = useLandingPageContent().partnership.partners;
+  const loopedLogos = [...partnerLogos, ...partnerLogos];
+
   return (
     <section id="partnership" className="py-20 lg:py-28">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -83,4 +74,3 @@ export default function SponsorSection() {
     </section>
   );
 }
-
