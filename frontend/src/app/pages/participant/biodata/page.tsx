@@ -19,16 +19,32 @@ import type { Participant, StageStatus } from "../../../../data/mockData";
 
 type FormState = {
   fullName: string;
+  nickName: string;
   gender: "Encik" | "Puan";
   nationalId: string;
   birthPlace: string;
   birthDate: string;
+  domicileAddress: string;
+  ktpAddress: string;
   heightCm: string;
+  weightKg: string;
+  shirtSize: string;
+  chestCircumferenceCm: string;
+  waistCircumferenceCm: string;
+  hipCircumferenceCm: string;
+  pantsSize: string;
+  shoeSize: string;
   educationInstitution: string;
   educationMajor: string;
   email: string;
   phone: string;
+  parentPhone: string;
   instagram: string;
+  tiktok: string;
+  occupation: string;
+  skills: string;
+  hobbies: string;
+  languages: string;
   vision: string;
   mission: string;
   experience: string;
@@ -149,6 +165,22 @@ function parseIsoDateToDate(iso: string): Date | null {
     return null;
   }
   return date;
+}
+
+function calculateAgeYears(iso: string): string {
+  const birthDate = parseIsoDateToDate(iso);
+  if (!birthDate) return "";
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1;
+  }
+
+  return age >= 0 ? String(age) : "";
 }
 
 function isSameDate(a: Date, b: Date): boolean {
@@ -381,18 +413,34 @@ export default function BiodataPage() {
   // Initial state form biodata peserta.
   const [form, setForm] = useState<FormState>({
     fullName: participant?.name ?? "",
+    nickName: "",
     gender: participant?.gender ?? "Encik",
     nationalId: participant?.nationalId ?? "",
     birthPlace: participant?.birthPlace ?? "",
     birthDate: participant?.birthDate ?? "",
+    domicileAddress: "",
+    ktpAddress: "",
     heightCm: participant?.heightCm ? String(participant.heightCm) : "",
+    weightKg: "",
+    shirtSize: "",
+    chestCircumferenceCm: "",
+    waistCircumferenceCm: "",
+    hipCircumferenceCm: "",
+    pantsSize: "",
+    shoeSize: "",
     educationInstitution: parsedEducation.institution,
     educationMajor: parsedEducation.major,
     educationCategory: parsedEducation.category ?? "Kuliah",
     educationDegree: "",
     email: participant?.email ?? user?.email ?? "",
     phone: participant?.phone ?? "",
+    parentPhone: "",
     instagram: participant?.instagram ?? "",
+    tiktok: "",
+    occupation: "",
+    skills: "",
+    hobbies: "",
+    languages: "",
     vision: "",
     mission: "",
     experience: "",
@@ -430,21 +478,37 @@ export default function BiodataPage() {
         setForm((prev) => ({
           ...prev,
           fullName: data.name ?? prev.fullName,
+          nickName: data.nickname ?? prev.nickName,
           gender: data.gender ?? prev.gender,
           nationalId: data.national_id ?? prev.nationalId,
           birthPlace: data.birth_place ?? prev.birthPlace,
           birthDate: data.birth_date ?? prev.birthDate,
+          domicileAddress: data.domicile_address ?? prev.domicileAddress,
+          ktpAddress: data.ktp_address ?? prev.ktpAddress,
           heightCm:
             data.height_cm !== null && data.height_cm !== undefined
               ? String(data.height_cm)
               : prev.heightCm,
+          weightKg: data.weight_kg ?? prev.weightKg,
+          shirtSize: data.shirt_size ?? prev.shirtSize,
+          chestCircumferenceCm: data.chest_circumference_cm ?? prev.chestCircumferenceCm,
+          waistCircumferenceCm: data.waist_circumference_cm ?? prev.waistCircumferenceCm,
+          hipCircumferenceCm: data.hip_circumference_cm ?? prev.hipCircumferenceCm,
+          pantsSize: data.pants_size ?? prev.pantsSize,
+          shoeSize: data.shoe_size ?? prev.shoeSize,
           educationCategory: data.education_category ?? prev.educationCategory,
           educationInstitution: data.education_institution ?? prev.educationInstitution,
           educationMajor: data.education_major ?? prev.educationMajor,
           educationDegree: data.education_degree ?? prev.educationDegree,
           email: data.email ?? prev.email,
           phone: data.phone ?? prev.phone,
+          parentPhone: data.parent_phone ?? prev.parentPhone,
           instagram: data.instagram ?? prev.instagram,
+          tiktok: data.tiktok ?? prev.tiktok,
+          occupation: data.occupation ?? prev.occupation,
+          skills: data.skills ?? prev.skills,
+          hobbies: data.hobbies ?? prev.hobbies,
+          languages: data.languages ?? prev.languages,
           vision: data.vision ?? prev.vision,
           mission: data.mission ?? prev.mission,
           experience: data.experience ?? prev.experience,
@@ -461,7 +525,7 @@ export default function BiodataPage() {
           publicSpeakingExperience:
             data.public_speaking_experience ?? prev.publicSpeakingExperience,
         }));
-        setBirthDateDisplay(formatIsoDateToDisplay(data.birth_date ?? form.birthDate ?? ""));
+        setBirthDateDisplay(formatIsoDateToDisplay(data.birth_date ?? ""));
 
         setCurrentParticipant((prev) => mergeParticipantFromBiodata(prev, data));
         setParticipantList((prev) => {
@@ -530,14 +594,30 @@ export default function BiodataPage() {
   const completionProgress = useMemo(() => {
     const requiredFields = [
       form.fullName,
+      form.nickName,
       form.nationalId,
       form.birthPlace,
       form.birthDate,
+      form.domicileAddress,
+      form.ktpAddress,
       form.heightCm,
+      form.weightKg,
+      form.shirtSize,
+      form.chestCircumferenceCm,
+      form.waistCircumferenceCm,
+      form.hipCircumferenceCm,
+      form.pantsSize,
+      form.shoeSize,
       form.educationInstitution,
       form.email,
       form.phone,
+      form.parentPhone,
       form.instagram,
+      form.tiktok,
+      form.occupation,
+      form.skills,
+      form.hobbies,
+      form.languages,
       form.vision,
       form.mission,
       form.agreementNoAgency,
@@ -551,6 +631,7 @@ export default function BiodataPage() {
     const filledCount = requiredFields.filter(Boolean).length;
     return Math.round((filledCount / requiredFields.length) * 100);
   }, [form]);
+  const ageDisplay = useMemo(() => calculateAgeYears(form.birthDate), [form.birthDate]);
 
   // Opsi dropdown yang berubah sesuai kategori pendidikan.
   const selectedEducation = educationData[form.educationCategory] ?? educationData.Kuliah;
@@ -621,16 +702,32 @@ export default function BiodataPage() {
           name: form.fullName,
           phone: form.phone,
           gender: form.gender,
+          nickname: form.nickName.trim() || undefined,
           national_id: form.nationalId,
           birth_place: form.birthPlace,
           birth_date: form.birthDate,
+          domicile_address: form.domicileAddress.trim() || undefined,
+          ktp_address: form.ktpAddress.trim() || undefined,
           height_cm: normalizedHeight || undefined,
+          weight_kg: form.weightKg.trim() || undefined,
+          shirt_size: form.shirtSize.trim() || undefined,
+          chest_circumference_cm: form.chestCircumferenceCm.trim() || undefined,
+          waist_circumference_cm: form.waistCircumferenceCm.trim() || undefined,
+          hip_circumference_cm: form.hipCircumferenceCm.trim() || undefined,
+          pants_size: form.pantsSize.trim() || undefined,
+          shoe_size: form.shoeSize.trim() || undefined,
           instagram: form.instagram,
+          tiktok: form.tiktok.trim() || undefined,
+          parent_phone: form.parentPhone.trim() || undefined,
           photo: form.profilePhoto || undefined,
           education_category: form.educationCategory,
           education_institution: form.educationInstitution,
           education_major: form.educationMajor,
           education_degree: form.educationDegree || undefined,
+          occupation: form.occupation.trim() || undefined,
+          skills: form.skills.trim() || undefined,
+          hobbies: form.hobbies.trim() || undefined,
+          languages: form.languages.trim() || undefined,
           vision: form.vision,
           mission: form.mission,
           experience: form.experience || undefined,
@@ -1203,6 +1300,12 @@ export default function BiodataPage() {
               placeholder: "Sesuai KTP/Akta Lahir",
               required: true,
             })}
+            {renderInputField({
+              label: "Nama Panggilan",
+              name: "nickName",
+              placeholder: "Contoh: Ara",
+              required: true,
+            })}
             <div>
               <label
                 className="block text-xs mb-1.5"
@@ -1227,6 +1330,38 @@ export default function BiodataPage() {
             {renderInputField({ label: "NIK", name: "nationalId", placeholder: "16 digit NIK", required: true })}
             {renderInputField({ label: "Tempat Lahir", name: "birthPlace", placeholder: "Batam", required: true })}
             {renderBirthDateField()}
+            <div>
+              <label
+                className="block text-xs mb-1.5"
+                style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)", fontWeight: 600 }}
+              >
+                Usia (otomatis)
+              </label>
+              <input
+                type="text"
+                value={ageDisplay ? `${ageDisplay} tahun` : ""}
+                readOnly
+                disabled
+                placeholder="Akan terisi otomatis dari tanggal lahir"
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+                style={{ ...inputStyle, opacity: 0.72 }}
+              />
+              <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                Usia dihitung otomatis dari tanggal lahir.
+              </p>
+            </div>
+            {renderInputField({
+              label: "Alamat Domisili",
+              name: "domicileAddress",
+              placeholder: "Alamat domisili saat ini",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Alamat sesuai KTP",
+              name: "ktpAddress",
+              placeholder: "Alamat sesuai dokumen resmi",
+              required: true,
+            })}
             {renderInputField({
               label: "Tinggi Badan (cm)",
               name: "heightCm",
@@ -1235,17 +1370,59 @@ export default function BiodataPage() {
               required: true,
               hint: `Min. Encik: 175 cm | Min. Puan: 165 cm (${form.gender === "Encik" ? "saat ini Encik" : "saat ini Puan"})`,
             })}
+            {renderInputField({
+              label: "Berat Badan (kg)",
+              name: "weightKg",
+              placeholder: "Contoh: 55",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Ukuran Baju",
+              name: "shirtSize",
+              placeholder: "Contoh: S/M/L/XL",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Lingkar Dada (cm)",
+              name: "chestCircumferenceCm",
+              placeholder: "Contoh: 90",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Lingkar Pinggang (cm)",
+              name: "waistCircumferenceCm",
+              placeholder: "Contoh: 70",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Lingkar Pinggul (cm)",
+              name: "hipCircumferenceCm",
+              placeholder: "Contoh: 92",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Ukuran Celana",
+              name: "pantsSize",
+              placeholder: "Contoh: 28 / M",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Ukuran Sepatu",
+              name: "shoeSize",
+              placeholder: "Contoh: 39-40",
+              required: true,
+            })}
             <div className="sm:col-span-2">
               <label
                 className="block text-xs mb-1.5"
                 style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)", fontWeight: 600 }}
               >
-                Pendidikan Terakhir <span style={{ color: "#ef4444" }}>*</span>
+                Pendidikan <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <p className="text-[11px] mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                    Kategori Pendidikan
+                    Pendidikan
                   </p>
                   <select
                     value={form.educationCategory}
@@ -1272,7 +1449,7 @@ export default function BiodataPage() {
                 </div>
                 <div className="relative" ref={institutionRef}>
                   <p className="text-[11px] mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                    Instansi (Sekolah/Kampus/Perguruan Tinggi)
+                    Nama Sekolah/Universitas/Kantor
                   </p>
                   <input
                     type="text"
@@ -1285,7 +1462,7 @@ export default function BiodataPage() {
                       setShowInstitutionDropdown(true);
                       e.target.style.borderColor = "rgba(200,162,77,0.6)";
                     }}
-                    placeholder="Contoh: Politeknik Negeri Batam"
+                    placeholder="Contoh: Politeknik Negeri Batam / PT. ABC"
                     className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
                     style={inputStyle}
                     onBlur={(e) => (e.target.style.borderColor = "rgba(200,162,77,0.25)")}
@@ -1348,7 +1525,7 @@ export default function BiodataPage() {
                   ref={majorRef}
                 >
                   <p className="text-[11px] mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                    Jurusan
+                    Jurusan (opsional)
                   </p>
                   <input
                     type="text"
@@ -1401,7 +1578,7 @@ export default function BiodataPage() {
                 </div>
               </div>
               <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-                Pilih dari list atau ketik bebas untuk instansi dan jurusan.
+                Isian menyesuaikan format data pendaftaran pada spreadsheet.
               </p>
             </div>
           </div>
@@ -1417,7 +1594,7 @@ export default function BiodataPage() {
               borderBottom: "1px solid rgba(200,162,77,0.15)",
             }}
           >
-            MEDIA SOSIAL
+            MEDIA SOSIAL (Instagram/TikTok)
           </h2>
           <div className="space-y-4">
             {renderInputField({
@@ -1437,16 +1614,28 @@ export default function BiodataPage() {
             hint: "Masukkan nomor HP aktif yang dapat dihubungi panitia.",
           })}
             {renderInputField({
+              label: "No. HP Orang Tua / Wali",
+              name: "parentPhone",
+              placeholder: "08xxxxxxxxxx",
+              required: true,
+            })}
+            {renderInputField({
               label: "Link Instagram",
               name: "instagram",
               placeholder: "https://instagram.com/username",
               required: true,
-              hint: "Masukkan link profil Instagram yang aktif dan tidak di-private sesuai ketentuan.",
+              hint: "Sesuai kolom Media sosial pada spreadsheet.",
+            })}
+            {renderInputField({
+              label: "Link TikTok",
+              name: "tiktok",
+              placeholder: "https://tiktok.com/@username",
+              required: true,
             })}
           </div>
         </GoldCard>
 
-        {/* Section visi, misi, pengalaman */}
+        {/* Section tambahan internal aplikasi */}
         <GoldCard>
           <h2
             className="text-sm font-bold mb-5 pb-3"
@@ -1456,9 +1645,39 @@ export default function BiodataPage() {
               borderBottom: "1px solid rgba(200,162,77,0.15)",
             }}
           >
-            VISI, MISI, DAN PENGALAMAN
+            DATA TAMBAHAN (INTERNAL APLIKASI)
           </h2>
+          <p className="text-xs mb-4" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+            Bagian ini dipertahankan untuk kebutuhan penilaian internal dan tidak menghapus data yang sudah kamu buat.
+          </p>
           <div className="space-y-4">
+            {renderInputField({
+              label: "Pekerjaan",
+              name: "occupation",
+              placeholder: "Contoh: Pelajar / Mahasiswa / Karyawan",
+              required: true,
+            })}
+            {renderTextAreaField({
+              label: "Keahlian / Bakat",
+              name: "skills",
+              placeholder: "Tuliskan keahlian atau bakat utama Anda...",
+              required: true,
+              rows: 3,
+            })}
+            {renderTextAreaField({
+              label: "Hobi",
+              name: "hobbies",
+              placeholder: "Tuliskan hobi yang rutin Anda jalani...",
+              required: true,
+              rows: 2,
+            })}
+            {renderTextAreaField({
+              label: "Bahasa yang Dikuasai",
+              name: "languages",
+              placeholder: "Contoh: Indonesia, Inggris, Melayu",
+              required: true,
+              rows: 2,
+            })}
             {renderTextAreaField({
               label: "Visi",
               name: "vision",
@@ -1474,7 +1693,7 @@ export default function BiodataPage() {
               rows: 4,
             })}
             {renderTextAreaField({
-              label: "Pengalaman Organisasi dan Kepemudaan",
+              label: "Pengalaman Organisasi dan Kepemudaan (Tambahan)",
               name: "experience",
               placeholder: "Sebutkan pengalaman organisasi atau kegiatan pariwisata...",
               rows: 4,
@@ -1496,13 +1715,14 @@ export default function BiodataPage() {
           </h2>
           <div className="space-y-4">
             {renderYesNoField({
-              label: "Apakah Anda saat ini terikat kontrak dengan agensi model?",
+              label:
+                "1. Apakah saat ini Anda sedang terikat kontrak atau perjanjian secara lisan maupun tulisan dengan Agensi Model?",
               name: "agreementNoAgency",
               required: true,
             })}
             {form.agreementNoAgency === "yes"
               ? renderInputField({
-                  label: "Jika Ya, sebutkan nama agensi",
+                  label: "Jika jawaban Anda di atas (YA), sebutkan nama Agensi tersebut.",
                   name: "agencyName",
                   placeholder: "Nama agensi model",
                 })
@@ -1510,14 +1730,14 @@ export default function BiodataPage() {
 
             {renderYesNoField({
               label:
-                "Apakah Anda bersedia dan sudah mendapat izin orang tua/wali/sekolah/kampus/kantor untuk mengikuti seluruh rangkaian seleksi?",
+                "3. Apabila Anda berhasil menjadi kandidat Encik Puan Kota Batam apakah Anda bersedia dan mendapat izin dari orang tua/wali/sekolah/universitas/kantor untuk mengikuti rangkaian Pra karantina, Karantina dan Grand Final?",
               name: "agreementParentPermission",
               required: true,
             })}
 
             {renderYesNoField({
               label:
-                "Jika menjadi finalis atau juara, apakah Anda bersedia mengikuti kegiatan skala lokal, nasional, maupun internasional?",
+                "4. Apabila Anda berhasil finalis maupun juara pada pemilihan Encik Puan Kota Batam, apakah Anda bersedia untuk mengikuti berbagai kegiatan berskala lokal, nasional, maupun internasional?",
               name: "agreementAllStages",
               required: true,
             })}
@@ -1539,7 +1759,8 @@ export default function BiodataPage() {
             })}
 
             {renderTextAreaField({
-              label: "Pengalaman public speaking / duta / modeling",
+              label:
+                "2. Apakah Anda pernah mengikuti ajang seperti Public Speaking Competition, Pemilihan Duta, dan Modelling (Fashion Show, Foto Model, Model Iklan) dan sebagainya?",
               name: "publicSpeakingExperience",
               placeholder: "Jelaskan pengalaman yang pernah Anda ikuti...",
               required: true,
