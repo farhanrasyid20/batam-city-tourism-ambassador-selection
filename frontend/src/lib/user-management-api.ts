@@ -12,6 +12,11 @@ export type InternalUser = {
   phone?: string | null;
   role: InternalUserRole;
   account_status: InternalUserStatus;
+  judge_assigned_stages?: Array<"Audition" | "Pre Camp" | "Camp" | "Grand Final"> | null;
+  judge_type?: "judge" | "committee" | "mentor" | "camp_team" | null;
+  judge_title?: string | null;
+  judge_organization?: string | null;
+  judge_avatar?: string | null;
   email_verified_at?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -31,6 +36,11 @@ export type CreateInternalUserPayload = {
   password: string;
   password_confirmation: string;
   account_status?: InternalUserStatus;
+  judge_assigned_stages?: Array<"Audition" | "Pre Camp" | "Camp" | "Grand Final">;
+  judge_type?: "judge" | "committee" | "mentor" | "camp_team";
+  judge_title?: string;
+  judge_organization?: string;
+  judge_avatar?: string;
 };
 
 export type UpdateInternalUserPayload = Partial<CreateInternalUserPayload>;

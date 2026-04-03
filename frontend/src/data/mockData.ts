@@ -20,7 +20,7 @@ export type ScheduleStatus = "active" | "upcoming" | "done";
 
 export type CriteriaKey = string;
 
-export type JudgeType = "judge" | "main" | "mentor";
+export type JudgeType = "judge" | "main" | "mentor" | "committee" | "camp_team";
 export type VerificationStatus = "Pending" | "NeedsRevision" | "Verified" | "Rejected";
 export type SelectionStageKey =
   | "Verification"
@@ -485,7 +485,13 @@ export function normalizeJudgeAssignment(
   const normalizedStages = sortJudgeAssignedStages(
     Array.from(new Set(assignedStages)),
   );
-  const normalizedJudgeType = judgeType === "mentor" ? "judge" : "judge";
+  const normalizedJudgeType: JudgeType =
+    judgeType === "mentor" ||
+    judgeType === "committee" ||
+    judgeType === "camp_team" ||
+    judgeType === "judge"
+      ? judgeType
+      : "judge";
 
   return {
     assignedStages: normalizedStages,

@@ -190,6 +190,7 @@ export default function LoginPage() {
               name: response.user.name,
               email: response.user.email,
               role: "judge",
+              judgeId: `J_API_${response.user.id}`,
             });
             redirectByRole("juri");
             return;

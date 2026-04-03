@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\JudgeNoteController;
+use App\Http\Controllers\Api\JudgeParticipantController;
+use App\Http\Controllers\Api\JudgeScoreController;
+use App\Http\Controllers\Api\JudgeScoreRecapController;
 use App\Http\Controllers\Api\ParticipantBiodataController;
 use App\Http\Controllers\Api\ParticipantDocumentController;
 use App\Http\Controllers\Api\UserManagementController;
@@ -12,6 +16,7 @@ Route::prefix('auth')->group(function (): void {
     Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/me', [AuthController::class, 'me'])->middleware('jwt.auth');
+    Route::patch('/profile', [AuthController::class, 'updateProfile'])->middleware('jwt.auth');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('jwt.auth');
     Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('jwt.auth');
 });
@@ -40,4 +45,16 @@ Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])
     Route::patch('/users/{id}/activate', [UserManagementController::class, 'activate']);
     Route::delete('/users/{id}', [UserManagementController::class, 'destroy']);
     Route::patch('/participants/{id}/selection-status', [UserManagementController::class, 'updateParticipantSelectionStatus']);
+});
+
+Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])->group(function (): void {
+    Route::get('/participants', [JudgeParticipantController::class, 'index']);
+    Route::get('/notes', [JudgeNoteController::class, 'index']);
+    Route::get('/scores', [JudgeScoreController::class, 'index']);
+    Route::get('/scores/recap', [JudgeScoreRecapController::class, 'index']);
+});
+
+Route::prefix('judge')->middleware(['jwt.auth', 'role:judge'])->group(function (): void {
+    Route::post('/notes', [JudgeNoteController::class, 'store']);
+    Route::post('/scores', [JudgeScoreController::class, 'store']);
 });

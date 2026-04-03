@@ -27,6 +27,11 @@ class User extends Authenticatable
         'password',
         'role',
         'account_status',
+        'judge_assigned_stages',
+        'judge_type',
+        'judge_title',
+        'judge_organization',
+        'judge_avatar',
     ];
 
     /**
@@ -49,6 +54,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'judge_assigned_stages' => 'array',
         ];
     }
 

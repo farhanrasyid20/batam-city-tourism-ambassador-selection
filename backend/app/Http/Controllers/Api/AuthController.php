@@ -14,7 +14,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class AuthController extends Controller
@@ -72,6 +75,82 @@ class AuthController extends Controller
     private function hashOtp(string $otp): string
     {
         return hash('sha256', $otp);
+    }
+
+    private function authUserPayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role,
+            'account_status' => $user->account_status,
+            'email_verified_at' => $user->email_verified_at,
+            'judge_assigned_stages' => $user->judge_assigned_stages,
+            'judge_type' => $user->judge_type,
+            'judge_title' => $user->judge_title,
+            'judge_organization' => $user->judge_organization,
+            'judge_avatar' => $user->judge_avatar,
+        ];
+    }
+
+    private function normalizeJudgeAvatar(?string $avatar, ?string $existingAvatar = null): ?string
+    {
+        if ($avatar === null) {
+            return null;
+        }
+
+        $avatar = trim($avatar);
+        if ($avatar === '') {
+            return null;
+        }
+
+        if (! str_starts_with($avatar, 'data:image/')) {
+            return $avatar;
+        }
+
+        if (! preg_match('/^data:image\/([a-zA-Z0-9.+-]+);base64,(.+)$/', $avatar, $matches)) {
+            throw ValidationException::withMessages([
+                'judge_avatar' => ['Format foto profil juri tidak valid.'],
+            ]);
+        }
+
+        $rawExt = strtolower($matches[1]);
+        $extension = match ($rawExt) {
+            'jpeg' => 'jpg',
+            'jpg', 'png', 'webp' => $rawExt,
+            default => null,
+        };
+
+        if (! $extension) {
+            throw ValidationException::withMessages([
+                'judge_avatar' => ['Format foto profil harus JPG, PNG, atau WEBP.'],
+            ]);
+        }
+
+        $binary = base64_decode($matches[2], true);
+        if ($binary === false) {
+            throw ValidationException::withMessages([
+                'judge_avatar' => ['Data foto profil tidak dapat diproses.'],
+            ]);
+        }
+
+        if (strlen($binary) > 5 * 1024 * 1024) {
+            throw ValidationException::withMessages([
+                'judge_avatar' => ['Ukuran foto profil maksimal 5 MB.'],
+            ]);
+        }
+
+        $path = 'judge-photos/'.Str::uuid().'.'.$extension;
+        Storage::disk('public')->put($path, $binary);
+
+        if ($existingAvatar && str_starts_with($existingAvatar, '/storage/judge-photos/')) {
+            $oldPath = Str::after($existingAvatar, '/storage/');
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        return '/storage/'.$path;
     }
 
     private function sendOtpEmail(User $user, string $otp): void
@@ -276,14 +355,7 @@ class AuthController extends Controller
 
         $response = [
             'message' => 'Registrasi berhasil. Akun peserta Anda sudah aktif dan siap digunakan.',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'account_status' => $user->account_status,
-                'email_verified_at' => $user->email_verified_at,
-            ],
+            'user' => $this->authUserPayload($user),
         ];
 
         return response()->json($response, 201);
@@ -350,14 +422,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Email berhasil diverifikasi.',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'account_status' => $user->account_status,
-                'email_verified_at' => $user->email_verified_at,
-            ],
+            'user' => $this->authUserPayload($user),
         ]);
     }
 
@@ -469,14 +534,7 @@ class AuthController extends Controller
             'access_token' => $token,
             'token_type' => 'Bearer',
             'expires_in_minutes' => $ttlMinutes,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-                'account_status' => $user->account_status,
-            ],
+            'user' => $this->authUserPayload($user),
         ]);
     }
 
@@ -668,6 +726,78 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'email' => ['sometimes', 'required', 'email', 'max:255'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'judge_title' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'judge_organization' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'judge_avatar' => ['sometimes', 'nullable', 'string'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        /** @var User|null $user */
+        $user = $request->attributes->get('auth_user');
+        if (! $user) {
+            return response()->json([
+                'message' => 'User tidak terautentikasi.',
+            ], 401);
+        }
+
+        $payload = $validator->validated();
+
+        if (array_key_exists('name', $payload)) {
+            $user->name = trim((string) $payload['name']);
+        }
+        if (array_key_exists('email', $payload)) {
+            $normalizedEmail = strtolower(trim((string) $payload['email']));
+            $emailExists = User::query()
+                ->where('email', $normalizedEmail)
+                ->whereKeyNot($user->id)
+                ->exists();
+
+            if ($emailExists) {
+                return response()->json([
+                    'message' => 'Validasi gagal.',
+                    'errors' => [
+                        'email' => ['Email sudah digunakan oleh akun lain.'],
+                    ],
+                ], 422);
+            }
+            $user->email = $normalizedEmail;
+        }
+        if (array_key_exists('phone', $payload)) {
+            $user->phone = trim((string) $payload['phone']) ?: null;
+        }
+
+        if ($user->role === 'judge') {
+            if (array_key_exists('judge_title', $payload)) {
+                $user->judge_title = trim((string) $payload['judge_title']) ?: null;
+            }
+            if (array_key_exists('judge_organization', $payload)) {
+                $user->judge_organization = trim((string) $payload['judge_organization']) ?: null;
+            }
+            if (array_key_exists('judge_avatar', $payload)) {
+                $user->judge_avatar = $this->normalizeJudgeAvatar($payload['judge_avatar'], $user->judge_avatar);
+            }
+        }
+
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profil berhasil diperbarui.',
+            'user' => $this->authUserPayload($user->fresh()),
+        ]);
+    }
+
     public function me(Request $request): JsonResponse
     {
         /** @var User $user */
@@ -675,14 +805,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Data user berhasil diambil.',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role,
-                'account_status' => $user->account_status,
-            ],
+            'user' => $this->authUserPayload($user),
         ]);
     }
 

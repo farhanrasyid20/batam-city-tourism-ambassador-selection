@@ -13,6 +13,12 @@ use Illuminate\Validation\Rule;
 
 class UserManagementController extends Controller
 {
+    private const ALLOWED_JUDGE_STAGES = ['Audition', 'Pre Camp', 'Camp', 'Grand Final'];
+    private const ALLOWED_JUDGE_TYPES = ['judge', 'committee', 'mentor', 'camp_team'];
+    private const DEFAULT_JUDGE_TYPE = 'judge';
+
+    private const DEFAULT_JUDGE_STAGES = ['Audition', 'Pre Camp', 'Camp', 'Grand Final'];
+
     private const PARTICIPANT_SELECTION_STATUSES = [
         'Pending',
         'Verified',
@@ -42,6 +48,30 @@ class UserManagementController extends Controller
     private function isParticipantCodeEligibleStatus(string $status): bool
     {
         return in_array($status, self::PARTICIPANT_CODE_ELIGIBLE_STATUSES, true);
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $stages
+     * @return array<int, string>
+     */
+    private function normalizeJudgeStages(?array $stages): array
+    {
+        if (! is_array($stages)) {
+            return self::DEFAULT_JUDGE_STAGES;
+        }
+
+        $filtered = [];
+        foreach ($stages as $stage) {
+            if (! is_string($stage)) {
+                continue;
+            }
+            if (in_array($stage, self::ALLOWED_JUDGE_STAGES, true)) {
+                $filtered[] = $stage;
+            }
+        }
+
+        $unique = array_values(array_unique($filtered));
+        return empty($unique) ? self::DEFAULT_JUDGE_STAGES : $unique;
     }
 
     private function nextParticipantCodeForGender(string $gender): string
@@ -94,7 +124,7 @@ class UserManagementController extends Controller
             });
         }
 
-        $items = $query->get(['id', 'name', 'email', 'phone', 'role', 'account_status', 'email_verified_at', 'created_at', 'updated_at']);
+        $items = $query->get(['id', 'name', 'email', 'phone', 'role', 'account_status', 'judge_assigned_stages', 'judge_type', 'judge_title', 'judge_organization', 'judge_avatar', 'email_verified_at', 'created_at', 'updated_at']);
 
         return response()->json([
             'message' => 'Daftar user internal berhasil diambil.',
@@ -116,6 +146,12 @@ class UserManagementController extends Controller
             'role' => ['required', Rule::in($allowedRoles)],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'account_status' => ['nullable', Rule::in(['active', 'suspended'])],
+            'judge_assigned_stages' => ['nullable', 'array'],
+            'judge_assigned_stages.*' => [Rule::in(self::ALLOWED_JUDGE_STAGES)],
+            'judge_type' => ['nullable', Rule::in(self::ALLOWED_JUDGE_TYPES)],
+            'judge_title' => ['nullable', 'string', 'max:255'],
+            'judge_organization' => ['nullable', 'string', 'max:255'],
+            'judge_avatar' => ['nullable', 'string', 'max:500'],
         ]);
 
         if ($validator->fails()) {
@@ -132,6 +168,23 @@ class UserManagementController extends Controller
             'role' => $request->string('role')->toString(),
             'password' => $request->string('password')->toString(),
             'account_status' => $request->string('account_status')->toString() ?: 'active',
+            'judge_assigned_stages' => $request->string('role')->toString() === 'judge'
+                ? $this->normalizeJudgeStages($request->input('judge_assigned_stages'))
+                : null,
+            'judge_type' => $request->string('role')->toString() === 'judge'
+                ? (in_array($request->string('judge_type')->toString(), self::ALLOWED_JUDGE_TYPES, true)
+                    ? $request->string('judge_type')->toString()
+                    : self::DEFAULT_JUDGE_TYPE)
+                : null,
+            'judge_title' => $request->string('role')->toString() === 'judge'
+                ? ($request->string('judge_title')->toString() ?: null)
+                : null,
+            'judge_organization' => $request->string('role')->toString() === 'judge'
+                ? ($request->string('judge_organization')->toString() ?: null)
+                : null,
+            'judge_avatar' => $request->string('role')->toString() === 'judge'
+                ? ($request->string('judge_avatar')->toString() ?: null)
+                : null,
         ]);
         $user->forceFill([
             'email_verified_at' => Carbon::now(),
@@ -139,7 +192,7 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => 'User internal berhasil dibuat.',
-            'user' => $user->only(['id', 'name', 'email', 'phone', 'role', 'account_status', 'email_verified_at']),
+            'user' => $user->only(['id', 'name', 'email', 'phone', 'role', 'account_status', 'judge_assigned_stages', 'judge_type', 'judge_title', 'judge_organization', 'judge_avatar', 'email_verified_at']),
         ], 201);
     }
 
@@ -167,6 +220,12 @@ class UserManagementController extends Controller
             'role' => ['sometimes', 'required', Rule::in($allowedRoles)],
             'password' => ['sometimes', 'required', 'string', 'min:8', 'confirmed'],
             'account_status' => ['sometimes', 'required', Rule::in(['active', 'suspended'])],
+            'judge_assigned_stages' => ['sometimes', 'nullable', 'array'],
+            'judge_assigned_stages.*' => [Rule::in(self::ALLOWED_JUDGE_STAGES)],
+            'judge_type' => ['sometimes', 'nullable', Rule::in(self::ALLOWED_JUDGE_TYPES)],
+            'judge_title' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'judge_organization' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'judge_avatar' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
 
         if ($validator->fails()) {
@@ -189,9 +248,34 @@ class UserManagementController extends Controller
         }
         if (array_key_exists('role', $payload)) {
             $user->role = $payload['role'];
+            if ($user->role !== 'judge') {
+                $user->judge_assigned_stages = null;
+                $user->judge_type = null;
+                $user->judge_title = null;
+                $user->judge_organization = null;
+                $user->judge_avatar = null;
+            } elseif (empty($user->judge_assigned_stages)) {
+                $user->judge_assigned_stages = self::DEFAULT_JUDGE_STAGES;
+                $user->judge_type = self::DEFAULT_JUDGE_TYPE;
+            }
         }
         if (array_key_exists('account_status', $payload)) {
             $user->account_status = $payload['account_status'];
+        }
+        if (array_key_exists('judge_assigned_stages', $payload) && $user->role === 'judge') {
+            $user->judge_assigned_stages = $this->normalizeJudgeStages($payload['judge_assigned_stages']);
+        }
+        if (array_key_exists('judge_type', $payload) && $user->role === 'judge') {
+            $user->judge_type = $payload['judge_type'] ?: self::DEFAULT_JUDGE_TYPE;
+        }
+        if (array_key_exists('judge_title', $payload) && $user->role === 'judge') {
+            $user->judge_title = $payload['judge_title'] ?: null;
+        }
+        if (array_key_exists('judge_organization', $payload) && $user->role === 'judge') {
+            $user->judge_organization = $payload['judge_organization'] ?: null;
+        }
+        if (array_key_exists('judge_avatar', $payload) && $user->role === 'judge') {
+            $user->judge_avatar = $payload['judge_avatar'] ?: null;
         }
         if (array_key_exists('password', $payload)) {
             $user->password = $payload['password'];
@@ -201,7 +285,7 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => 'User internal berhasil diperbarui.',
-            'user' => $user->only(['id', 'name', 'email', 'phone', 'role', 'account_status', 'email_verified_at']),
+            'user' => $user->only(['id', 'name', 'email', 'phone', 'role', 'account_status', 'judge_assigned_stages', 'judge_type', 'judge_title', 'judge_organization', 'judge_avatar', 'email_verified_at']),
         ]);
     }
 

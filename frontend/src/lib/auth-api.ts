@@ -10,6 +10,11 @@ export type BackendAuthUser = {
   role?: string;
   account_status?: string;
   email_verified_at?: string | null;
+  judge_assigned_stages?: Array<"Audition" | "Pre Camp" | "Camp" | "Grand Final"> | null;
+  judge_type?: "judge" | "committee" | "mentor" | "camp_team" | null;
+  judge_title?: string | null;
+  judge_organization?: string | null;
+  judge_avatar?: string | null;
 };
 
 export type ParticipantBiodata = {
@@ -209,6 +214,65 @@ export type MeResponse = {
   user: BackendAuthUser;
 };
 
+export type JudgeParticipantListItem = {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string | null;
+  registered_at?: string | null;
+  participant_number?: string | null;
+  audition_number?: string | null;
+  participant_code?: string | null;
+  gender?: "Encik" | "Puan" | null;
+  height_cm?: number | null;
+  photo?: string | null;
+  education_category?: "SMA" | "SMK" | "MA" | "Kuliah" | null;
+  education_institution?: string | null;
+  education_degree?: string | null;
+  education_major?: string | null;
+  selection_status?:
+    | "Pending"
+    | "Verified"
+    | "TechnicalMeeting"
+    | "Rejected"
+    | "Audition"
+    | "Top20"
+    | "PreCamp"
+    | "Camp"
+    | "GrandFinal"
+    | "Winner"
+    | null;
+  selection_stage?:
+    | "Verification"
+    | "Technical Meeting"
+    | "Audition"
+    | "Pre Camp"
+    | "Camp"
+    | "Grand Final"
+    | "Final Result"
+    | null;
+};
+
+export type JudgeParticipantsResponse = {
+  message: string;
+  data: JudgeParticipantListItem[];
+  total: number;
+};
+
+export type UpdateAuthProfilePayload = Partial<{
+  name: string;
+  email: string;
+  phone: string;
+  judge_title: string;
+  judge_organization: string;
+  judge_avatar: string;
+}>;
+
+export type UpdateAuthProfileResponse = {
+  message: string;
+  user: BackendAuthUser;
+};
+
 export type ChangePasswordPayload = {
   current_password: string;
   password: string;
@@ -362,6 +426,21 @@ export function fetchAuthenticatedParticipant(token: string) {
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
     token,
+  });
+}
+
+export function fetchJudgeParticipants(token: string) {
+  return apiRequest<JudgeParticipantsResponse>("/judge/participants", {
+    method: "GET",
+    token,
+  });
+}
+
+export function updateAuthenticatedProfile(token: string, payload: UpdateAuthProfilePayload) {
+  return apiRequest<UpdateAuthProfileResponse>("/auth/profile", {
+    method: "PATCH",
+    token,
+    body: payload,
   });
 }
 

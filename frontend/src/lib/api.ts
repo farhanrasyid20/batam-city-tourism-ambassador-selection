@@ -4,6 +4,21 @@ const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000/api";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || DEFAULT_API_BASE_URL;
+export const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
+
+export function resolveApiAssetUrl(url?: string | null): string | undefined {
+  const value = url?.trim();
+  if (!value) return undefined;
+  if (
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
+  ) {
+    return value;
+  }
+  return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
+}
 
 export class ApiError extends Error {
   status: number;

@@ -7,6 +7,7 @@ import { ArrowRight, Star, Users } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import { useApp } from "../../../../context/AppContext";
+import { resolveApiAssetUrl } from "../../../../lib/api";
 import {
   getAdminScoreStageLabel,
   getJudgeAssignedStages,
@@ -17,6 +18,7 @@ export default function JudgeDashboardPage() {
   const { user, participantList, judgeList } = useApp();
   const router = useRouter();
   const judgeInfo = judgeList.find((judge) => judge.id === user?.judgeId) ?? judgeList[0];
+  const judgeAvatar = resolveApiAssetUrl(judgeInfo?.avatar) || "/default-avatar.svg";
   const assignedStages = getJudgeAssignedStages(judgeInfo);
 
   const totalParticipants = participantList.filter((participant) =>
@@ -42,7 +44,7 @@ export default function JudgeDashboardPage() {
 
       <GoldCard glow className="mb-6">
         <div className="flex items-center gap-5 flex-wrap">
-          <Image src={judgeInfo?.avatar ?? ""} alt={judgeInfo?.name ?? "Juri"} width={64} height={64} unoptimized className="w-16 h-16 rounded-2xl object-cover flex-shrink-0" style={{ border: "2px solid rgba(212,175,55,0.4)" }} />
+          <Image src={judgeAvatar} alt={judgeInfo?.name ?? "Juri"} width={64} height={64} unoptimized className="w-16 h-16 rounded-2xl object-cover flex-shrink-0" style={{ border: "2px solid rgba(212,175,55,0.4)" }} />
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>Dewan Juri</p>

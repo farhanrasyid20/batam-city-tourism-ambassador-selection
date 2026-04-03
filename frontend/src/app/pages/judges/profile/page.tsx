@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { CheckCircle, Save, Upload } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import { useApp } from "../../../../context/AppContext";
+import { getReadableApiError, resolveApiAssetUrl } from "../../../../lib/api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import { updateAuthenticatedProfile } from "../../../../lib/auth-api";
+import type { JudgeAssignedStageKey, JudgeType } from "../../../../data/mockData";
 
 type JudgeProfileForm = {
   name: string;
@@ -19,6 +23,8 @@ export default function JudgeProfilePage() {
   const { user, judgeList, setJudgeList, setAuthenticatedUser } = useApp();
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const token = useMemo(() => getParticipantAuthSession()?.token ?? "", []);
 
   const activeJudge = useMemo(
     () =>
@@ -35,8 +41,19 @@ export default function JudgeProfilePage() {
     email: activeJudge?.email ?? user?.email ?? "",
     title: activeJudge?.title ?? "",
     organization: activeJudge?.organization ?? "",
-    avatar: activeJudge?.avatar ?? "",
+    avatar: resolveApiAssetUrl(activeJudge?.avatar) ?? "",
   });
+
+  useEffect(() => {
+    if (!activeJudge && !user) return;
+    setForm({
+      name: activeJudge?.name ?? user?.name ?? "",
+      email: activeJudge?.email ?? user?.email ?? "",
+      title: activeJudge?.title ?? "",
+      organization: activeJudge?.organization ?? "",
+      avatar: resolveApiAssetUrl(activeJudge?.avatar) ?? "",
+    });
+  }, [activeJudge, user]);
 
   const updateField = <K extends keyof JudgeProfileForm>(key: K, value: JudgeProfileForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -65,7 +82,7 @@ export default function JudgeProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setNotice("");
     setError("");
@@ -78,33 +95,68 @@ export default function JudgeProfilePage() {
       setError("Nama dan email wajib diisi.");
       return;
     }
-
-    const normalizedEmail = form.email.trim().toLowerCase();
-
-    setJudgeList((prev) =>
-      prev.map((judge) =>
-        judge.id === activeJudge.id
-          ? {
-              ...judge,
-              name: form.name.trim(),
-              email: normalizedEmail,
-              title: form.title.trim(),
-              organization: form.organization.trim(),
-              avatar: form.avatar || judge.avatar,
-            }
-          : judge
-      )
-    );
-
-    if (user) {
-      setAuthenticatedUser({
-        ...user,
-        name: form.name.trim(),
-        email: normalizedEmail,
-      });
+    if (!token) {
+      setError("Sesi login tidak ditemukan. Silakan login ulang.");
+      return;
     }
 
-    setNotice("Profil juri berhasil diperbarui.");
+    const normalizedEmail = form.email.trim().toLowerCase();
+    setSaving(true);
+
+    try {
+      const response = await updateAuthenticatedProfile(token, {
+        name: form.name.trim(),
+        email: normalizedEmail,
+        judge_title: form.title.trim() || undefined,
+        judge_organization: form.organization.trim() || undefined,
+        judge_avatar: form.avatar || undefined,
+      });
+
+      const updated = response.user;
+      const judgeId = user?.judgeId ?? `J_API_${updated.id}`;
+      const title = updated.judge_title || form.title.trim() || "Dewan Juri";
+      const organization = updated.judge_organization || form.organization.trim() || "Duta Wisata Kota Batam";
+      const avatar = resolveApiAssetUrl(updated.judge_avatar || form.avatar) || "/default-avatar.svg";
+      const assignedStages = (updated.judge_assigned_stages?.length
+        ? updated.judge_assigned_stages
+        : activeJudge?.assignedStages ?? activeJudge?.stages ?? ["Audition", "Pre Camp", "Camp", "Grand Final"]) as JudgeAssignedStageKey[];
+
+      setJudgeList((prev) => {
+        const nextJudge = {
+          id: judgeId,
+          name: updated.name,
+          email: updated.email,
+          title,
+          organization,
+          avatar,
+          stages: assignedStages,
+          assignedStages,
+          judgeType: (updated.judge_type ?? activeJudge?.judgeType ?? "judge") as JudgeType,
+        };
+        const index = prev.findIndex((judge) => judge.id === judgeId || (judge.email ?? "").toLowerCase() === updated.email.toLowerCase());
+        if (index === -1) return [nextJudge, ...prev];
+        const next = [...prev];
+        next[index] = {
+          ...next[index],
+          ...nextJudge,
+        };
+        return next;
+      });
+
+      setAuthenticatedUser({
+        id: String(updated.id),
+        name: updated.name,
+        email: updated.email,
+        role: "judge",
+        judgeId,
+      });
+
+      setNotice("Profil juri berhasil diperbarui.");
+    } catch (err) {
+      setError(getReadableApiError(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -221,9 +273,9 @@ export default function JudgeProfilePage() {
             </p>
           ) : null}
 
-          <GoldButton type="submit" variant="primary">
+          <GoldButton type="submit" variant="primary" disabled={saving}>
             <Save size={16} />
-            Simpan Perubahan
+            {saving ? "Menyimpan..." : "Simpan Perubahan"}
           </GoldButton>
         </form>
       </GoldCard>

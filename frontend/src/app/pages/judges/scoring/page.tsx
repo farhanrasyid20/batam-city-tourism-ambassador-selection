@@ -1,11 +1,23 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { AlertCircle, CheckCircle, Lock, NotebookPen, Send, Star } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import { useApp } from "../../../../context/AppContext";
+import { getReadableApiError, resolveApiAssetUrl } from "../../../../lib/api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import {
+  fetchJudgeNotes,
+  submitJudgeNote,
+  type BackendJudgeNote,
+} from "../../../../lib/judge-note-api";
+import {
+  fetchJudgeScores,
+  submitJudgeScore,
+  type BackendJudgeScore,
+} from "../../../../lib/judge-score-api";
 import {
   calculateStageTotal,
   getAdminScoreStageLabel,
@@ -16,8 +28,8 @@ import {
   getStageScoreRecords,
   mockParticipantStageNotes,
   type JudgeAssignedStageKey,
-  type ParticipantNoteStageKey,
   type ParticipantStageNote,
+  type ScoreRecord,
   type Score,
   type ScoreStageKey,
 } from "../../../../data/mockData";
@@ -29,16 +41,80 @@ const isJudgeScoreStage = (
 ): stage is ScoreStageKey =>
   stage === "Audition" || stage === "Camp" || stage === "Grand Final";
 
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+const formatNoteMeta = (createdAt: string, role: "admin" | "judge" | "committee") => {
+  const roleLabel = role === "committee" ? "Panitia" : role === "admin" ? "Admin" : "Juri";
+  const dayDate = new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(createdAt));
+  const time = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(createdAt));
+  return { roleLabel, dayDate, time };
+};
+
+function toFrontendScoreRecord(item: BackendJudgeScore): ScoreRecord {
+  return {
+    id: `db-judge-score-${item.id}`,
+    participantId: item.participant_id,
+    participantName: item.participant_name ?? "Peserta",
+    judgeId: `J_API_${item.judge_user_id}`,
+    judgeName: item.judge_name ?? "Juri",
+    stage: item.stage,
+    stageKey: item.stage,
+    judgeRole: "judge",
+    scoreType: item.score_type,
+    visibility: "panel",
+    score: item.score,
+    totalScore: item.total_score,
+    note: item.note ?? undefined,
+    submittedAt: item.submitted_at ?? item.created_at ?? new Date().toISOString(),
+  };
+}
+
+function toFrontendNoteRecord(item: BackendJudgeNote): ParticipantStageNote {
+  return {
+    id: `db-judge-note-${item.id}`,
+    participantId: item.participant_id,
+    participantName: item.participant_name ?? "Peserta",
+    stage: item.stage as ParticipantStageNote["stage"],
+    authorName: item.author_name ?? "Juri",
+    authorRole: item.author_role,
+    content: item.content,
+    createdAt: item.created_at,
+  };
+}
+
+function mergeJudgeOfficialScores(prev: ScoreRecord[], nextDbScores: ScoreRecord[]): ScoreRecord[] {
+  const preserved = prev.filter(
+    (item) => !(item.judgeRole === "judge" && (item.scoreType ?? "official") === "official")
+  );
+
+  const deduped = new Map<string, ScoreRecord>();
+  for (const item of [...nextDbScores, ...preserved]) {
+    const key = [
+      item.participantId,
+      item.judgeId,
+      item.stageKey ?? item.stage,
+      item.scoreType ?? "official",
+      item.judgeRole ?? "main",
+    ].join("|");
+    if (!deduped.has(key)) {
+      deduped.set(key, item);
+    }
+  }
+
+  return Array.from(deduped.values());
+}
 
 export default function JudgeScoringPage() {
   const { user, judgeList, participantList, scoreList, setScoreList } = useApp();
   const judgeInfo = judgeList.find((judge) => judge.id === user?.judgeId) ?? judgeList[0];
   const assignedStages = getJudgeAssignedStages(judgeInfo);
+  const token = useMemo(() => getParticipantAuthSession()?.token ?? "", []);
   const [activeStage, setActiveStage] = useState<JudgeAssignedStageKey>(assignedStages[0] ?? "Audition");
   const [scoreInputs, setScoreInputs] = useState<Record<string, ScoreInputState>>({});
   const [participantNotes, setParticipantNotes] = useState<ParticipantStageNote[]>(
@@ -47,6 +123,14 @@ export default function JudgeScoringPage() {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [activeParticipantId, setActiveParticipantId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [loadingDbScores, setLoadingDbScores] = useState(false);
+  const [syncError, setSyncError] = useState("");
+  const [submittingParticipantId, setSubmittingParticipantId] = useState<string | null>(null);
+  const [submittingNoteParticipantId, setSubmittingNoteParticipantId] = useState<string | null>(null);
+  const [inlineNotice, setInlineNotice] = useState<{
+    type: "success" | "warning" | "info";
+    text: string;
+  } | null>(null);
 
   const activeCriteria = isJudgeScoreStage(activeStage)
     ? getStageCriteria(activeStage)
@@ -80,6 +164,55 @@ export default function JudgeScoringPage() {
     () => getAvailableNoteStages(activeStage),
     [activeStage],
   );
+
+  const reloadScoresFromDb = async () => {
+    if (!token) return;
+    const response = await fetchJudgeScores(token);
+    const mapped = response.data
+      .filter((item) => item.score_type === "official")
+      .map(toFrontendScoreRecord);
+    setScoreList((prev) => mergeJudgeOfficialScores(prev, mapped));
+  };
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+    setLoadingDbScores(true);
+    setSyncError("");
+
+    void fetchJudgeScores(token)
+      .then((response) => {
+        if (cancelled) return;
+        const mapped = response.data
+          .filter((item) => item.score_type === "official")
+          .map(toFrontendScoreRecord);
+        setScoreList((prev) => mergeJudgeOfficialScores(prev, mapped));
+      })
+      .then(() => fetchJudgeNotes(token))
+      .then((notesResponse) => {
+        if (cancelled || !notesResponse) return;
+        setParticipantNotes(notesResponse.data.map(toFrontendNoteRecord));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSyncError(getReadableApiError(err));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingDbScores(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setScoreList, token]);
+
+  useEffect(() => {
+    if (!inlineNotice) return;
+    const timer = window.setTimeout(() => setInlineNotice(null), 4500);
+    return () => window.clearTimeout(timer);
+  }, [inlineNotice]);
 
   const submittedMap: Record<string, boolean> = {};
   for (const participant of participants) {
@@ -159,61 +292,152 @@ export default function JudgeScoringPage() {
   };
 
   // Nama juri di catatan dibuat otomatis dari akun yang sedang login.
-  const handleSaveNote = (participantId: string) => {
+  const handleSaveNote = async (participantId: string) => {
+    if (!token) {
+      setInlineNotice({
+        type: "warning",
+        text: "Sesi login tidak ditemukan. Silakan login ulang sebelum menyimpan catatan.",
+      });
+      return;
+    }
     const participant = participants.find((item) => item.id === participantId);
     const content = noteDrafts[participantId]?.trim();
 
-    if (!participant || !content) return;
+    if (!participant) {
+      setInlineNotice({
+        type: "warning",
+        text: "Peserta tidak ditemukan. Pilih ulang peserta lalu simpan catatan.",
+      });
+      return;
+    }
 
-    setParticipantNotes((prev) => [
-      ...prev,
-      {
-        id: `judge-note-${Date.now()}-${participantId}`,
-        participantId,
-        participantName: participant.name,
-        stage: activeStage as ParticipantNoteStageKey,
-        authorName: judgeInfo?.name ?? user?.name ?? "Juri",
-        authorRole: "judge",
+    if (!content) {
+      setInlineNotice({
+        type: "warning",
+        text: "Catatan masih kosong. Tulis catatan dulu sebelum klik Simpan Catatan.",
+      });
+      return;
+    }
+
+    setSubmittingNoteParticipantId(participantId);
+    setSyncError("");
+
+    try {
+      const response = await submitJudgeNote(token, {
+        participant_id: participantId,
+        participant_name: participant.name,
+        stage: activeStage as BackendJudgeNote["stage"],
         content,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
-
-    setNoteDrafts((prev) => ({
-      ...prev,
-      [participantId]: "",
-    }));
+        author_role: "judge",
+      });
+      const mapped = toFrontendNoteRecord(response.data);
+      setParticipantNotes((prev) => [mapped, ...prev]);
+      setNoteDrafts((prev) => ({
+        ...prev,
+        [participantId]: "",
+      }));
+      setInlineNotice({
+        type: "success",
+        text: "Catatan berhasil disimpan ke database. Submit nilai tetap proses terpisah.",
+      });
+    } catch (err) {
+      setSyncError(getReadableApiError(err));
+      setInlineNotice({
+        type: "warning",
+        text: "Catatan gagal disimpan. Coba Simpan Catatan lagi.",
+      });
+    } finally {
+      setSubmittingNoteParticipantId(null);
+    }
   };
 
-  const handleSubmit = (participantId: string) => {
+  const handleSubmit = async (participantId: string) => {
     if (!isJudgeScoreStage(activeStage)) return;
     if (!isComplete(participantId) || submittedMap[participantId]) return;
+    if (!token) {
+      setInlineNotice({
+        type: "warning",
+        text: "Sesi login tidak ditemukan. Silakan login ulang sebelum submit nilai.",
+      });
+      return;
+    }
     const participant = participants.find((item) => item.id === participantId);
     if (!participant) return;
 
+    const unsavedNote = noteDrafts[participantId]?.trim();
+
     const score = getScore(participantId);
-    const totalScore = calculateStageTotal(score, activeStage);
+    setSubmittingParticipantId(participantId);
+    setSyncError("");
 
-    setScoreList((prev) => [
-      ...prev,
-      {
-        id: `scr-${Date.now()}-${participantId}`,
-        participantId,
-        participantName: participant.name,
-        judgeId: judgeInfo?.id ?? "J001",
-        judgeName: judgeInfo?.name ?? user?.name ?? "Juri",
+    try {
+      const response = await submitJudgeScore(token, {
+        participant_id: participantId,
+        participant_name: participant.name,
         stage: activeStage,
-        stageKey: activeStage,
-        judgeRole: "judge",
-        scoreType: "official",
-        visibility: "panel",
+        score_type: "official",
         score,
-        totalScore,
-        submittedAt: new Date().toISOString(),
-      },
-    ]);
+      });
 
-    setConfirmId(null);
+      const mapped = toFrontendScoreRecord(response.data);
+      setScoreList((prev) => {
+        const merged = mergeJudgeOfficialScores(prev, [mapped]);
+        return merged;
+      });
+      await reloadScoresFromDb();
+
+      if (unsavedNote) {
+        try {
+          const noteResponse = await submitJudgeNote(token, {
+            participant_id: participantId,
+            participant_name: participant.name,
+            stage: activeStage as BackendJudgeNote["stage"],
+            content: unsavedNote,
+            author_role: "judge",
+          });
+          const mappedNote = toFrontendNoteRecord(noteResponse.data);
+          setParticipantNotes((prev) => [mappedNote, ...prev]);
+          setNoteDrafts((prev) => ({
+            ...prev,
+            [participantId]: "",
+          }));
+
+          setInlineNotice({
+            type: "success",
+            text: "Nilai dan catatan berhasil disimpan bersama.",
+          });
+        } catch {
+          setInlineNotice({
+            type: "warning",
+            text: "Nilai berhasil disubmit, tapi catatan gagal tersimpan. Silakan klik Simpan Catatan lagi.",
+          });
+        }
+      } else {
+        setInlineNotice({
+          type: "success",
+          text: "Nilai berhasil disubmit ke database.",
+        });
+      }
+
+      setConfirmId(null);
+    } catch (err) {
+      setSyncError(getReadableApiError(err));
+      setInlineNotice({
+        type: "warning",
+        text: "Submit nilai gagal. Coba kirim ulang nilainya.",
+      });
+    } finally {
+      setSubmittingParticipantId(null);
+    }
+  };
+
+  const findJudgeAvatarByName = (name?: string) => {
+    const normalized = (name ?? "").trim().toLowerCase();
+    if (!normalized) return undefined;
+    const judge = judgeList.find(
+      (item) => (item.name ?? "").trim().toLowerCase() === normalized
+    );
+    return resolveApiAssetUrl(judge?.avatar);
   };
 
   return (
@@ -225,6 +449,32 @@ export default function JudgeScoringPage() {
         <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
           Pra karantina dipakai untuk catatan peserta, sedangkan audisi, karantina, dan grand final tetap memakai nilai resmi.
         </p>
+        {loadingDbScores ? (
+          <p className="text-xs mt-2" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+            Menyinkronkan nilai dari database...
+          </p>
+        ) : null}
+        {syncError ? (
+          <p className="text-xs mt-2" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
+            Gagal sinkron nilai: {syncError}
+          </p>
+        ) : null}
+        {inlineNotice ? (
+          <p
+            className="text-xs mt-2"
+            style={{
+              color:
+                inlineNotice.type === "success"
+                  ? "#22c55e"
+                  : inlineNotice.type === "warning"
+                  ? "#f59e0b"
+                  : "#60a5fa",
+              fontFamily: "var(--font-poppins)",
+            }}
+          >
+            {inlineNotice.text}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex gap-2 flex-wrap mb-6">
@@ -363,6 +613,11 @@ export default function JudgeScoringPage() {
                             max={100}
                             value={scoreInputs[participant.id]?.[criterion.key] ?? ""}
                             onChange={(event) => updateScore(participant.id, criterion.key, event.target.value)}
+                            onWheel={(event) => {
+                              if (document.activeElement === event.currentTarget) {
+                                event.currentTarget.blur();
+                              }
+                            }}
                             placeholder="0"
                             className="w-20 text-center px-2 py-2 rounded-xl text-sm font-bold outline-none"
                             style={{ background: "#111", border: "1px solid rgba(212,175,55,0.25)", color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}
@@ -375,6 +630,40 @@ export default function JudgeScoringPage() {
                 </div>
 
                 <div className="mb-5">
+                  {!!noteDrafts[participant.id]?.trim() && isSubmitted ? (
+                    <div
+                      className="mb-3 p-3 rounded-xl"
+                      style={{
+                        background: "rgba(245,158,11,0.12)",
+                        border: "1px solid rgba(245,158,11,0.3)",
+                      }}
+                    >
+                      <p
+                        className="text-xs"
+                        style={{ color: "#F59E0B", fontFamily: "var(--font-poppins)" }}
+                      >
+                        Catatan belum disimpan. Klik Simpan Catatan dulu sebelum Submit Nilai.
+                      </p>
+                    </div>
+                  ) : null}
+                  {!!noteDrafts[participant.id]?.trim() &&
+                  isJudgeScoreStage(activeStage) &&
+                  !isSubmitted ? (
+                    <div
+                      className="mb-3 p-3 rounded-xl"
+                      style={{
+                        background: "rgba(96,165,250,0.12)",
+                        border: "1px solid rgba(96,165,250,0.28)",
+                      }}
+                    >
+                      <p
+                        className="text-xs"
+                        style={{ color: "#60a5fa", fontFamily: "var(--font-poppins)" }}
+                      >
+                        Catatan ini akan ikut tersimpan otomatis saat kamu klik Submit Nilai.
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="p-3 rounded-xl mb-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                     <p className="text-xs mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>
                       Pemberi Catatan
@@ -394,9 +683,23 @@ export default function JudgeScoringPage() {
                     style={{ background: "#111", border: "1px solid rgba(212,175,55,0.25)", color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
                   />
                   <div className="mt-3">
-                    <GoldButton variant="outline" onClick={() => handleSaveNote(participant.id)} disabled={!noteDrafts[participant.id]?.trim()}>
+                    <GoldButton
+                      variant="outline"
+                      onClick={() => {
+                        void handleSaveNote(participant.id);
+                      }}
+                      disabled={
+                        (isJudgeScoreStage(activeStage) && !isSubmitted) ||
+                        !noteDrafts[participant.id]?.trim() ||
+                        submittingNoteParticipantId === participant.id
+                      }
+                    >
                       <NotebookPen size={16} />
-                      Simpan Catatan
+                      {submittingNoteParticipantId === participant.id
+                        ? "Menyimpan Catatan..."
+                        : isJudgeScoreStage(activeStage) && !isSubmitted
+                        ? "Catatan ikut Submit Nilai"
+                        : "Simpan Catatan"}
                     </GoldButton>
                   </div>
                 </div>
@@ -425,23 +728,63 @@ export default function JudgeScoringPage() {
                         ) : (
                           <div className="space-y-2">
                             {stageNotes.map((note) => (
-                              <div key={note.id} className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                                <div className="flex items-start justify-between gap-3 mb-2">
-                                  <div>
-                                    <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
-                                      {note.authorName}
-                                    </p>
-                                    <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-                                      {note.authorRole === "committee" ? "Panitia" : note.authorRole === "admin" ? "Admin" : "Juri"}
-                                    </p>
+                              <div key={note.id} className="flex items-start gap-2.5">
+                                {(() => {
+                                  const noteMeta = formatNoteMeta(note.createdAt, note.authorRole);
+                                  return (
+                                    <>
+                                {note.stage === "Technical Meeting" || note.authorRole !== "judge" ? (
+                                  <div
+                                    className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0"
+                                    style={{
+                                      background: "rgba(212,175,55,0.14)",
+                                      border: "1px solid rgba(212,175,55,0.25)",
+                                      color: "#D4AF37",
+                                      fontFamily: "var(--font-poppins)",
+                                    }}
+                                  >
+                                    {note.authorRole === "committee"
+                                      ? "P"
+                                      : note.authorRole === "admin"
+                                      ? "A"
+                                      : "J"}
                                   </div>
-                                  <span className="text-[11px]" style={{ color: "#666", fontFamily: "var(--font-poppins)" }}>
-                                    {formatDateTime(note.createdAt)}
-                                  </span>
+                                ) : (
+                                  <Image
+                                    src={findJudgeAvatarByName(note.authorName) || "/default-avatar.svg"}
+                                    alt={note.authorName}
+                                    width={32}
+                                    height={32}
+                                    unoptimized
+                                    className="w-8 h-8 rounded-full object-cover shrink-0"
+                                  />
+                                )}
+                                <div
+                                  className="flex flex-col w-full max-w-[420px] leading-1.5 p-4 rounded-e-xl rounded-es-xl relative"
+                                  style={{
+                                    background: "rgba(255,255,255,0.03)",
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                  }}
+                                >
+                                  <div className="mb-1">
+                                    <span
+                                      className="text-xs font-semibold"
+                                      style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
+                                    >
+                                      {note.authorName} - {noteMeta.roleLabel} - {noteMeta.dayDate} -{" "}
+                                      {noteMeta.time}
+                                    </span>
+                                  </div>
+                                  <p
+                                    className="text-xs leading-6"
+                                    style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
+                                  >
+                                    {note.content}
+                                  </p>
                                 </div>
-                                <p className="text-xs leading-6" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                                  {note.content}
-                                </p>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             ))}
                           </div>
@@ -476,10 +819,21 @@ export default function JudgeScoringPage() {
                       </GoldButton>
                     ) : confirmId === participant.id ? (
                       <div className="flex gap-3">
-                        <GoldButton variant="primary" onClick={() => handleSubmit(participant.id)} disabled={!complete}>
-                          <CheckCircle size={16} /> Konfirmasi Submit
+                        <GoldButton
+                          variant="primary"
+                          onClick={() => {
+                            void handleSubmit(participant.id);
+                          }}
+                          disabled={!complete || submittingParticipantId === participant.id}
+                        >
+                          <CheckCircle size={16} />{" "}
+                          {submittingParticipantId === participant.id ? "Menyimpan..." : "Konfirmasi Submit"}
                         </GoldButton>
-                        <GoldButton variant="outline" onClick={() => setConfirmId(null)}>
+                        <GoldButton
+                          variant="outline"
+                          onClick={() => setConfirmId(null)}
+                          disabled={submittingParticipantId === participant.id}
+                        >
                           Batal
                         </GoldButton>
                       </div>

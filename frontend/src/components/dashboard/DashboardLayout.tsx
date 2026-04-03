@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, ChevronRight, PanelLeft, PanelRight, ChevronDown, KeyRound, UserCircle2, Bell, AlertCircle, CheckCircle2, Clock3 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { API_BASE_URL } from "../../lib/api";
+import { resolveApiAssetUrl } from "../../lib/api";
 
 type NavItem = {
   label: string;
@@ -25,16 +25,6 @@ export default function DashboardLayout({
   children,
   role,
 }: DashboardLayoutProps) {
-  const apiOrigin = API_BASE_URL.replace(/\/api$/i, "");
-  const toAssetUrl = (url?: string | null) => {
-    const value = url?.trim();
-    if (!value) return undefined;
-    if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:") || value.startsWith("blob:")) {
-      return value;
-    }
-    return value.startsWith("/") ? `${apiOrigin}${value}` : `${apiOrigin}/${value}`;
-  };
-
   const { user, logout, currentParticipant, judgeList } = useApp();
   const router = useRouter();
   const pathname = usePathname();
@@ -55,7 +45,12 @@ export default function DashboardLayout({
             (judge.email ?? "").trim().toLowerCase() === (user?.email ?? "").trim().toLowerCase()
         ) ?? judgeList[0]
       : null;
-  const profilePhoto = role === "participant" ? toAssetUrl(participant?.photo) : role === "judge" ? activeJudge?.avatar : undefined;
+  const profilePhoto =
+    role === "participant"
+      ? resolveApiAssetUrl(participant?.photo)
+      : role === "judge"
+      ? resolveApiAssetUrl(activeJudge?.avatar)
+      : undefined;
   const displayName =
     role === "participant"
       ? participant?.name || user?.name || "Peserta"

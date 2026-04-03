@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class JudgeNote extends Model
+{
+    protected $fillable = [
+        'participant_id',
+        'participant_name',
+        'author_user_id',
+        'stage',
+        'author_role',
+        'content',
+        'created_at_note',
+    ];
+
+    protected $casts = [
+        'created_at_note' => 'datetime',
+    ];
+
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_user_id');
+    }
+}
+
