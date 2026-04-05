@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore, ImagePlus, X } from "lucide-react";
+import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore, ImagePlus, X, ExternalLink } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { useApp } from "../../../../context/AppContext";
 import {
@@ -18,6 +18,72 @@ import {
 type StageFilterValue = "all" | SelectionStageKey;
 type VerificationFilterValue = "all" | VerificationStatus;
 type GenderFilterValue = "all" | "Encik" | "Puan";
+
+type ParticipantExtended = Participant & {
+  nickname?: string | null;
+  fullName?: string | null;
+  shirt_size?: string | null;
+  shirtSize?: string | null;
+  shoe_size?: string | null;
+  shoeSize?: string | null;
+  pants_size?: string | null;
+  pantsSize?: string | null;
+  weight_kg?: string | number | null;
+  weightKg?: string | number | null;
+  chest_circumference_cm?: string | number | null;
+  chestCircumferenceCm?: string | number | null;
+  waist_circumference_cm?: string | number | null;
+  waistCircumferenceCm?: string | number | null;
+  hip_circumference_cm?: string | number | null;
+  hipCircumferenceCm?: string | number | null;
+  documents?: Array<{
+    key: string;
+    label: string;
+    status: "submitted" | "verified" | "revision_required" | "missing";
+    note?: string;
+    url?: string;
+    original_name?: string;
+    originalName?: string;
+  }>;
+};
+
+function toTitleCase(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function extractNickname(participant: ParticipantExtended): string {
+  const explicitNickname = (participant.nickname ?? "").trim();
+  if (explicitNickname) return toTitleCase(explicitNickname);
+
+  const cleanName = (participant.name ?? "")
+    .replace(/^(encik|puan)\s+/i, "")
+    .trim();
+  const firstWord = cleanName.split(/\s+/)[0] ?? "";
+  return toTitleCase(firstWord || "Peserta");
+}
+
+function getParticipantDisplayName(participant: ParticipantExtended): string {
+  return `${participant.gender} ${extractNickname(participant)}`.trim();
+}
+
+function getParticipantFullName(participant: ParticipantExtended): string {
+  const fullName = (participant.fullName ?? "").trim();
+  if (fullName) return toTitleCase(fullName);
+  return toTitleCase((participant.name ?? "").trim());
+}
+
+function firstFilled(...values: Array<string | number | null | undefined>) {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const normalized = String(value).trim();
+    if (normalized) return normalized;
+  }
+  return "-";
+}
 
 const stageFilterOptions: Array<{ value: StageFilterValue; label: string }> = [
   { value: "all", label: "Semua Tahap" },
@@ -54,6 +120,7 @@ export default function AdminParticipantsPage() {
       const selectionStage = getParticipantSelectionStage(participant);
       const verificationStatus = getParticipantVerificationStatus(participant);
       const matchSearch =
+        getParticipantDisplayName(participant as ParticipantExtended).toLowerCase().includes(normalizedSearch) ||
         participant.name.toLowerCase().includes(normalizedSearch) ||
         participant.number.toLowerCase().includes(normalizedSearch) ||
         participant.email.toLowerCase().includes(normalizedSearch);
@@ -266,7 +333,7 @@ export default function AdminParticipantsPage() {
                             />
                             <div>
                               <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
-                                {participant.name}
+                                {getParticipantDisplayName(participant as ParticipantExtended)}
                               </p>
                               <p className="text-xs" style={{ color: "#666" }}>
                                 {participant.number}
@@ -412,8 +479,11 @@ export default function AdminParticipantsPage() {
                   {selectedParticipant.number}
                 </p>
                 <h3 className="text-sm font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
-                  {selectedParticipant.name}
+                  {getParticipantDisplayName(selectedParticipant as ParticipantExtended)}
                 </h3>
+                <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                  Nama asli: {getParticipantFullName(selectedParticipant as ParticipantExtended)}
+                </p>
               </div>
 
               <div className="space-y-2 text-xs" style={{ fontFamily: "var(--font-poppins)" }}>
@@ -422,6 +492,55 @@ export default function AdminParticipantsPage() {
                   { label: "Tahap Seleksi", value: selectionStageLabels[getParticipantSelectionStage(selectedParticipant)] },
                   { label: "Status Verifikasi", value: verificationStatusLabels[getParticipantVerificationStatus(selectedParticipant)] },
                   { label: "Tinggi", value: `${selectedParticipant.heightCm} cm` },
+                  {
+                    label: "Berat",
+                    value: `${firstFilled(
+                      (selectedParticipant as ParticipantExtended).weight_kg,
+                      (selectedParticipant as ParticipantExtended).weightKg
+                    )} kg`,
+                  },
+                  {
+                    label: "Ukuran Baju",
+                    value: firstFilled(
+                      (selectedParticipant as ParticipantExtended).shirt_size,
+                      (selectedParticipant as ParticipantExtended).shirtSize
+                    ),
+                  },
+                  {
+                    label: "Ukuran Celana",
+                    value: firstFilled(
+                      (selectedParticipant as ParticipantExtended).pants_size,
+                      (selectedParticipant as ParticipantExtended).pantsSize
+                    ),
+                  },
+                  {
+                    label: "Ukuran Sepatu",
+                    value: firstFilled(
+                      (selectedParticipant as ParticipantExtended).shoe_size,
+                      (selectedParticipant as ParticipantExtended).shoeSize
+                    ),
+                  },
+                  {
+                    label: "Lingkar Dada",
+                    value: `${firstFilled(
+                      (selectedParticipant as ParticipantExtended).chest_circumference_cm,
+                      (selectedParticipant as ParticipantExtended).chestCircumferenceCm
+                    )} cm`,
+                  },
+                  {
+                    label: "Lingkar Pinggang",
+                    value: `${firstFilled(
+                      (selectedParticipant as ParticipantExtended).waist_circumference_cm,
+                      (selectedParticipant as ParticipantExtended).waistCircumferenceCm
+                    )} cm`,
+                  },
+                  {
+                    label: "Lingkar Pinggul",
+                    value: `${firstFilled(
+                      (selectedParticipant as ParticipantExtended).hip_circumference_cm,
+                      (selectedParticipant as ParticipantExtended).hipCircumferenceCm
+                    )} cm`,
+                  },
                   { label: "Pendidikan", value: selectedParticipant.education },
                   { label: "Email", value: selectedParticipant.email },
                   { label: "HP", value: selectedParticipant.phone },
@@ -572,6 +691,23 @@ export default function AdminParticipantsPage() {
                             {document.status === "revision_required" ? "Perlu revisi" : "Tersubmit"}
                           </span>
                         </div>
+                        {document.url ? (
+                          <a
+                            href={document.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 mt-1 text-xs"
+                            style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}
+                          >
+                            <ExternalLink size={11} />
+                            Lihat dokumen
+                          </a>
+                        ) : null}
+                        {(document as ParticipantExtended["documents"][number]).original_name || (document as ParticipantExtended["documents"][number]).originalName ? (
+                          <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                            File: {(document as ParticipantExtended["documents"][number]).original_name ?? (document as ParticipantExtended["documents"][number]).originalName}
+                          </p>
+                        ) : null}
                         {document.note ? (
                           <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", lineHeight: 1.6 }}>
                             {document.note}

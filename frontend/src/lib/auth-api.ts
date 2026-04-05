@@ -168,6 +168,7 @@ export type RegisterParticipantPayload = {
   name: string;
   email: string;
   phone: string;
+  gender: "Encik" | "Puan";
   password: string;
   password_confirmation: string;
 };
@@ -217,19 +218,44 @@ export type MeResponse = {
 export type JudgeParticipantListItem = {
   id: number;
   name: string;
+  nickname?: string | null;
   email: string;
   phone?: string | null;
+  national_id?: string | null;
+  birth_place?: string | null;
+  birth_date?: string | null;
+  domicile_address?: string | null;
+  ktp_address?: string | null;
+  instagram?: string | null;
+  tiktok?: string | null;
+  parent_phone?: string | null;
   registered_at?: string | null;
   participant_number?: string | null;
   audition_number?: string | null;
   participant_code?: string | null;
   gender?: "Encik" | "Puan" | null;
   height_cm?: number | null;
+  weight_kg?: string | number | null;
+  shirt_size?: string | null;
+  chest_circumference_cm?: string | number | null;
+  waist_circumference_cm?: string | number | null;
+  hip_circumference_cm?: string | number | null;
+  pants_size?: string | null;
+  shoe_size?: string | null;
   photo?: string | null;
   education_category?: "SMA" | "SMK" | "MA" | "Kuliah" | null;
   education_institution?: string | null;
   education_degree?: string | null;
   education_major?: string | null;
+  occupation?: string | null;
+  skills?: string | null;
+  hobbies?: string | null;
+  languages?: string | null;
+  vision?: string | null;
+  mission?: string | null;
+  experience?: string | null;
+  achievement?: string | null;
+  documents?: ParticipantDocumentMeta[];
   selection_status?:
     | "Pending"
     | "Verified"
@@ -251,12 +277,136 @@ export type JudgeParticipantListItem = {
     | "Grand Final"
     | "Final Result"
     | null;
+  submitted_to_admin?: boolean;
+  submitted_to_admin_at?: string | null;
 };
 
 export type JudgeParticipantsResponse = {
   message: string;
   data: JudgeParticipantListItem[];
   total: number;
+};
+
+export type PublicFinalistListItem = {
+  id: number;
+  name: string;
+  participant_number?: string | null;
+  audition_number?: string | null;
+  participant_code?: string | null;
+  gender?: "Encik" | "Puan" | null;
+  photo?: string | null;
+  instagram?: string | null;
+  education_category?: "SMA" | "SMK" | "MA" | "Kuliah" | null;
+  education_institution?: string | null;
+  education_degree?: string | null;
+  education_major?: string | null;
+  selection_status?:
+    | "Pending"
+    | "Verified"
+    | "TechnicalMeeting"
+    | "Rejected"
+    | "Audition"
+    | "Top20"
+    | "PreCamp"
+    | "Camp"
+    | "GrandFinal"
+    | "Winner"
+    | null;
+  vote_instagram_profile_url?: string | null;
+  vote_instagram_post_url?: string | null;
+  vote_official_like_count?: number | null;
+  vote_like_updated_at?: string | null;
+  vote_is_enabled?: boolean | null;
+};
+
+export type PublicFinalistsResponse = {
+  message: string;
+  data: PublicFinalistListItem[];
+  total: number;
+  vote_top_published?: boolean;
+  vote_ranking_published?: boolean;
+  judge_encik_published?: boolean;
+  judge_puan_published?: boolean;
+  judge_pair_published?: boolean;
+  judge_encik_display_mode?: "name_only" | "name_with_score";
+  judge_puan_display_mode?: "name_only" | "name_with_score";
+  judge_encik_winners?: Array<Record<string, unknown>>;
+  judge_puan_winners?: Array<Record<string, unknown>>;
+  judge_pair_rankings?: Array<Record<string, unknown>>;
+};
+
+export type UpdateVotePublicationPayload = {
+  vote_top_published?: boolean;
+  vote_ranking_published?: boolean;
+};
+
+export type UpdateVotePublicationResponse = {
+  message: string;
+  data: {
+    vote_top_published: boolean;
+    vote_ranking_published: boolean;
+  };
+};
+
+export type UpdateVoteCandidatePayload = Partial<{
+  instagram_profile_url: string;
+  instagram_post_url: string;
+  official_like_count: number;
+  is_enabled: boolean;
+}>;
+
+export type UpdateVoteCandidateResponse = {
+  message: string;
+  data: {
+    participant_user_id: number;
+    publication_photo?: string | null;
+    instagram_profile_url?: string | null;
+    instagram_post_url?: string | null;
+    official_like_count?: number;
+    like_updated_at?: string | null;
+    is_enabled?: boolean;
+  };
+};
+
+export type UpdateJuryWinnersPayload = Partial<{
+  judge_encik_display_mode: "name_only" | "name_with_score";
+  judge_puan_display_mode: "name_only" | "name_with_score";
+  judge_encik_winners: Array<Record<string, unknown>>;
+  judge_puan_winners: Array<Record<string, unknown>>;
+  judge_pair_rankings: Array<Record<string, unknown>>;
+  judge_encik_published: boolean;
+  judge_puan_published: boolean;
+  judge_pair_published: boolean;
+}>;
+
+export type UpdateJuryWinnersResponse = {
+  message: string;
+  data: {
+    judge_encik_display_mode: "name_only" | "name_with_score";
+    judge_puan_display_mode: "name_only" | "name_with_score";
+    judge_encik_winners: Array<Record<string, unknown>>;
+    judge_puan_winners: Array<Record<string, unknown>>;
+    judge_pair_rankings: Array<Record<string, unknown>>;
+    judge_encik_published: boolean;
+    judge_puan_published: boolean;
+    judge_pair_published: boolean;
+  };
+};
+
+export type UpdateParticipantDocumentReviewsPayload = {
+  documents: Array<{
+    key: string;
+    status: "submitted" | "revision_required" | "verified" | "missing";
+    note?: string | null;
+  }>;
+};
+
+export type UpdateParticipantDocumentReviewsResponse = {
+  message: string;
+  data: {
+    user_id: number;
+    documents: ParticipantDocumentMeta[];
+  };
 };
 
 export type UpdateAuthProfilePayload = Partial<{
@@ -322,6 +472,10 @@ type CacheEnvelope<T> = {
 const BIODATA_CACHE_KEY = "participant:biodata:v1";
 const DOCUMENTS_CACHE_KEY = "participant:documents:v1";
 const DEFAULT_PARTICIPANT_CACHE_MAX_AGE_MS = 8000;
+const PUBLIC_FINALISTS_CACHE_KEY = "public:finalists:v1";
+const DEFAULT_PUBLIC_FINALISTS_CACHE_MAX_AGE_MS = 30000;
+const JUDGE_PARTICIPANTS_CACHE_KEY_PREFIX = "judge:participants:v1";
+const DEFAULT_JUDGE_PARTICIPANTS_CACHE_MAX_AGE_MS = 10000;
 
 const memoryCache = new Map<string, CacheEnvelope<unknown>>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
@@ -429,11 +583,90 @@ export function fetchAuthenticatedParticipant(token: string) {
   });
 }
 
-export function fetchJudgeParticipants(token: string) {
-  return apiRequest<JudgeParticipantsResponse>("/judge/participants", {
-    method: "GET",
+export function fetchJudgeParticipants(
+  token: string,
+  options?: { force?: boolean; maxAgeMs?: number }
+) {
+  return fetchWithCache<JudgeParticipantsResponse>(
+    `${JUDGE_PARTICIPANTS_CACHE_KEY_PREFIX}:${token}`,
+    () =>
+      apiRequest<JudgeParticipantsResponse>("/judge/participants", {
+        method: "GET",
+        token,
+      }),
+    {
+      force: options?.force,
+      maxAgeMs: options?.maxAgeMs ?? DEFAULT_JUDGE_PARTICIPANTS_CACHE_MAX_AGE_MS,
+    }
+  );
+}
+
+export function fetchPublicFinalists(options?: { force?: boolean; maxAgeMs?: number }) {
+  return fetchWithCache<PublicFinalistsResponse>(
+    PUBLIC_FINALISTS_CACHE_KEY,
+    () =>
+      apiRequest<PublicFinalistsResponse>("/public/finalists", {
+        method: "GET",
+      }),
+    {
+      force: options?.force,
+      maxAgeMs: options?.maxAgeMs ?? DEFAULT_PUBLIC_FINALISTS_CACHE_MAX_AGE_MS,
+    }
+  );
+}
+
+export function updateVotePublication(token: string, payload: UpdateVotePublicationPayload) {
+  return apiRequest<UpdateVotePublicationResponse>("/super-admin/vote/publication", {
+    method: "PATCH",
     token,
+    body: payload,
   });
+}
+
+export function updateVoteCandidate(
+  token: string,
+  participantUserId: number,
+  payload: UpdateVoteCandidatePayload
+) {
+  return apiRequest<UpdateVoteCandidateResponse>(`/super-admin/vote/candidates/${participantUserId}`, {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function uploadVoteCandidatePhoto(token: string, participantUserId: number, file: File) {
+  const body = new FormData();
+  body.append("photo", file);
+
+  return apiRequest<UpdateVoteCandidateResponse>(`/super-admin/vote/candidates/${participantUserId}`, {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
+export function updateJuryWinners(token: string, payload: UpdateJuryWinnersPayload) {
+  return apiRequest<UpdateJuryWinnersResponse>("/super-admin/vote/jury", {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export function updateParticipantDocumentReviews(
+  token: string,
+  participantUserId: number,
+  payload: UpdateParticipantDocumentReviewsPayload
+) {
+  return apiRequest<UpdateParticipantDocumentReviewsResponse>(
+    `/super-admin/participants/${participantUserId}/document-reviews`,
+    {
+      method: "PATCH",
+      token,
+      body: payload,
+    }
+  );
 }
 
 export function updateAuthenticatedProfile(token: string, payload: UpdateAuthProfilePayload) {

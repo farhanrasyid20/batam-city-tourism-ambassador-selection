@@ -20,6 +20,29 @@ export function resolveApiAssetUrl(url?: string | null): string | undefined {
   return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
 }
 
+function looksLikeImageAsset(value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  if (/\s/.test(v) && !v.startsWith("data:image/")) return false;
+
+  const lower = v.toLowerCase();
+  if (lower === "null" || lower === "undefined") return false;
+  if (v.startsWith("data:image/") || v.startsWith("blob:")) return true;
+  if (v.startsWith("http://") || v.startsWith("https://")) return true;
+  if (v.startsWith("/")) return true;
+  if (v.includes("/")) return true;
+  if (/\.(png|jpe?g|webp|gif|svg|avif)$/i.test(v)) return true;
+
+  return false;
+}
+
+export function resolveAvatarUrl(url?: string | null): string | undefined {
+  const value = url?.trim();
+  if (!value) return undefined;
+  if (!looksLikeImageAsset(value)) return undefined;
+  return resolveApiAssetUrl(value);
+}
+
 export class ApiError extends Error {
   status: number;
   errors?: Record<string, string[]>;

@@ -60,6 +60,7 @@ export default function RegisterPage() {
         name: form.nama,
         email: form.email,
         phone: form.noHp,
+        gender: form.kategori === "puan" ? "Puan" : "Encik",
         password: form.password,
         password_confirmation: form.confirmPassword,
       });

@@ -146,16 +146,130 @@ function mapSelectionStatusToStage(selectionStatus?: string | null, accountStatu
   return (accountStatus ?? "").toLowerCase() === "suspended" ? "Rejected" : "Pending";
 }
 
+function shouldShowAuditionNumber(status: StageStatus): boolean {
+  return ["Verified", "TechnicalMeeting", "Audition", "Rejected"].includes(status);
+}
+
+function normalizeParticipantCode(
+  participantCode?: string | null
+): string {
+  const explicitCode = (participantCode ?? "").trim();
+  if (explicitCode) return explicitCode;
+  return "-";
+}
+
 export default function ParticipantStatusPage() {
   // Ambil peserta aktif untuk ditampilkan statusnya.
-  const { currentParticipant, setCurrentParticipant, setParticipantList } = useApp();
+  const {
+    currentParticipant,
+    participantList,
+    voteTopList,
+    voteRankingPublished,
+    judgeEncikWinnerList,
+    judgePuanWinnerList,
+    judgePairRankingList,
+    judgeEncikPublished,
+    judgePuanPublished,
+    judgePairPublished,
+    setCurrentParticipant,
+    setParticipantList,
+  } = useApp();
   const participant = currentParticipant;
   const currentStatus: StageStatus = participant?.status ?? "Pending";
+  const showAuditionNumber = shouldShowAuditionNumber(currentStatus);
+  const effectiveParticipantCode = normalizeParticipantCode(
+    participant?.participantCode
+  );
   const currentStageIndex = stageOrder.indexOf(currentStatus);
   const isAdminVerificationInProgress = Boolean(
     participant?.submittedToAdmin && currentStatus === "Pending"
   );
   const [syncError, setSyncError] = React.useState("");
+
+  const winnerHighlights = React.useMemo(() => {
+    if (!participant) return [] as Array<{ id: string; title: string; detail: string }>;
+
+    const participantId = participant.id;
+    const participantNumber = participant.number;
+    const isSameParticipant = (candidateId?: string, candidateNumber?: string) =>
+      Boolean(
+        (candidateId && candidateId === participantId) ||
+          (candidateNumber && candidateNumber === participantNumber)
+      );
+
+    const highlights: Array<{ id: string; title: string; detail: string }> = [];
+
+    if (judgeEncikPublished) {
+      const winner = judgeEncikWinnerList.find((item) =>
+        isSameParticipant(item.participantId, item.number)
+      );
+      if (winner) {
+        highlights.push({
+          id: `encik-${winner.rank}`,
+          title: `Juara Encik Versi Juri #${winner.rank}`,
+          detail: `Dipublikasikan panitia dengan nilai ${winner.totalScore.toFixed(2)}.`,
+        });
+      }
+    }
+
+    if (judgePuanPublished) {
+      const winner = judgePuanWinnerList.find((item) =>
+        isSameParticipant(item.participantId, item.number)
+      );
+      if (winner) {
+        highlights.push({
+          id: `puan-${winner.rank}`,
+          title: `Juara Puan Versi Juri #${winner.rank}`,
+          detail: `Dipublikasikan panitia dengan nilai ${winner.totalScore.toFixed(2)}.`,
+        });
+      }
+    }
+
+    if (judgePairPublished) {
+      const pair = judgePairRankingList.find(
+        (item) =>
+          item.encikParticipantId === participantId || item.puanParticipantId === participantId
+      );
+      if (pair) {
+        const partnerId =
+          pair.encikParticipantId === participantId ? pair.puanParticipantId : pair.encikParticipantId;
+        const partner = participantList.find((item) => item.id === partnerId);
+        highlights.push({
+          id: `pair-${pair.rank}`,
+          title: `Juara Pasangan Versi Juri #${pair.rank}`,
+          detail: partner
+            ? `Pasangan resmi Anda: ${partner.name}.`
+            : "Pasangan resmi ditetapkan oleh panitia.",
+        });
+      }
+    }
+
+    if (voteRankingPublished) {
+      const voteWinner = voteTopList.find((item) =>
+        isSameParticipant(item.participantId, item.number)
+      );
+      if (voteWinner) {
+        highlights.push({
+          id: `vote-${voteWinner.rank}`,
+          title: `Juara Vote Terfavorit #${voteWinner.rank}`,
+          detail: `Perolehan publikasi terakhir: ${voteWinner.voteCount.toLocaleString("id-ID")} like.`,
+        });
+      }
+    }
+
+    return highlights;
+  }, [
+    judgeEncikPublished,
+    judgeEncikWinnerList,
+    judgePairPublished,
+    judgePairRankingList,
+    judgePuanPublished,
+    judgePuanWinnerList,
+    participant,
+    participantList,
+    voteRankingPublished,
+    voteTopList,
+  ]);
 
   React.useEffect(() => {
     const token = getParticipantAuthSession()?.token;
@@ -322,7 +436,9 @@ export default function ParticipantStatusPage() {
 
             <div className="flex-1">
               <p className="text-xs mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                No. Audisi: {participant.auditionNumber ?? participant.number} | Participant Code: {participant.participantCode ?? "-"}
+                {showAuditionNumber
+                  ? `No. Audisi: ${participant.auditionNumber ?? participant.number} | Kode Peserta: ${effectiveParticipantCode}`
+                  : "Nomor seleksi: Menunggu verifikasi admin"}
               </p>
               <h2 className="text-base font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
                 {participant.name}
@@ -372,6 +488,46 @@ export default function ParticipantStatusPage() {
               {statusDisplayMap[currentStatus]}
             </div>
           </div>
+        </GoldCard>
+      ) : null}
+
+      {participant ? (
+        <GoldCard className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Trophy size={16} style={{ color: "#C8A24D" }} />
+            <h3 className="text-sm font-bold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
+              Pencapaian Juara
+            </h3>
+          </div>
+
+          {winnerHighlights.length > 0 ? (
+            <div className="space-y-2">
+              {winnerHighlights.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl px-3 py-2"
+                  style={{
+                    border: "1px solid rgba(34,197,94,0.35)",
+                    background: "rgba(34,197,94,0.08)",
+                  }}
+                >
+                  <p
+                    className="text-xs font-semibold"
+                    style={{ color: "#22c55e", fontFamily: "var(--font-cinzel)" }}
+                  >
+                    {item.title}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                    {item.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+              Belum ada status juara yang dipublikasikan untuk akun Anda.
+            </p>
+          )}
         </GoldCard>
       ) : null}
 

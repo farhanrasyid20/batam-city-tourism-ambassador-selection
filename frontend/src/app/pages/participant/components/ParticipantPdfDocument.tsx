@@ -13,6 +13,7 @@ type ParticipantPdfData = {
   number?: string;
   auditionNumber?: string;
   participantCode?: string;
+  showAuditionNumber?: boolean;
   name?: string;
   gender?: string;
   nationalId?: string;
@@ -205,6 +206,9 @@ export default function ParticipantPdfDocument({
   const ttl = participant.birthDate
     ? `${participant.birthPlace || "-"}, ${participant.birthDate}`
     : "-";
+  const showAuditionNumber =
+    participant.showAuditionNumber ??
+    ["Pending", "Verified", "TechnicalMeeting", "Audition", "Rejected"].includes(participant.status);
 
   return (
     <Document title="Biodata Peserta">
@@ -218,12 +222,22 @@ export default function ParticipantPdfDocument({
               <Text style={styles.dept}>Dinas Kebudayaan dan Pariwisata Kota Batam</Text>
             </View>
             <View style={styles.participantNumberWrap}>
-              <Text style={styles.participantNumberLabel}>No. Audisi</Text>
-              <Text style={styles.participantNumber}>{participant.auditionNumber || participant.number || "-"}</Text>
-              <Text style={[styles.participantNumberLabel, { marginTop: 4 }]}>Participant Code</Text>
-              <Text style={[styles.participantNumber, { fontSize: 12 }]}>
-                {participant.participantCode || "-"}
+              <Text style={styles.participantNumberLabel}>
+                {showAuditionNumber ? "No. Audisi" : "Kode Peserta"}
               </Text>
+              <Text style={styles.participantNumber}>
+                {showAuditionNumber
+                  ? participant.auditionNumber || participant.number || "-"
+                  : participant.participantCode || "-"}
+              </Text>
+              {showAuditionNumber ? (
+                <>
+                  <Text style={[styles.participantNumberLabel, { marginTop: 4 }]}>Kode Peserta</Text>
+                  <Text style={[styles.participantNumber, { fontSize: 12 }]}>
+                    {participant.participantCode || "-"}
+                  </Text>
+                </>
+              ) : null}
             </View>
           </View>
 
@@ -258,7 +272,7 @@ export default function ParticipantPdfDocument({
             <View style={styles.badgeList}>
               {documentItems.map((item) => (
                 <Text key={item.label} style={item.done ? styles.badgeDone : styles.badgeFail}>
-                  {item.done ? "✓" : "✕"} {item.label}
+                  {item.done ? "\u2713" : "x"} {item.label}
                 </Text>
               ))}
             </View>

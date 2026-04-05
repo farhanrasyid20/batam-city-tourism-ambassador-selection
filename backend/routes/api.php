@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ExportReportController;
 use App\Http\Controllers\Api\JudgeNoteController;
 use App\Http\Controllers\Api\JudgeParticipantController;
 use App\Http\Controllers\Api\JudgeScoreController;
 use App\Http\Controllers\Api\JudgeScoreRecapController;
 use App\Http\Controllers\Api\ParticipantBiodataController;
 use App\Http\Controllers\Api\ParticipantDocumentController;
+use App\Http\Controllers\Api\PublicFinalistController;
+use App\Http\Controllers\Api\PublicVoteAdminController;
 use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +31,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password/request-otp', [AuthController::class, 'requestPasswordResetOtp']);
 Route::post('/forgot-password/verify-otp', [AuthController::class, 'verifyPasswordResetOtp']);
 Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordDirect']);
+Route::get('/public/finalists', [PublicFinalistController::class, 'index']);
 
 Route::prefix('participant')->middleware(['jwt.auth', 'role:participant'])->group(function (): void {
     Route::get('/biodata', [ParticipantBiodataController::class, 'show']);
@@ -45,6 +49,11 @@ Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])
     Route::patch('/users/{id}/activate', [UserManagementController::class, 'activate']);
     Route::delete('/users/{id}', [UserManagementController::class, 'destroy']);
     Route::patch('/participants/{id}/selection-status', [UserManagementController::class, 'updateParticipantSelectionStatus']);
+    Route::patch('/participants/{id}/document-reviews', [UserManagementController::class, 'updateParticipantDocumentReviews']);
+    Route::patch('/vote/publication', [PublicVoteAdminController::class, 'updatePublication']);
+    Route::post('/vote/candidates/{participantUserId}', [PublicVoteAdminController::class, 'updateCandidate']);
+    Route::patch('/vote/jury', [PublicVoteAdminController::class, 'updateJuryWinners']);
+    Route::post('/exports/upload', [ExportReportController::class, 'upload']);
 });
 
 Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])->group(function (): void {

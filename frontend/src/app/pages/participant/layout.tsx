@@ -50,6 +50,32 @@ function mapSelectionStatusToStage(
   return (accountStatus ?? "").toLowerCase() === "suspended" ? "Rejected" : "Pending";
 }
 
+const documentIssueTargetMap: Record<string, NonNullable<Participant["verificationIssues"]>[number]["target"]> = {
+  identityCard: "identityCard",
+  closeUpPhoto: "closeUpPhoto",
+  fullBodyPhoto: "fullBodyPhoto",
+  formS01: "formS01",
+  formS02: "formS02",
+  formS03: "formS03",
+  formS04: "formS04",
+};
+
+function buildVerificationIssuesFromDocuments(documents: NonNullable<Participant["documents"]>) {
+  return documents
+    .filter((doc) => doc.status === "revision_required")
+    .map((doc) => {
+      const target = documentIssueTargetMap[doc.key];
+      if (!target) return null;
+      return {
+        id: `issue-${doc.key}`,
+        target,
+        status: "revision_required" as const,
+        message: doc.note?.trim() || `Dokumen ${doc.label} perlu diperbaiki.`,
+      };
+    })
+    .filter((item): item is NonNullable<Participant["verificationIssues"]>[number] => Boolean(item));
+}
+
 export default function ParticipantPagesLayout({
   children,
 }: {
@@ -119,6 +145,7 @@ export default function ParticipantPagesLayout({
           contributionIdea: data.contribution_idea ?? undefined,
           publicSpeakingExperience: data.public_speaking_experience ?? undefined,
         };
+        nextParticipant.verificationIssues = buildVerificationIssuesFromDocuments(nextParticipant.documents ?? []);
 
         saveParticipantProfileSnapshot({
           id: String(data.id),
@@ -147,7 +174,7 @@ export default function ParticipantPagesLayout({
           adminVerificationNote: prev?.adminVerificationNote,
           adminRevisionNote: prev?.adminRevisionNote,
           reviewItems: prev?.reviewItems ?? [],
-          verificationIssues: prev?.verificationIssues ?? [],
+          verificationIssues: nextParticipant.verificationIssues ?? [],
           rejectionReason: prev?.rejectionReason,
           likes: prev?.likes ?? 0,
         }));

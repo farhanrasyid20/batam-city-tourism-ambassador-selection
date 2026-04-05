@@ -41,6 +41,26 @@ const isJudgeScoreStage = (
 ): stage is ScoreStageKey =>
   stage === "Audition" || stage === "Camp" || stage === "Grand Final";
 
+const extractTrailingNumber = (value?: string | null) => {
+  const raw = (value ?? "").trim();
+  const match = raw.match(/(\d{1,5})$/);
+  return match ? Number.parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+};
+
+const toTitleCase = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+const getParticipantDisplayName = (name: string, gender: "Encik" | "Puan") => {
+  const normalized = name.trim().replace(/^(encik|puan)\s+/i, "");
+  const nickname = normalized.split(/\s+/)[0] ?? "";
+  const finalName = toTitleCase(nickname || normalized || "Peserta");
+  return `${gender} ${finalName}`.trim();
+};
+
 const formatNoteMeta = (createdAt: string, role: "admin" | "judge" | "committee") => {
   const roleLabel = role === "committee" ? "Panitia" : role === "admin" ? "Admin" : "Juri";
   const dayDate = new Intl.DateTimeFormat("id-ID", {
@@ -75,7 +95,7 @@ function toFrontendScoreRecord(item: BackendJudgeScore): ScoreRecord {
   };
 }
 
-function toFrontendNoteRecord(item: BackendJudgeNote): ParticipantStageNote {
+function toFrontendNoteRecord(item: BackendJudgeNote): FrontendParticipantStageNote {
   return {
     id: `db-judge-note-${item.id}`,
     participantId: item.participant_id,
@@ -83,10 +103,17 @@ function toFrontendNoteRecord(item: BackendJudgeNote): ParticipantStageNote {
     stage: item.stage as ParticipantStageNote["stage"],
     authorName: item.author_name ?? "Juri",
     authorRole: item.author_role,
+    authorAvatar: item.author_avatar ?? undefined,
     content: item.content,
     createdAt: item.created_at,
+    authorUserId: item.author_user_id,
   };
 }
+
+type FrontendParticipantStageNote = ParticipantStageNote & {
+  authorUserId?: number;
+  authorAvatar?: string;
+};
 
 function mergeJudgeOfficialScores(prev: ScoreRecord[], nextDbScores: ScoreRecord[]): ScoreRecord[] {
   const preserved = prev.filter(
@@ -111,13 +138,13 @@ function mergeJudgeOfficialScores(prev: ScoreRecord[], nextDbScores: ScoreRecord
 }
 
 export default function JudgeScoringPage() {
-  const { user, judgeList, participantList, scoreList, setScoreList } = useApp();
+  const { user, judgeList, participantList, voteCandidateList, scoreList, setScoreList } = useApp();
   const judgeInfo = judgeList.find((judge) => judge.id === user?.judgeId) ?? judgeList[0];
   const assignedStages = getJudgeAssignedStages(judgeInfo);
   const token = useMemo(() => getParticipantAuthSession()?.token ?? "", []);
   const [activeStage, setActiveStage] = useState<JudgeAssignedStageKey>(assignedStages[0] ?? "Audition");
   const [scoreInputs, setScoreInputs] = useState<Record<string, ScoreInputState>>({});
-  const [participantNotes, setParticipantNotes] = useState<ParticipantStageNote[]>(
+  const [participantNotes, setParticipantNotes] = useState<FrontendParticipantStageNote[]>(
     mockParticipantStageNotes,
   );
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
@@ -157,6 +184,18 @@ export default function JudgeScoringPage() {
         }
 
         return ["Grand Final", "Final Result"].includes(selectionStage);
+      }).sort((a, b) => {
+        if (activeStage === "Audition") {
+          const aOrder = extractTrailingNumber(a.auditionNumber ?? a.number);
+          const bOrder = extractTrailingNumber(b.auditionNumber ?? b.number);
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          return a.name.localeCompare(b.name, "id-ID");
+        }
+
+        const aOrder = extractTrailingNumber(a.participantCode ?? a.number);
+        const bOrder = extractTrailingNumber(b.participantCode ?? b.number);
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.name.localeCompare(b.name, "id-ID");
       }),
     [activeStage, participantList],
   );
@@ -247,9 +286,24 @@ export default function JudgeScoringPage() {
 
   const getScore = (participantId: string): Score => {
     const inputs = scoreInputs[participantId] ?? {};
+    const persistedRecord =
+      isJudgeScoreStage(activeStage) && judgeInfo?.id
+        ? getStageScoreRecords(scoreList, participantId, activeStage, {
+            judgeRole: "judge",
+            scoreType: "official",
+          }).find((record) => record.judgeId === judgeInfo.id)
+        : null;
+
+    const persistedScore = (persistedRecord?.score ?? {}) as Score;
     const score: Score = {};
     activeCriteria.forEach((criterion) => {
-      score[criterion.key] = Number.parseInt(inputs[criterion.key] ?? "", 10) || 0;
+      const rawInput = inputs[criterion.key];
+      if (rawInput !== undefined && rawInput !== "") {
+        score[criterion.key] = Number.parseInt(rawInput, 10) || 0;
+        return;
+      }
+
+      score[criterion.key] = Number(persistedScore[criterion.key] ?? 0);
     });
     return score;
   };
@@ -431,13 +485,52 @@ export default function JudgeScoringPage() {
     }
   };
 
-  const findJudgeAvatarByName = (name?: string) => {
-    const normalized = (name ?? "").trim().toLowerCase();
-    if (!normalized) return undefined;
-    const judge = judgeList.find(
-      (item) => (item.name ?? "").trim().toLowerCase() === normalized
-    );
-    return resolveApiAssetUrl(judge?.avatar);
+  const findJudgeAvatar = (note: FrontendParticipantStageNote) => {
+    const avatarFromNote = resolveApiAssetUrl(note.authorAvatar);
+    if (avatarFromNote) return avatarFromNote;
+
+    const normalizedName = (note.authorName ?? "").trim().toLowerCase();
+    const authorUserId = note.authorUserId;
+
+    const judgeById =
+      typeof authorUserId === "number"
+        ? judgeList.find((item) => {
+            const rawId = String(item.id ?? "");
+            if (rawId === `J_API_${authorUserId}`) return true;
+            const numeric = Number.parseInt(rawId.replace(/\D/g, ""), 10);
+            return Number.isFinite(numeric) && numeric === authorUserId;
+          })
+        : undefined;
+
+    const judgeByName = normalizedName
+      ? judgeList.find(
+          (item) => (item.name ?? "").trim().toLowerCase() === normalizedName
+        )
+      : undefined;
+
+    return resolveApiAssetUrl(judgeById?.avatar ?? judgeByName?.avatar) ?? "/default-avatar.svg";
+  };
+
+  const cleanRawPhoto = (value?: string) => {
+    const raw = (value ?? "").trim();
+    if (!raw) return "";
+    const lowered = raw.toLowerCase();
+    if (lowered === "null" || lowered === "undefined") return "";
+    return raw;
+  };
+
+  const getParticipantPhoto = (participantId: string, fallbackPhoto?: string) => {
+    // Prioritas: foto publikasi admin (menu vote) -> foto profil peserta -> default
+    const fromVoteRaw = voteCandidateList.find(
+      (candidate) => candidate.participantId === participantId
+    )?.photo;
+    const fromVote = resolveApiAssetUrl(cleanRawPhoto(fromVoteRaw));
+    if (fromVote) return fromVote;
+
+    const profilePhoto = resolveApiAssetUrl(cleanRawPhoto(fallbackPhoto));
+    if (profilePhoto) return profilePhoto;
+
+    return "/default-avatar.svg";
   };
 
   return (
@@ -524,10 +617,10 @@ export default function JudgeScoringPage() {
                       border: `1px solid ${isActive ? "rgba(212,175,55,0.4)" : isSubmitted ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.06)"}`,
                     }}
                   >
-                    <Image src={participant.photo} alt={participant.name} width={36} height={36} unoptimized className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                    <Image src={getParticipantPhoto(participant.id, participant.photo)} alt={participant.name} width={36} height={36} unoptimized className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold truncate" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
-                        {participant.name}
+                        {getParticipantDisplayName(participant.name, participant.gender)}
                       </p>
                       <p className="text-xs" style={{ color: "#666" }}>
                         {participant.number} - {participant.gender}
@@ -566,10 +659,10 @@ export default function JudgeScoringPage() {
             return (
               <GoldCard glow>
                 <div className="flex items-center gap-4 mb-6 pb-5" style={{ borderBottom: "1px solid rgba(212,175,55,0.15)" }}>
-                  <Image src={participant.photo} alt={participant.name} width={56} height={56} unoptimized className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" style={{ border: "2px solid rgba(212,175,55,0.4)" }} />
+                  <Image src={getParticipantPhoto(participant.id, participant.photo)} alt={getParticipantDisplayName(participant.name, participant.gender)} width={56} height={56} unoptimized className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" style={{ border: "2px solid rgba(212,175,55,0.4)" }} />
                   <div>
                     <p className="text-xs mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>{participant.number}</p>
-                    <h3 className="text-base font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>{participant.name}</h3>
+                    <h3 className="text-base font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>{getParticipantDisplayName(participant.name, participant.gender)}</h3>
                     <p className="text-xs" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>{participant.education} - {participant.gender}</p>
                   </div>
                   <div className="ml-auto text-right">
@@ -611,7 +704,24 @@ export default function JudgeScoringPage() {
                             type="number"
                             min={0}
                             max={100}
-                            value={scoreInputs[participant.id]?.[criterion.key] ?? ""}
+                            value={
+                              scoreInputs[participant.id]?.[criterion.key] ??
+                              (isJudgeScoreStage(activeStage) && judgeInfo?.id
+                                ? String(
+                                    Number(
+                                      (
+                                        getStageScoreRecords(
+                                          scoreList,
+                                          participant.id,
+                                          activeStage,
+                                          { judgeRole: "judge", scoreType: "official" }
+                                        ).find((record) => record.judgeId === judgeInfo.id)
+                                          ?.score?.[criterion.key] ?? 0
+                                      )
+                                    )
+                                  )
+                                : "")
+                            }
                             onChange={(event) => updateScore(participant.id, criterion.key, event.target.value)}
                             onWheel={(event) => {
                               if (document.activeElement === event.currentTarget) {
@@ -750,13 +860,15 @@ export default function JudgeScoringPage() {
                                       : "J"}
                                   </div>
                                 ) : (
-                                  <Image
-                                    src={findJudgeAvatarByName(note.authorName) || "/default-avatar.svg"}
+                                  <img
+                                    src={findJudgeAvatar(note)}
                                     alt={note.authorName}
-                                    width={32}
-                                    height={32}
-                                    unoptimized
                                     className="w-8 h-8 rounded-full object-cover shrink-0"
+                                    onError={(event) => {
+                                      const target = event.currentTarget;
+                                      if (target.src.includes("/default-avatar.svg")) return;
+                                      target.src = "/default-avatar.svg";
+                                    }}
                                   />
                                 )}
                                 <div

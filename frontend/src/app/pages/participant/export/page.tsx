@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import NextImage from "next/image";
 import { pdf } from "@react-pdf/renderer";
-import { Download, FileText } from "lucide-react";
+import { CheckCircle2, Download, FileText, X } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
@@ -15,6 +15,7 @@ import {
   type ParticipantBiodata,
   type ParticipantDocumentMeta,
 } from "../../../../lib/auth-api";
+import { requiredDocuments } from "../components/documentUploadConfig";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
 
@@ -100,6 +101,32 @@ function toInstagramUsername(value?: string | null): string {
 function getFrontendLogoUrl(): string {
   if (typeof window === "undefined") return "/logo1.png";
   return `${window.location.origin}/logo1.png`;
+}
+
+function normalizeParticipantCode(
+  participantCode?: string | null,
+  auditionNumber?: string | null,
+  participantNumber?: string | null,
+  gender?: string | null
+): string {
+  const explicitCode = (participantCode ?? "").trim();
+  if (explicitCode) return explicitCode;
+
+  const sourceNumber = (auditionNumber ?? participantNumber ?? "").trim();
+  const lastDigits = sourceNumber.match(/(\d{1,4})$/)?.[1];
+  if (!lastDigits) return "-";
+
+  const padded = lastDigits.padStart(3, "0");
+  const normalizedGender = (gender ?? "").trim().toLowerCase();
+
+  if (normalizedGender.includes("encik")) return `ECK-${padded}`;
+  if (normalizedGender.includes("puan")) return `PUA-${padded}`;
+
+  return `PES-${padded}`;
+}
+
+function shouldShowAuditionNumber(stage: StageStatus): boolean {
+  return ["Pending", "Verified", "TechnicalMeeting", "Audition", "Rejected"].includes(stage);
 }
 
 async function toDataUrlForPdf(source?: string | null): Promise<string> {
@@ -210,24 +237,22 @@ export default function ExportPDFPage() {
   );
 
   const documentItems = useMemo(() => {
-    if (documentsFromDb.length > 0) {
-      return documentsFromDb
-        .filter((doc) => doc.required)
-        .map((doc) => ({
-          label: doc.label,
-          done: doc.status === "submitted" || doc.status === "verified",
-        }));
-    }
+    const sourceDocuments =
+      documentsFromDb.length > 0
+        ? documentsFromDb
+        : ((participant?.documents as ParticipantDocumentMeta[] | undefined) ?? []);
 
-    return [
-      { label: "KTP", done: Boolean(participant?.nationalId) },
-      { label: "Foto Close Up", done: Boolean(participant?.photo) },
-      { label: "Foto Full Body", done: Boolean(participant?.photo) },
-      { label: "Formulir S-01", done: Boolean(participant?.education) },
-      { label: "Formulir S-02", done: Boolean(participant?.instagram) },
-      { label: "Formulir S-03", done: Boolean(participant?.phone) },
-      { label: "Formulir S-04", done: Boolean(participant?.birthDate && participant?.birthPlace) },
-    ];
+    const doneMap = new Map(
+      sourceDocuments.map((doc) => [
+        doc.key,
+        doc.status === "submitted" || doc.status === "verified",
+      ] as const)
+    );
+
+    return requiredDocuments.map((doc) => ({
+      label: doc.label,
+      done: Boolean(doneMap.get(doc.key)),
+    }));
   }, [documentsFromDb, participant]);
 
   const doneCount = documentItems.filter((item) => item.done).length;
@@ -261,6 +286,19 @@ export default function ExportPDFPage() {
 
   const previewPhoto = resolveAssetUrl(biodataFromDb?.photo ?? participant?.photo);
   const instagramUsername = toInstagramUsername(biodataFromDb?.instagram ?? participant?.instagram);
+  const showAuditionNumber = shouldShowAuditionNumber(effectiveStageStatus);
+  const effectiveAuditionNumber =
+    biodataFromDb?.audition_number ??
+    biodataFromDb?.participant_number ??
+    participant?.auditionNumber ??
+    participant?.number ??
+    "-";
+  const effectiveParticipantCode = normalizeParticipantCode(
+    biodataFromDb?.participant_code ?? participant?.participantCode,
+    biodataFromDb?.audition_number ?? participant?.auditionNumber,
+    biodataFromDb?.participant_number ?? participant?.number,
+    biodataFromDb?.gender ?? participant?.gender
+  );
   const pendingExportFields = useMemo(() => {
     if (loadingDbData && !biodataFromDb) return [];
     if (!biodataFromDb) return ["Biodata backend belum termuat"];
@@ -282,8 +320,9 @@ export default function ExportPDFPage() {
       JSON.stringify({
         id: biodataFromDb?.id ?? participant?.id,
         number: biodataFromDb?.participant_number ?? participant?.number,
-        auditionNumber: biodataFromDb?.audition_number ?? biodataFromDb?.participant_number ?? participant?.auditionNumber ?? participant?.number,
-        participantCode: biodataFromDb?.participant_code ?? participant?.participantCode,
+        auditionNumber: effectiveAuditionNumber,
+        participantCode: effectiveParticipantCode,
+        showAuditionNumber,
         name: biodataFromDb?.name ?? participant?.name,
         nationalId: biodataFromDb?.national_id ?? participant?.nationalId,
         birthPlace: biodataFromDb?.birth_place ?? participant?.birthPlace,
@@ -301,6 +340,9 @@ export default function ExportPDFPage() {
       participant?.id,
       biodataFromDb?.participant_number,
       participant?.number,
+      effectiveAuditionNumber,
+      effectiveParticipantCode,
+      showAuditionNumber,
       biodataFromDb?.name,
       participant?.name,
       biodataFromDb?.national_id,
@@ -331,8 +373,8 @@ export default function ExportPDFPage() {
 
   const buildPdfBlob = async () => {
     const resolvedPhoto = resolveAssetUrl(biodataFromDb?.photo ?? participant?.photo);
-    const auditionNumber = biodataFromDb?.audition_number ?? biodataFromDb?.participant_number ?? participant?.auditionNumber ?? participant?.number ?? "-";
-    const participantCode = biodataFromDb?.participant_code ?? participant?.participantCode ?? "-";
+    const auditionNumber = effectiveAuditionNumber;
+    const participantCode = effectiveParticipantCode;
     const participantName = biodataFromDb?.name ?? participant?.name ?? user?.name ?? "Peserta";
     const participantGender = biodataFromDb?.gender ?? participant?.gender ?? "Encik";
     const participantNationalId = biodataFromDb?.national_id ?? participant?.nationalId ?? "";
@@ -362,6 +404,7 @@ export default function ExportPDFPage() {
           number: participantCode !== "-" ? participantCode : auditionNumber,
           auditionNumber,
           participantCode,
+          showAuditionNumber,
           name: participantName,
           gender: participantGender,
           nationalId: participantNationalId,
@@ -390,9 +433,9 @@ export default function ExportPDFPage() {
     };
   };
 
-  const handlePreviewPdf = async () => {
+  const handlePreviewPdf = async (forceRefresh = false) => {
     if ((!participant && !biodataFromDb) || !canDownloadPdf || isActionLocked) return;
-    if (previewUrl && previewFingerprint === renderFingerprint) {
+    if (!forceRefresh && previewUrl && previewFingerprint === renderFingerprint) {
       return;
     }
     setPreviewing(true);
@@ -476,7 +519,7 @@ export default function ExportPDFPage() {
         </div>
         <GoldButton
           variant="primary"
-          onClick={handlePreviewPdf}
+          onClick={() => void handlePreviewPdf(false)}
           disabled={previewing || !participant || !canDownloadPdf || isActionLocked}
         >
           <Download size={16} />
@@ -562,17 +605,21 @@ export default function ExportPDFPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-[11px]" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
-                    No. Audisi
+                    {showAuditionNumber ? "No. Audisi" : "Kode Peserta"}
                   </p>
                   <p style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "1rem" }}>
-                    {biodataFromDb?.audition_number ?? biodataFromDb?.participant_number ?? participant.auditionNumber ?? participant.number ?? "-"}
+                    {showAuditionNumber ? effectiveAuditionNumber : effectiveParticipantCode}
                   </p>
-                  <p className="text-[11px] mt-1" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
-                    Participant Code
-                  </p>
-                  <p style={{ color: "#22c55e", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "0.95rem" }}>
-                    {biodataFromDb?.participant_code ?? participant.participantCode ?? "-"}
-                  </p>
+                  {showAuditionNumber ? (
+                    <>
+                      <p className="text-[11px] mt-1" style={{ color: "#8E8E8E", fontFamily: "var(--font-poppins)" }}>
+                        Kode Peserta
+                      </p>
+                      <p style={{ color: "#22c55e", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "0.95rem" }}>
+                        {effectiveParticipantCode}
+                      </p>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -639,7 +686,7 @@ export default function ExportPDFPage() {
                   {documentItems.map((item) => (
                     <span
                       key={item.label}
-                      className="text-xs px-2.5 py-1 rounded-full"
+                      className="text-xs px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
                       style={{
                         border: `1px solid ${item.done ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.28)"}`,
                         background: item.done ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.06)",
@@ -647,7 +694,7 @@ export default function ExportPDFPage() {
                         fontFamily: "var(--font-poppins)",
                       }}
                     >
-                      {item.done ? "✓" : "✕"} {item.label}
+                      {item.done ? <CheckCircle2 size={12} /> : <X size={12} />} {item.label}
                     </span>
                   ))}
                 </div>
@@ -697,7 +744,7 @@ export default function ExportPDFPage() {
               Preview PDF Biodata
             </p>
             <div className="flex gap-2">
-              <GoldButton variant="outline" onClick={handlePreviewPdf} disabled={previewing}>
+              <GoldButton variant="outline" onClick={() => void handlePreviewPdf(true)} disabled={previewing}>
                 {previewing ? "Merefresh..." : "Refresh Preview"}
               </GoldButton>
               <GoldButton

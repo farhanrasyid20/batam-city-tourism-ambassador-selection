@@ -14,6 +14,7 @@ type DocumentUploadCardProps = {
   revisionRequired?: boolean;
   resubmitted?: boolean;
   reviewNote?: string;
+  serverStatus?: "submitted" | "verified" | "revision_required" | "missing";
   onFileChange: (key: string, event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
@@ -25,15 +26,19 @@ export default function DocumentUploadCard({
   revisionRequired = false,
   resubmitted = false,
   reviewNote,
+  serverStatus,
   onFileChange,
 }: DocumentUploadCardProps) {
   // Ikon menyesuaikan tipe dokumen (file umum atau image).
   const icon = item.icon === "image" ? <ImageIcon size={20} /> : <FileText size={20} />;
-  const pendingReview = resubmitted || (revisionRequired && Boolean(uploaded));
-  const isProblem = revisionRequired || (!done && item.required);
+  const isVerified = serverStatus === "verified";
+  const isRevisionState =
+    serverStatus === "revision_required" || (!serverStatus && revisionRequired);
+  const pendingReview =
+    serverStatus === "submitted" && (resubmitted || isRevisionState);
   const cardBorder = pendingReview
     ? "rgba(245,208,111,0.4)"
-    : revisionRequired
+    : isRevisionState
     ? "rgba(239,68,68,0.4)"
     : done
     ? "rgba(34,197,94,0.35)"
@@ -42,7 +47,7 @@ export default function DocumentUploadCard({
     : "rgba(200,162,77,0.2)";
   const iconBackground = pendingReview
     ? "rgba(245,208,111,0.14)"
-    : revisionRequired
+    : isRevisionState
     ? "rgba(239,68,68,0.14)"
     : done
     ? "rgba(34,197,94,0.15)"
@@ -51,7 +56,7 @@ export default function DocumentUploadCard({
     : "rgba(200,162,77,0.1)";
   const iconColor = pendingReview
     ? "#F5D06F"
-    : revisionRequired
+    : isRevisionState
     ? "#ef4444"
     : done
     ? "#22c55e"
@@ -60,27 +65,27 @@ export default function DocumentUploadCard({
     : "#C8A24D";
   const badgeBackground = pendingReview
     ? "rgba(245,208,111,0.14)"
-    : revisionRequired
+    : isRevisionState
     ? "rgba(239,68,68,0.14)"
     : item.required
     ? "rgba(239,68,68,0.1)"
     : "rgba(200,162,77,0.1)";
-  const badgeColor = pendingReview ? "#F5D06F" : revisionRequired ? "#ef4444" : item.required ? "#ef4444" : "#C8A24D";
+  const badgeColor = pendingReview ? "#F5D06F" : isRevisionState ? "#ef4444" : item.required ? "#ef4444" : "#C8A24D";
   const actionBackground = pendingReview
     ? "rgba(245,208,111,0.1)"
-    : revisionRequired
+    : isRevisionState
     ? "rgba(239,68,68,0.1)"
     : done
     ? "rgba(34,197,94,0.1)"
     : "linear-gradient(135deg, rgba(245,208,111,0.15), rgba(200,162,77,0.15))";
   const actionBorder = pendingReview
     ? "1px solid rgba(245,208,111,0.3)"
-    : revisionRequired
+    : isRevisionState
     ? "1px solid rgba(239,68,68,0.3)"
     : done
     ? "1px solid rgba(34,197,94,0.3)"
     : "1px solid rgba(200,162,77,0.3)";
-  const actionColor = pendingReview ? "#F5D06F" : revisionRequired ? "#ef4444" : done ? "#22c55e" : "#C8A24D";
+  const actionColor = pendingReview ? "#F5D06F" : isRevisionState ? "#ef4444" : done ? "#22c55e" : "#C8A24D";
 
   return (
     <div
@@ -98,7 +103,7 @@ export default function DocumentUploadCard({
             color: iconColor,
           }}
         >
-          {pendingReview ? <Upload size={20} /> : revisionRequired ? <AlertCircle size={20} /> : done ? <CheckCircle size={20} /> : item.required ? <AlertCircle size={20} /> : icon}
+          {pendingReview ? <Upload size={20} /> : isRevisionState ? <AlertCircle size={20} /> : done ? <CheckCircle size={20} /> : item.required ? <AlertCircle size={20} /> : icon}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -115,7 +120,15 @@ export default function DocumentUploadCard({
                 fontFamily: "var(--font-poppins)",
               }}
             >
-              {pendingReview ? "Menunggu Verifikasi Ulang" : revisionRequired ? "Perlu Revisi" : item.required ? "Wajib" : "Opsional"}
+              {pendingReview
+                ? "Menunggu Verifikasi Ulang"
+                : isVerified
+                ? "Terverifikasi"
+                : isRevisionState
+                ? "Perlu Revisi"
+                : item.required
+                ? "Wajib"
+                : "Opsional"}
             </span>
           </div>
 
@@ -126,7 +139,7 @@ export default function DocumentUploadCard({
             Format: {item.accept} | Maks: {item.maxSize}
           </p>
 
-          {reviewNote ? (
+          {pendingReview || (isRevisionState && reviewNote) ? (
             <div
               className="mt-3 rounded-xl px-3 py-2"
               style={{
@@ -140,9 +153,15 @@ export default function DocumentUploadCard({
               <p className="text-xs mt-1 leading-relaxed" style={{ color: pendingReview ? "#F5E6C8" : "#F2C3C3", fontFamily: "var(--font-poppins)" }}>
                 {pendingReview
                   ? "File pengganti sudah diupload. Mohon tunggu pengecekan ulang dari admin panitia."
-                  : reviewNote}
+                  : reviewNote ?? "Silakan cek catatan admin untuk dokumen ini."}
               </p>
             </div>
+          ) : null}
+
+          {isVerified && !reviewNote ? (
+            <p className="text-xs mt-2" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
+              Dokumen sudah diverifikasi admin.
+            </p>
           ) : null}
 
           {item.templatePath ? (
@@ -190,7 +209,7 @@ export default function DocumentUploadCard({
                   Berkas sebelumnya sudah terupload
                 </span>
               </div>
-              {revisionRequired ? (
+              {isRevisionState ? (
                 <div className="flex items-center gap-2">
                   <AlertCircle size={12} style={{ color: "#ef4444" }} />
                   <span className="text-xs" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
@@ -229,8 +248,8 @@ export default function DocumentUploadCard({
                 </>
               ) : done ? (
                 <>
-                  {pendingReview ? <Upload size={12} /> : revisionRequired ? <AlertCircle size={12} /> : <CheckCircle size={12} />}
-                  {pendingReview ? "Sedang Diproses" : revisionRequired ? "Upload Ulang" : "Re-upload"}
+                  {pendingReview ? <Upload size={12} /> : isRevisionState ? <AlertCircle size={12} /> : <CheckCircle size={12} />}
+                  {pendingReview ? "Sedang Diproses" : isRevisionState ? "Upload Ulang" : "Re-upload"}
                 </>
               ) : (
                 <>

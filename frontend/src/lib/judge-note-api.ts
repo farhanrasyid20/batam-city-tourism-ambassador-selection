@@ -16,6 +16,7 @@ export type BackendJudgeNote = {
   stage: BackendJudgeNoteStage;
   author_user_id: number;
   author_name?: string | null;
+  author_avatar?: string | null;
   author_role: "judge" | "admin" | "committee";
   content: string;
   created_at: string;
@@ -59,4 +60,3 @@ export function submitJudgeNote(token: string, payload: SubmitJudgeNotePayload) 
     body: payload,
   });
 }
-

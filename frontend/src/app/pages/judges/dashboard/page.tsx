@@ -7,7 +7,7 @@ import { ArrowRight, Star, Users } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import { useApp } from "../../../../context/AppContext";
-import { resolveApiAssetUrl } from "../../../../lib/api";
+import { resolveAvatarUrl } from "../../../../lib/api";
 import {
   getAdminScoreStageLabel,
   getJudgeAssignedStages,
@@ -18,7 +18,7 @@ export default function JudgeDashboardPage() {
   const { user, participantList, judgeList } = useApp();
   const router = useRouter();
   const judgeInfo = judgeList.find((judge) => judge.id === user?.judgeId) ?? judgeList[0];
-  const judgeAvatar = resolveApiAssetUrl(judgeInfo?.avatar) || "/default-avatar.svg";
+  const judgeAvatar = resolveAvatarUrl(judgeInfo?.avatar) || "/default-avatar.svg";
   const assignedStages = getJudgeAssignedStages(judgeInfo);
 
   const totalParticipants = participantList.filter((participant) =>

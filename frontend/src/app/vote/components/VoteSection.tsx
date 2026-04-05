@@ -1,73 +1,99 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import Image from "next/image";
-import { Heart, Instagram, Radio, Sparkles, Star, Crown } from "lucide-react";
+import { CheckCircle2, Heart, Instagram, Radio, Crown } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { GoldButton } from "../../../components/ui/GoldButton";
+import { resolveApiAssetUrl } from "../../../lib/api";
 
 const OFFICIAL_ACCOUNT = "@dutawisatakotabatam";
 const OFFICIAL_ACCOUNT_URL = "https://instagram.com/dutawisatakotabatam";
-const syncSeedDelays = [0, 1, 0, 2, 1, 0, 3, 1, 0, 2, 1, 0];
 
+function extractCodeOrder(value: string) {
+  const match = value.match(/(\d{1,4})$/);
+  return match ? Number.parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+}
+
+function interleaveByCode<T extends { gender: "Encik" | "Puan"; number: string }>(items: T[]) {
+  const encik = items
+    .filter((item) => item.gender === "Encik")
+    .sort((a, b) => extractCodeOrder(a.number) - extractCodeOrder(b.number));
+  const puan = items
+    .filter((item) => item.gender === "Puan")
+    .sort((a, b) => extractCodeOrder(a.number) - extractCodeOrder(b.number));
+
+  const max = Math.max(encik.length, puan.length);
+  const result: T[] = [];
+  for (let index = 0; index < max; index += 1) {
+    if (encik[index]) result.push(encik[index]);
+    if (puan[index]) result.push(puan[index]);
+  }
+  return result;
+}
+
+function resolveDisplayPhoto(url?: string | null) {
+  const value = url?.trim();
+  if (!value || value === "/default-avatar.svg") return "/default-avatar.svg";
+  if (value.startsWith("/vote-candidates/")) return value;
+  if (value.startsWith("/storage/")) {
+    return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
+  }
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    if (value.includes("/default-avatar.svg")) return "/default-avatar.svg";
+    return value;
+  }
+  return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
+}
 function formatLikes(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
 }
 
+function formatWibDateTime(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const formatted = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  return `${formatted} WIB`;
+}
+
+function formatWibCompact(value: string | null) {
+  if (!value) return "Belum diupdate";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Belum diupdate";
+  const formatted = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  return `${formatted} WIB`;
+}
+
 export default function VoteSection() {
-  const { voteCandidateList, participantList } = useApp();
-  const finalists = useMemo(() => voteCandidateList.filter((item) => item.enabled), [voteCandidateList]);
-
-  const initialLikeMap = useMemo(() => {
-    return Object.fromEntries(
-      finalists.map((candidate, index) => {
-        const participant = participantList.find((item) => item.id === candidate.participantId);
-        const baseLikes = participant?.likes ?? 0;
-        const seededLikes = baseLikes + (syncSeedDelays[index % syncSeedDelays.length] ?? 0);
-        return [candidate.id, seededLikes];
-      })
-    ) as Record<string, number>;
-  }, [finalists, participantList]);
-
-  const [officialLikesMap, setOfficialLikesMap] = useState<Record<string, number>>(initialLikeMap);
-  const [lastSyncedAt, setLastSyncedAt] = useState(() =>
-    new Date().toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+  const { voteCandidateList, voteTopPublished } = useApp();
+  const finalists = useMemo(
+    () => interleaveByCode(voteCandidateList.filter((item) => item.enabled)),
+    [voteCandidateList]
   );
+  const lastSyncedAt = useMemo(() => {
+    const latest = finalists
+      .map((item) => item.likeUpdatedAt)
+      .filter((item): item is string => Boolean(item))
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
 
-  useEffect(() => {
-    setOfficialLikesMap(initialLikeMap);
-    setLastSyncedAt(
-      new Date().toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    );
-  }, [initialLikeMap]);
-
-  useEffect(() => {
-    if (finalists.length === 0) return;
-
-    const intervalId = window.setInterval(() => {
-      setOfficialLikesMap((prev) => {
-        const next = { ...prev };
-        const candidate = finalists[Math.floor(Math.random() * finalists.length)];
-        const increment = Math.floor(Math.random() * 4) + 1;
-        next[candidate.id] = (next[candidate.id] ?? 0) + increment;
-        return next;
-      });
-
-      setLastSyncedAt(
-        new Date().toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
-    }, 12000);
-
-    return () => window.clearInterval(intervalId);
+    return formatWibDateTime(latest);
   }, [finalists]);
 
   return (
@@ -133,7 +159,7 @@ export default function VoteSection() {
                 className="text-[11px] sm:text-xs mt-2"
                 style={{ color: "#A9A9A9", fontFamily: "var(--font-poppins)" }}
               >
-                Pembaruan data terakhir: {lastSyncedAt} WIB
+                Pembaruan data terakhir: {lastSyncedAt}
               </p>
             </div>
           </div>
@@ -153,7 +179,17 @@ export default function VoteSection() {
           </a>
         </div>
 
-        {finalists.length === 0 ? (
+        {!voteTopPublished ? (
+          <div className="text-center py-16">
+            <Crown
+              size={48}
+              style={{ color: "#C8A24D", margin: "0 auto 16px", opacity: 0.5 }}
+            />
+            <p style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+              Vote finalis sedang tidak dipublikasikan oleh admin.
+            </p>
+          </div>
+        ) : finalists.length === 0 ? (
           <div className="text-center py-16">
             <Crown
               size={48}
@@ -176,7 +212,9 @@ export default function VoteSection() {
               const instagramTarget = candidate.instagramProfileUrl || `https://instagram.com/${igHandle}`;
               const officialPostTarget =
                 candidate.instagramPostUrl || `${OFFICIAL_ACCOUNT_URL}/p/${candidate.participantId.toLowerCase()}-demo/`;
-              const officialLikeCount = officialLikesMap[candidate.id] ?? 0;
+              const officialLikeCount = candidate.officialLikeCount ?? 0;
+              const candidateUpdatedAt = formatWibCompact(candidate.likeUpdatedAt);
+              const candidatePhoto = resolveDisplayPhoto(candidate.photo);
 
               return (
                 <div
@@ -190,7 +228,7 @@ export default function VoteSection() {
                 >
                   <div className="relative overflow-hidden h-[260px]">
                     <Image
-                      src={candidate.photo}
+                      src={candidatePhoto}
                       alt={candidate.name}
                       fill
                       unoptimized
@@ -289,14 +327,17 @@ export default function VoteSection() {
                           Like IG Resmi
                         </p>
                         <span
-                          className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full"
+                          className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border"
                           style={{
-                            color: "#F5E6C8",
-                            background: "rgba(245,208,111,0.1)",
+                            color: "#F5D06F",
+                            borderColor: "rgba(34,197,94,0.45)",
+                            background: "linear-gradient(135deg, rgba(34,197,94,0.2), rgba(212,175,55,0.2))",
                             fontFamily: "var(--font-poppins)",
+                            fontWeight: 600,
                           }}
                         >
-                          <Sparkles size={10} /> Pembaruan Otomatis
+                          <CheckCircle2 size={12} />
+                          Validasi Admin
                         </span>
                       </div>
 
@@ -313,6 +354,12 @@ export default function VoteSection() {
                             style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
                           >
                             Like dari postingan resmi {OFFICIAL_ACCOUNT}
+                          </p>
+                          <p
+                            className="text-[11px] mt-1"
+                            style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}
+                          >
+                            Diperbarui admin: {candidateUpdatedAt}
                           </p>
                         </div>
 

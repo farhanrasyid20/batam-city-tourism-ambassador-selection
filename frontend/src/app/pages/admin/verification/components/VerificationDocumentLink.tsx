@@ -44,9 +44,30 @@ export function getVerificationDocumentMeta(
     document.originalName ||
     (document.url ? document.url.split("/").pop()?.split("?")[0] ?? "" : "");
 
+  const ext = (fileName.split(".").pop() || "").toLowerCase();
+  const mimeType =
+    document.mimeType ||
+    (ext === "pdf"
+      ? "application/pdf"
+      : ["jpg", "jpeg"].includes(ext)
+      ? "image/jpeg"
+      : ext === "png"
+      ? "image/png"
+      : ext === "webp"
+      ? "image/webp"
+      : "");
+
+  const previewType = mimeType.startsWith("image/")
+    ? "image"
+    : mimeType === "application/pdf"
+    ? "pdf"
+    : "file";
+
   return {
     href,
     fileName: fileName || "",
+    mimeType,
+    previewType,
   };
 }
 

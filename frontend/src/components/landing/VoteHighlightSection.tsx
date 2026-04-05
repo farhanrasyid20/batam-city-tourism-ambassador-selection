@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Crown, Heart, Instagram, Radio } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { GoldButton } from "../ui/GoldButton";
+import { resolveApiAssetUrl } from "../../lib/api";
 
 function modulo(index: number, length: number) {
   if (length === 0) return 0;
@@ -27,28 +28,64 @@ type RankedParticipant = {
   avg: number | null;
 };
 
-type JuryPairConfig = {
-  rank: number;
-  encikId: string;
-  puanId: string;
-};
-
 const OFFICIAL_ACCOUNT = "@dutawisatakotabatam";
 const OFFICIAL_ACCOUNT_URL = "https://instagram.com/dutawisatakotabatam";
-const syncSeedDelays = [0, 1, 0, 2, 1, 0, 3, 1, 0, 2, 1, 0];
-
-const juryPairRankingConfig: JuryPairConfig[] = [
-  { rank: 1, encikId: "P011", puanId: "P008" },
-  { rank: 2, encikId: "P001", puanId: "P002" },
-  { rank: 3, encikId: "P007", puanId: "P004" },
-];
 
 function formatLikes(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
 }
 
-function getOfficialPostUrl(participantId: string) {
-  return `${OFFICIAL_ACCOUNT_URL}/p/${participantId.toLowerCase()}-demo/`;
+function formatWibDateTime(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const formatted = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+  return `${formatted} WIB`;
+}
+
+function extractCodeOrder(value: string) {
+  const match = value.match(/(\d{1,4})$/);
+  return match ? Number.parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+}
+
+function interleaveByCode<T extends { gender: "Encik" | "Puan"; number: string }>(items: T[]) {
+  const encik = items
+    .filter((item) => item.gender === "Encik")
+    .sort((a, b) => extractCodeOrder(a.number) - extractCodeOrder(b.number));
+  const puan = items
+    .filter((item) => item.gender === "Puan")
+    .sort((a, b) => extractCodeOrder(a.number) - extractCodeOrder(b.number));
+
+  const max = Math.max(encik.length, puan.length);
+  const result: T[] = [];
+  for (let index = 0; index < max; index += 1) {
+    if (encik[index]) result.push(encik[index]);
+    if (puan[index]) result.push(puan[index]);
+  }
+  return result;
+}
+
+function resolveDisplayPhoto(url?: string | null) {
+  const value = url?.trim();
+  if (!value || value === "/default-avatar.svg") return "/default-avatar.svg";
+  if (value.startsWith("/vote-candidates/")) return value;
+  if (value.startsWith("/storage/")) {
+    return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
+  }
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    if (value.includes("/default-avatar.svg")) return "/default-avatar.svg";
+    return value;
+  }
+  return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
 }
 
 function buildRankEntries(
@@ -90,12 +127,14 @@ function RankingColumn({
   mode,
   officialLikesMap,
   lastSyncedAt,
+  showJuryScore = false,
 }: {
   title: string;
   entries: RankedParticipant[];
   mode: "jury" | "vote";
   officialLikesMap?: Record<string, number>;
   lastSyncedAt?: string;
+  showJuryScore?: boolean;
 }) {
   return (
     <div
@@ -125,7 +164,7 @@ function RankingColumn({
               className="text-[11px] mt-2"
               style={{ color: "#A9A9A9", fontFamily: "var(--font-poppins)" }}
             >
-              Pembaruan data terakhir: {lastSyncedAt} WIB
+              Pembaruan data terakhir: {lastSyncedAt}
             </p>
           ) : null}
         </div>
@@ -148,12 +187,12 @@ function RankingColumn({
             const voteCount = officialLikesMap?.[winner.id] ?? winner.likes ?? 0;
             const subtitle =
               mode === "jury"
-                ? `${winner.number} | Peringkat pilihan juri`
+                ? `${winner.number} | ${showJuryScore && entry.avg !== null ? `Nilai ${entry.avg.toFixed(2)}` : "Peringkat pilihan juri"}`
                 : `${winner.number} | ${formatLikes(voteCount)} like posting resmi`;
 
             return (
               <div
-                key={`${mode}-${title}-${winner.id}`}
+                key={`${mode}-${title}-${winner.id}-${index + 1}`}
                 className="rounded-2xl p-3 sm:p-4 flex items-center gap-3"
                 style={{
                   background: "#1A1A1A",
@@ -386,87 +425,132 @@ function JuryPairTable({
 }
 
 export default function VoteHighlightSection() {
-  const { participantList, scoreList } = useApp();
+  const {
+    scoreList,
+    participantList,
+    voteCandidateList,
+    voteTopPublished,
+    voteRankingPublished,
+    judgeEncikWinnerList,
+    judgePuanWinnerList,
+    judgePairRankingList,
+    judgeEncikPublished,
+    judgePuanPublished,
+    judgePairPublished,
+    judgeEncikDisplayMode,
+    judgePuanDisplayMode,
+    judgeWinnersPublished,
+    judgeWinnerDisplayMode,
+  } = useApp();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [thumbPage, setThumbPage] = useState(0);
   const [thumbsPerPage, setThumbsPerPage] = useState(10);
 
-  const finalists = useMemo(() => {
-    const getDisplayOrder = (photoPath: string, fallbackNumber: string) => {
-      const photoMatch = photoPath.match(/\/(\d+)\.(jpg|jpeg|png|webp)$/i);
-      if (photoMatch) return Number.parseInt(photoMatch[1], 10);
+  const finalists = useMemo(
+    () =>
+      interleaveByCode(
+        voteCandidateList
+          .filter((candidate) => candidate.enabled)
+          .map((candidate) => ({
+            id: candidate.participantId,
+            name: candidate.name,
+            number: candidate.number,
+            gender: candidate.gender,
+            photo: resolveDisplayPhoto(candidate.photo),
+            instagram: candidate.instagramHandle || "@-",
+            likes: candidate.officialLikeCount,
+            status: "GrandFinal",
+          }))
+      ),
+    [voteCandidateList]
+  );
 
-      const numberMatch = fallbackNumber.match(/(\d+)$/);
-      if (numberMatch) return Number.parseInt(numberMatch[1], 10);
-
-      return Number.MAX_SAFE_INTEGER;
-    };
-
-    return participantList
-      .filter((p) => p.status === "GrandFinal" || p.status === "Winner")
-      .sort((a, b) => getDisplayOrder(a.photo, a.number) - getDisplayOrder(b.photo, b.number));
-  }, [participantList]);
+  const juryParticipantPool = useMemo(
+    () =>
+      voteCandidateList.map((candidate) => ({
+        id: candidate.participantId,
+        name: candidate.name,
+        number: candidate.number,
+        gender: candidate.gender,
+        photo: resolveDisplayPhoto(candidate.photo),
+        instagram: candidate.instagramHandle || "@-",
+        likes: candidate.officialLikeCount,
+        status: "GrandFinal",
+      })),
+    [voteCandidateList]
+  );
 
   const ranking = finalists;
-  const hasData = ranking.length > 0;
+  const hasVoteData = ranking.length > 0;
+  const showVoteSection = voteTopPublished && hasVoteData;
+  const showVoteRankingSection = voteRankingPublished && hasVoteData;
+  const hasStoredEncikWinners = judgeEncikWinnerList.length > 0;
+  const hasStoredPuanWinners = judgePuanWinnerList.length > 0;
+  const hasStoredPairWinners = judgePairRankingList.some(
+    (entry) => Boolean(entry.encikParticipantId) || Boolean(entry.puanParticipantId)
+  );
+  // Backward compatibility with legacy single publish flag.
+  const showLegacyJurySection =
+    judgeWinnersPublished &&
+    (hasStoredEncikWinners || hasStoredPuanWinners || hasStoredPairWinners) &&
+    !judgeEncikPublished &&
+    !judgePuanPublished &&
+    !judgePairPublished;
+  // Recovery fallback:
+  // if pair section is published but encik/puan publish flags become stale/false,
+  // keep showing encik+puan winners when winner data exists.
+  const showFallbackFromPairPublish =
+    judgePairPublished && !judgeEncikPublished && !judgePuanPublished && !showLegacyJurySection;
+  const showJuryEncikSection =
+    hasStoredEncikWinners && (judgeEncikPublished || showLegacyJurySection || showFallbackFromPairPublish);
+  const showJuryPuanSection =
+    hasStoredPuanWinners && (judgePuanPublished || showLegacyJurySection || showFallbackFromPairPublish);
+  const showJuryPairSection = hasStoredPairWinners && (judgePairPublished || showLegacyJurySection);
+  const showJurySection =
+    showJuryEncikSection || showJuryPuanSection || showJuryPairSection || showLegacyJurySection;
+  const hasAnyPublishedSection = showVoteSection || showVoteRankingSection || showJurySection;
   const safeActive = modulo(activeIndex, ranking.length);
   const totalThumbPages = Math.max(1, Math.ceil(ranking.length / thumbsPerPage));
-  const safeThumbPage = modulo(thumbPage, totalThumbPages);
+  const safeThumbPage = Math.floor(safeActive / thumbsPerPage);
   const thumbStart = safeThumbPage * thumbsPerPage;
   const visibleThumbs = ranking.slice(thumbStart, thumbStart + thumbsPerPage);
 
-  const center = ranking[safeActive];
-  const left = ranking[modulo(safeActive - 1, ranking.length)];
-  const right = ranking[modulo(safeActive + 1, ranking.length)];
+  const showcaseItems = useMemo(() => {
+    if (ranking.length === 0) return [];
+    if (ranking.length === 1) return [ranking[safeActive]];
+    if (ranking.length === 2) {
+      return [ranking[safeActive], ranking[modulo(safeActive + 1, ranking.length)]];
+    }
+    return [
+      ranking[modulo(safeActive - 1, ranking.length)],
+      ranking[safeActive],
+      ranking[modulo(safeActive + 1, ranking.length)],
+    ];
+  }, [ranking, safeActive]);
 
-  const initialLikeMap = useMemo(() => {
+  const voteMetaByParticipantId = useMemo(() => {
+    return new Map(voteCandidateList.map((candidate) => [candidate.participantId, candidate] as const));
+  }, [voteCandidateList]);
+
+  const officialLikesMap = useMemo(() => {
     return Object.fromEntries(
-      finalists.map((participant, index) => {
-        const baseLikes = participant.likes ?? 0;
-        const seededLikes = baseLikes + (syncSeedDelays[index % syncSeedDelays.length] ?? 0);
-        return [participant.id, seededLikes];
+      finalists.map((participant) => {
+        const candidate = voteMetaByParticipantId.get(participant.id);
+        return [participant.id, candidate?.officialLikeCount ?? participant.likes ?? 0];
       })
     ) as Record<string, number>;
-  }, [finalists]);
+  }, [finalists, voteMetaByParticipantId]);
 
-  const [officialLikesMap, setOfficialLikesMap] = useState<Record<string, number>>(initialLikeMap);
-  const [lastSyncedAt, setLastSyncedAt] = useState("--:--");
+  const lastSyncedAt = useMemo(() => {
+    const latest = finalists
+      .map((participant) => voteMetaByParticipantId.get(participant.id)?.likeUpdatedAt)
+      .filter((value): value is string => Boolean(value))
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
 
-  useEffect(() => {
-    setOfficialLikesMap(initialLikeMap);
-    setLastSyncedAt(
-      new Date().toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    );
-  }, [initialLikeMap]);
-
-  useEffect(() => {
-    if (finalists.length === 0) return;
-
-    const intervalId = window.setInterval(() => {
-      setOfficialLikesMap((prev) => {
-        const next = { ...prev };
-        const candidate = finalists[Math.floor(Math.random() * finalists.length)];
-        const increment = Math.floor(Math.random() * 4) + 1;
-        next[candidate.id] = (next[candidate.id] ?? 0) + increment;
-        return next;
-      });
-
-      setLastSyncedAt(
-        new Date().toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
-    }, 12000);
-
-    return () => window.clearInterval(intervalId);
-  }, [finalists]);
+    return formatWibDateTime(latest);
+  }, [finalists, voteMetaByParticipantId]);
 
   const juryAverageMap = useMemo(() => {
-    const finalistsById = new Set(finalists.map((p) => p.id));
+    const finalistsById = new Set(juryParticipantPool.map((p) => p.id));
     const aggregateMap = new Map<string, { total: number; count: number }>();
 
     scoreList.forEach((record) => {
@@ -479,37 +563,86 @@ export default function VoteHighlightSection() {
     });
 
     return new Map(
-      finalists.map((participant) => {
+      juryParticipantPool.map((participant) => {
         const aggregate = aggregateMap.get(participant.id);
         const avg = aggregate ? aggregate.total / aggregate.count : null;
         return [participant.id, avg] as const;
       })
     );
-  }, [finalists, scoreList]);
+  }, [juryParticipantPool, scoreList]);
 
-  const rankedById = useMemo(() => {
-    return new Map(
-      buildRankEntries(finalists, juryAverageMap, "jury").map((entry) => [entry.participant.id, entry] as const)
-    );
-  }, [finalists, juryAverageMap]);
-
-  const juryEncikRanking = useMemo(
-    () => buildRankEntries(finalists.filter((p) => p.gender === "Encik"), juryAverageMap, "jury").slice(0, 3),
-    [finalists, juryAverageMap]
+  const juryParticipantsById = useMemo(
+    () => new Map(juryParticipantPool.map((participant) => [participant.id, participant] as const)),
+    [juryParticipantPool]
   );
 
-  const juryPuanRanking = useMemo(
-    () => buildRankEntries(finalists.filter((p) => p.gender === "Puan"), juryAverageMap, "jury").slice(0, 3),
-    [finalists, juryAverageMap]
-  );
+  const juryWinnerFallbackById = useMemo(() => {
+    const map = new Map<string, HighlightParticipant>();
+    const allWinners = [...judgeEncikWinnerList, ...judgePuanWinnerList];
+
+    allWinners.forEach((winner) => {
+      const participantFromDb = participantList.find((item) => item.id === winner.participantId);
+      const fallbackGender = winner.gender ?? participantFromDb?.gender ?? "Encik";
+      const fallbackNumber = winner.number || participantFromDb?.participantCode || participantFromDb?.number || "-";
+      const fallbackName = winner.name || participantFromDb?.name || "Peserta";
+      const fallbackPhoto = resolveDisplayPhoto(
+        winner.photo || participantFromDb?.photo || "/default-avatar.svg"
+      );
+      const fallbackInstagram =
+        winner.instagramHandle || participantFromDb?.instagram || "@-";
+
+      map.set(winner.participantId, {
+        id: winner.participantId,
+        name: fallbackName,
+        number: fallbackNumber,
+        gender: fallbackGender,
+        photo: fallbackPhoto,
+        instagram: fallbackInstagram,
+        likes: voteMetaByParticipantId.get(winner.participantId)?.officialLikeCount ?? 0,
+        status: "Winner",
+      });
+    });
+
+    return map;
+  }, [judgeEncikWinnerList, judgePuanWinnerList, participantList, voteMetaByParticipantId]);
+
+  const toRankedEntryById = useMemo(() => {
+    return (participantId?: string, fallbackAvg?: number | null) => {
+      if (!participantId) return undefined;
+      const participant =
+        juryParticipantsById.get(participantId) ?? juryWinnerFallbackById.get(participantId);
+      if (!participant) return undefined;
+      return {
+        participant,
+        avg: juryAverageMap.get(participantId) ?? fallbackAvg ?? null,
+      } satisfies RankedParticipant;
+    };
+  }, [juryParticipantsById, juryWinnerFallbackById, juryAverageMap]);
+
+  const juryEncikRanking = useMemo(() => {
+    return [...judgeEncikWinnerList]
+      .sort((a, b) => a.rank - b.rank)
+      .map((winner) => toRankedEntryById(winner.participantId, winner.totalScore))
+      .filter(Boolean) as RankedParticipant[];
+  }, [judgeEncikWinnerList, toRankedEntryById]);
+
+  const juryPuanRanking = useMemo(() => {
+    return [...judgePuanWinnerList]
+      .sort((a, b) => a.rank - b.rank)
+      .map((winner) => toRankedEntryById(winner.participantId, winner.totalScore))
+      .filter(Boolean) as RankedParticipant[];
+  }, [judgePuanWinnerList, toRankedEntryById]);
 
   const juryPairRows = useMemo(() => {
-    return juryPairRankingConfig.map((row) => ({
-      rank: row.rank,
-      encik: rankedById.get(row.encikId),
-      puan: rankedById.get(row.puanId),
-    }));
-  }, [rankedById]);
+    return ([1, 2, 3] as const).map((rank) => {
+      const pair = judgePairRankingList.find((entry) => entry.rank === rank);
+      return {
+        rank,
+        encik: toRankedEntryById(pair?.encikParticipantId),
+        puan: toRankedEntryById(pair?.puanParticipantId),
+      };
+    });
+  }, [judgePairRankingList, toRankedEntryById]);
 
   const voteEncikRanking = useMemo(
     () =>
@@ -525,15 +658,24 @@ export default function VoteHighlightSection() {
 
   const goPrev = () => setActiveIndex((prev) => prev - 1);
   const goNext = () => setActiveIndex((prev) => prev + 1);
-  const goPrevThumbPage = () => setThumbPage((prev) => prev - 1);
-  const goNextThumbPage = () => setThumbPage((prev) => prev + 1);
+  const goPrevThumbPage = () => {
+    if (ranking.length === 0) return;
+    const prevPage = modulo(safeThumbPage - 1, totalThumbPages);
+    setActiveIndex(prevPage * thumbsPerPage);
+  };
+  const goNextThumbPage = () => {
+    if (ranking.length === 0) return;
+    const nextPage = modulo(safeThumbPage + 1, totalThumbPages);
+    setActiveIndex(nextPage * thumbsPerPage);
+  };
 
   useEffect(() => {
     if (ranking.length <= 1) return;
 
     const timer = window.setInterval(() => {
+      if (document.hidden) return;
       setActiveIndex((prev) => prev + 1);
-    }, 3000);
+    }, 12000);
 
     return () => window.clearInterval(timer);
   }, [ranking.length]);
@@ -550,12 +692,6 @@ export default function VoteHighlightSection() {
     window.addEventListener("resize", handleResize, { passive: true });
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  useEffect(() => {
-    if (ranking.length === 0) return;
-    const targetPage = Math.floor(safeActive / thumbsPerPage);
-    setThumbPage(targetPage);
-  }, [safeActive, ranking.length, thumbsPerPage]);
 
   const showcaseCardStyle: React.CSSProperties = {
     background: "#1A1A1A",
@@ -588,228 +724,272 @@ export default function VoteHighlightSection() {
           </h2>
         </div>
 
-        {!hasData ? (
+        {!hasAnyPublishedSection ? (
           <div className="text-center py-14 rounded-2xl" style={showcaseCardStyle}>
             <Crown size={42} style={{ color: "#C8A24D", margin: "0 auto 12px", opacity: 0.7 }} />
             <p style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-              Data finalis belum tersedia.
+              Section vote dan juara versi juri belum dipublikasikan.
             </p>
           </div>
         ) : (
           <>
-            <div className="max-w-4xl mx-auto mb-8 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-start gap-4"
-              style={{
-                background: "rgba(200,162,77,0.08)",
-                border: "1px solid rgba(200,162,77,0.2)",
-              }}
-            >
-              <div className="flex items-start gap-3 flex-1">
-                <Radio size={16} style={{ color: "#C8A24D", marginTop: 2, flexShrink: 0 }} />
-                <div>
-                  <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
-                    Vote favorit pada section ini dipusatkan ke postingan resmi Instagram <strong style={{ color: "#F5D06F" }}>{OFFICIAL_ACCOUNT}</strong>. Jumlah like favorit Encik dan Puan di bawah ditampilkan sebagai pembaruan otomatis pada tampilan frontend.
-                  </p>
-                  <p className="text-[11px] sm:text-xs mt-2" style={{ color: "#A9A9A9", fontFamily: "var(--font-poppins)" }}>
-                    Pembaruan data terakhir: {lastSyncedAt} WIB
-                  </p>
-                </div>
-              </div>
-
-              <a
-                href={OFFICIAL_ACCOUNT_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold shrink-0"
-                style={{
-                  background: "linear-gradient(135deg, #F5D06F, #C8A24D)",
-                  color: "#0F0F0F",
-                  fontFamily: "var(--font-poppins)",
-                }}
-              >
-                <Instagram size={15} /> Buka IG Resmi
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end mb-7">
-              {[left, center, right].map((item, idx) => {
-                const isCenter = idx === 1;
-                return (
-                  <div
-                    key={`${item.id}-${idx}`}
-                    className="relative overflow-hidden rounded-[28px] text-left transition-transform duration-300"
-                    style={{
-                      ...showcaseCardStyle,
-                      transform: isCenter ? "scale(1)" : "scale(0.94)",
-                      opacity: isCenter ? 1 : 0.8,
-                    }}
-                  >
-                    <div className={isCenter ? "h-[420px]" : "h-[360px]"}>
-                      <img src={item.photo} alt={item.name} className="w-full h-full object-cover object-top" />
-                    </div>
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          "linear-gradient(180deg, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.78) 86%, rgba(0,0,0,0.92) 100%)",
-                      }}
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <p style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}>
-                        {item.name}
-                      </p>
-                      <p
-                        className="text-xs mt-1"
-                        style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
-                      >
-                        {item.number} | {item.gender}
-                      </p>
-                      <div className="mt-3 flex items-center gap-2">
-                        <a
-                          href={getOfficialPostUrl(item.id)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-                          style={{
-                            background: "linear-gradient(135deg, #F5D06F, #C8A24D)",
-                            color: "#0F0F0F",
-                            fontFamily: "var(--font-poppins)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          <Instagram size={12} />
-                          Vote IG Resmi
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-center gap-3 mb-7">
-              <button
-                type="button"
-                onClick={goPrev}
-                className="w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D" }}
-                aria-label="Sebelumnya"
-              >
-                <ChevronLeft size={18} />
-              </button>
-
-              <GoldButton variant="primary" size="sm" onClick={() => window.location.assign("/vote")}>
-                Selengkapnya
-              </GoldButton>
-
-              <button
-                type="button"
-                onClick={goNext}
-                className="w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D" }}
-                aria-label="Berikutnya"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-
-            <div className="mb-12">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={goPrevThumbPage}
-                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                  style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D" }}
-                  aria-label="Slide foto sebelumnya"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-
-                <div
-                  className="grid gap-3 flex-1"
+            {showVoteSection ? (
+              <>
+                <div className="max-w-4xl mx-auto mb-8 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-start gap-4"
                   style={{
-                    gridTemplateColumns: `repeat(${thumbsPerPage}, minmax(0, 1fr))`,
+                    background: "rgba(200,162,77,0.08)",
+                    border: "1px solid rgba(200,162,77,0.2)",
                   }}
                 >
-                  {visibleThumbs.map((item, indexOnPage) => {
-                    const realIndex = thumbStart + indexOnPage;
+                  <div className="flex items-start gap-3 flex-1">
+                    <Radio size={16} style={{ color: "#C8A24D", marginTop: 2, flexShrink: 0 }} />
+                    <div>
+                      <p className="text-xs sm:text-sm leading-relaxed" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
+                        Vote favorit pada section ini dipusatkan ke postingan resmi Instagram <strong style={{ color: "#F5D06F" }}>{OFFICIAL_ACCOUNT}</strong>. Jumlah like favorit Encik dan Puan di bawah diupdate manual oleh admin.
+                      </p>
+                      <p className="text-[11px] sm:text-xs mt-2" style={{ color: "#A9A9A9", fontFamily: "var(--font-poppins)" }}>
+                        Pembaruan data terakhir: {lastSyncedAt}
+                      </p>
+                    </div>
+                  </div>
+
+                  <a
+                    href={OFFICIAL_ACCOUNT_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold shrink-0"
+                    style={{
+                      background: "linear-gradient(135deg, #F5D06F, #C8A24D)",
+                      color: "#0F0F0F",
+                      fontFamily: "var(--font-poppins)",
+                    }}
+                  >
+                    <Instagram size={15} /> Buka IG Resmi
+                  </a>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end mb-7">
+                  {showcaseItems.map((item, idx) => {
+                    const isCenter =
+                      showcaseItems.length === 3
+                        ? idx === 1
+                        : idx === 0;
+                    const officialPostUrl =
+                      voteMetaByParticipantId.get(item.id)?.instagramPostUrl ||
+                      `${OFFICIAL_ACCOUNT_URL}/p/${item.id.toLowerCase()}-demo/`;
                     return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setActiveIndex(realIndex)}
-                        className="relative overflow-hidden rounded-xl border transition-all duration-200"
+                      <div
+                        key={`${item.id}-${idx}`}
+                        className="relative overflow-hidden rounded-[28px] text-left transition-transform duration-300"
                         style={{
-                          borderColor:
-                            realIndex === safeActive
-                              ? "rgba(200,162,77,0.8)"
-                              : "rgba(200,162,77,0.25)",
-                          opacity: realIndex === safeActive ? 1 : 0.55,
+                          ...showcaseCardStyle,
+                          transform: isCenter ? "scale(1)" : "scale(0.94)",
+                          opacity: isCenter ? 1 : 0.8,
                         }}
-                        aria-label={`Pilih ${item.name}`}
                       >
-                        <img
-                          src={item.photo}
-                          alt={item.name}
-                          className="w-full h-28 object-cover object-top"
+                        <div className={isCenter ? "h-[420px]" : "h-[360px]"}>
+                          <img src={item.photo} alt={item.name} className="w-full h-full object-cover object-top" />
+                        </div>
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            background:
+                              "linear-gradient(180deg, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.78) 86%, rgba(0,0,0,0.92) 100%)",
+                          }}
                         />
-                      </button>
+                        <div className="absolute bottom-0 left-0 right-0 p-4">
+                          <p style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}>
+                            {item.name}
+                          </p>
+                          <p
+                            className="text-xs mt-1"
+                            style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
+                          >
+                            {item.number} | {item.gender}
+                          </p>
+                          <div className="mt-3 flex items-center gap-2">
+                            <a
+                              href={officialPostUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
+                              style={{
+                                background: "linear-gradient(135deg, #F5D06F, #C8A24D)",
+                                color: "#0F0F0F",
+                                fontFamily: "var(--font-poppins)",
+                                fontWeight: 600,
+                              }}
+                            >
+                              <Instagram size={12} />
+                              Vote IG Resmi
+                            </a>
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={goNextThumbPage}
-                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                  style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D" }}
-                  aria-label="Slide foto berikutnya"
-                >
-                  <ChevronRight size={18} />
-                </button>
+                <div className="flex items-center justify-center gap-3 mb-7">
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D" }}
+                    aria-label="Sebelumnya"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  <GoldButton variant="primary" size="sm" onClick={() => window.location.assign("/vote")}>
+                    Selengkapnya
+                  </GoldButton>
+
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D" }}
+                    aria-label="Berikutnya"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+
+                <div className="mb-12">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={goPrevThumbPage}
+                      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D" }}
+                      aria-label="Slide foto sebelumnya"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+
+                    <div
+                      className="grid gap-3 flex-1"
+                      style={{
+                        gridTemplateColumns: `repeat(${thumbsPerPage}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {visibleThumbs.map((item, indexOnPage) => {
+                        const realIndex = thumbStart + indexOnPage;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setActiveIndex(realIndex)}
+                            className="relative overflow-hidden rounded-xl border transition-all duration-200"
+                            style={{
+                              borderColor:
+                                realIndex === safeActive
+                                  ? "rgba(200,162,77,0.8)"
+                                  : "rgba(200,162,77,0.25)",
+                              opacity: realIndex === safeActive ? 1 : 0.55,
+                            }}
+                            aria-label={`Pilih ${item.name}`}
+                          >
+                            <img
+                              src={item.photo}
+                              alt={item.name}
+                              className="w-full h-28 object-cover object-top"
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={goNextThumbPage}
+                      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(200,162,77,0.12)", color: "#C8A24D" }}
+                      aria-label="Slide foto berikutnya"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                  <p
+                    className="text-xs mt-3 text-center"
+                    style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
+                  >
+                    Slide {safeThumbPage + 1} dari {totalThumbPages}
+                  </p>
+                </div>
+              </>
+            ) : null}
+
+            {showJurySection ? (
+              <>
+                {showJuryEncikSection || showJuryPuanSection || showLegacyJurySection ? (
+                  <div className="grid xl:grid-cols-2 gap-5 mb-5">
+                    {showJuryEncikSection || showLegacyJurySection ? (
+                      <RankingColumn
+                        title="Juara Encik Versi Juri"
+                        entries={juryEncikRanking}
+                        mode="jury"
+                        showJuryScore={
+                          showLegacyJurySection
+                            ? judgeWinnerDisplayMode === "name_with_score"
+                            : judgeEncikDisplayMode === "name_with_score"
+                        }
+                      />
+                    ) : null}
+                    {showJuryPuanSection || showLegacyJurySection ? (
+                      <RankingColumn
+                        title="Juara Puan Versi Juri"
+                        entries={juryPuanRanking}
+                        mode="jury"
+                        showJuryScore={
+                          showLegacyJurySection
+                            ? judgeWinnerDisplayMode === "name_with_score"
+                            : judgePuanDisplayMode === "name_with_score"
+                        }
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {showJuryPairSection || showLegacyJurySection ? (
+                  <div className="mb-5">
+                    <JuryPairTable pairRows={juryPairRows} />
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+
+            {showVoteRankingSection ? (
+              <div className="grid xl:grid-cols-2 gap-5">
+                <RankingColumn
+                  title="Juara Vote Terbanyak Encik"
+                  entries={voteEncikRanking}
+                  mode="vote"
+                  officialLikesMap={officialLikesMap}
+                  lastSyncedAt={lastSyncedAt}
+                />
+                <RankingColumn
+                  title="Juara Vote Terbanyak Puan"
+                  entries={votePuanRanking}
+                  mode="vote"
+                  officialLikesMap={officialLikesMap}
+                  lastSyncedAt={lastSyncedAt}
+                />
               </div>
-              <p
-                className="text-xs mt-3 text-center"
-                style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
-              >
-                Slide {safeThumbPage + 1} dari {totalThumbPages}
-              </p>
-            </div>
+            ) : null}
 
-            <div className="grid xl:grid-cols-2 gap-5 mb-5">
-              <RankingColumn title="Juara Encik Versi Juri" entries={juryEncikRanking} mode="jury" />
-              <RankingColumn title="Juara Puan Versi Juri" entries={juryPuanRanking} mode="jury" />
-            </div>
-
-            <div className="mb-5">
-              <JuryPairTable pairRows={juryPairRows} />
-            </div>
-
-            <div className="grid xl:grid-cols-2 gap-5">
-              <RankingColumn
-                title="Juara Vote Terbanyak Encik"
-                entries={voteEncikRanking}
-                mode="vote"
-                officialLikesMap={officialLikesMap}
-                lastSyncedAt={lastSyncedAt}
-              />
-              <RankingColumn
-                title="Juara Vote Terbanyak Puan"
-                entries={votePuanRanking}
-                mode="vote"
-                officialLikesMap={officialLikesMap}
-                lastSyncedAt={lastSyncedAt}
-              />
-            </div>
-
-            <div className="mt-5 text-center xl:text-left">
-              <Link
-                href="/vote"
-                className="text-sm"
-                style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
-              >
-                Lihat semua finalis di halaman Vote
-              </Link>
-            </div>
+            {showVoteSection || showVoteRankingSection ? (
+              <div className="mt-5 text-center xl:text-left">
+                <Link
+                  href="/vote"
+                  className="text-sm"
+                  style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
+                >
+                  Lihat semua finalis di halaman Vote
+                </Link>
+              </div>
+            ) : null}
           </>
         )}
       </div>

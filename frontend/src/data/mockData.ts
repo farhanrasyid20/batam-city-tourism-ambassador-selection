@@ -127,17 +127,38 @@ export interface Participant {
   auditionNumber?: string;
   participantCode?: string;
   name: string;
+  nickname?: string;
+  fullName?: string;
   gender: Gender;
 
   nationalId: string; // NIK
   birthPlace: string;
   birthDate: string; // yyyy-mm-dd
+  domicileAddress?: string;
+  ktpAddress?: string;
   heightCm: number;
+  weightKg?: string;
+  shirtSize?: string;
+  chestCircumferenceCm?: string;
+  waistCircumferenceCm?: string;
+  hipCircumferenceCm?: string;
+  pantsSize?: string;
+  shoeSize?: string;
 
   education: string;
   instagram: string;
+  tiktok?: string;
+  parentPhone?: string;
   phone: string;
   email: string;
+  occupation?: string;
+  skills?: string;
+  hobbies?: string;
+  languages?: string;
+  vision?: string;
+  mission?: string;
+  experience?: string;
+  achievement?: string;
 
   photo: string;
   status: StageStatus;

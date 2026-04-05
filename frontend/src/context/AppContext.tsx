@@ -2,6 +2,7 @@
 
 import React, {
   useEffect,
+  useRef,
   useCallback,
   createContext,
   useContext,
@@ -25,6 +26,11 @@ import {
   mockScores, // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ ini harus ScoreRecord[]
 } from "../data/mockData";
 import { faqItems, type FAQItem } from "../data/faqData";
+import {
+  fetchPublicFinalists,
+  type PublicFinalistListItem,
+} from "../lib/auth-api";
+import { resolveApiAssetUrl } from "../lib/api";
 import {
   clearParticipantAuthSession,
   getParticipantAuthSession,
@@ -53,6 +59,8 @@ export type VotePublicCandidate = {
   instagramHandle: string;
   instagramProfileUrl: string;
   instagramPostUrl: string;
+  officialLikeCount: number;
+  likeUpdatedAt: string | null;
   enabled: boolean;
 };
 
@@ -81,6 +89,14 @@ export type JudgeWinnerItem = {
   totalScore: number;
   rank: 1 | 2 | 3;
 };
+
+export type JudgePairRankingItem = {
+  rank: 1 | 2 | 3;
+  encikParticipantId: string;
+  puanParticipantId: string;
+};
+
+export type JudgeWinnerDisplayMode = "name_only" | "name_with_score";
 
 export type FeedbackCategory = "Saran" | "Kritik" | "Pertanyaan" | "Lainnya";
 
@@ -204,11 +220,32 @@ type AppContextType = {
   setVoteTopList: React.Dispatch<React.SetStateAction<VoteTopItem[]>>;
   voteTopPublished: boolean;
   setVoteTopPublished: React.Dispatch<React.SetStateAction<boolean>>;
+  voteRankingPublished: boolean;
+  setVoteRankingPublished: React.Dispatch<React.SetStateAction<boolean>>;
 
   judgeWinnerList: JudgeWinnerItem[];
   setJudgeWinnerList: React.Dispatch<React.SetStateAction<JudgeWinnerItem[]>>;
+  judgeEncikWinnerList: JudgeWinnerItem[];
+  setJudgeEncikWinnerList: React.Dispatch<React.SetStateAction<JudgeWinnerItem[]>>;
+  judgePuanWinnerList: JudgeWinnerItem[];
+  setJudgePuanWinnerList: React.Dispatch<React.SetStateAction<JudgeWinnerItem[]>>;
+  judgePairRankingList: JudgePairRankingItem[];
+  setJudgePairRankingList: React.Dispatch<React.SetStateAction<JudgePairRankingItem[]>>;
+  judgeEncikPublished: boolean;
+  setJudgeEncikPublished: React.Dispatch<React.SetStateAction<boolean>>;
+  judgePuanPublished: boolean;
+  setJudgePuanPublished: React.Dispatch<React.SetStateAction<boolean>>;
+  judgePairPublished: boolean;
+  setJudgePairPublished: React.Dispatch<React.SetStateAction<boolean>>;
+  judgeEncikDisplayMode: JudgeWinnerDisplayMode;
+  setJudgeEncikDisplayMode: React.Dispatch<React.SetStateAction<JudgeWinnerDisplayMode>>;
+  judgePuanDisplayMode: JudgeWinnerDisplayMode;
+  setJudgePuanDisplayMode: React.Dispatch<React.SetStateAction<JudgeWinnerDisplayMode>>;
+  // Legacy aggregate controls (kept for compatibility with older code paths).
   judgeWinnersPublished: boolean;
   setJudgeWinnersPublished: React.Dispatch<React.SetStateAction<boolean>>;
+  judgeWinnerDisplayMode: JudgeWinnerDisplayMode;
+  setJudgeWinnerDisplayMode: React.Dispatch<React.SetStateAction<JudgeWinnerDisplayMode>>;
 
   feedbackList: FeedbackEntry[];
   setFeedbackList: React.Dispatch<React.SetStateAction<FeedbackEntry[]>>;
@@ -311,8 +348,28 @@ const FAQ_STORAGE_KEY = "duta-wisata-faq-list";
 const PARTICIPANT_LIST_STORAGE_KEY = "duta-wisata-participant-list";
 const PARTICIPANT_RESOURCES_STORAGE_KEY = "duta-wisata-participant-resources";
 const LANDING_PAGE_CONTENT_STORAGE_KEY = "duta-wisata-landing-page-content";
+const VOTE_CANDIDATE_LIST_STORAGE_KEY = "duta-wisata-vote-candidate-list";
+const VOTE_TOP_LIST_STORAGE_KEY = "duta-wisata-vote-top-list";
+const VOTE_TOP_PUBLISHED_STORAGE_KEY = "duta-wisata-vote-top-published";
+const VOTE_RANKING_PUBLISHED_STORAGE_KEY = "duta-wisata-vote-ranking-published";
+const JUDGE_ENCIK_WINNERS_STORAGE_KEY = "duta-wisata-judge-encik-winners";
+const JUDGE_PUAN_WINNERS_STORAGE_KEY = "duta-wisata-judge-puan-winners";
+const JUDGE_PAIR_RANKING_STORAGE_KEY = "duta-wisata-judge-pair-ranking";
+const JUDGE_ENCIK_PUBLISHED_STORAGE_KEY = "duta-wisata-judge-encik-published";
+const JUDGE_PUAN_PUBLISHED_STORAGE_KEY = "duta-wisata-judge-puan-published";
+const JUDGE_PAIR_PUBLISHED_STORAGE_KEY = "duta-wisata-judge-pair-published";
+const JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY = "duta-wisata-judge-encik-display-mode";
+const JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY = "duta-wisata-judge-puan-display-mode";
+const JUDGE_WINNERS_PUBLISHED_STORAGE_KEY = "duta-wisata-judge-winners-published";
+const JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY = "duta-wisata-judge-winners-display-mode";
+
+const storageFallbackMemory = new Map<string, unknown>();
 
 function readStoredJson<T>(key: string): T | null {
+  if (storageFallbackMemory.has(key)) {
+    return storageFallbackMemory.get(key) as T;
+  }
+
   if (typeof window === "undefined") return null;
 
   const raw = window.localStorage.getItem(key);
@@ -422,6 +479,139 @@ function normalizeInstagram(raw: string) {
   };
 }
 
+function isQuotaExceededError(error: unknown) {
+  if (!(error instanceof DOMException)) return false;
+  return (
+    error.code === 22 ||
+    error.code === 1014 ||
+    error.name === "QuotaExceededError" ||
+    error.name === "NS_ERROR_DOM_QUOTA_REACHED"
+  );
+}
+
+function setStoredJsonSafely(key: string, value: unknown) {
+  storageFallbackMemory.set(key, value);
+
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    // Prevent runtime crash when storage quota is exceeded.
+    // Do not remove existing key value, to avoid losing published/status flags.
+    if (isQuotaExceededError(error)) return;
+  }
+}
+
+function stripInlineImage(value?: string | null) {
+  const normalized = value?.trim() ?? "";
+  if (!normalized) return "/default-avatar.svg";
+  if (normalized.startsWith("data:image")) return "/default-avatar.svg";
+  return normalized;
+}
+
+function compactVoteCandidatesForStorage(list: VotePublicCandidate[]) {
+  return list.map((item) => ({
+    ...item,
+    photo: stripInlineImage(item.photo),
+  }));
+}
+
+function compactVoteTopForStorage(list: VoteTopItem[]) {
+  return list.map((item) => ({
+    ...item,
+    photo: stripInlineImage(item.photo),
+  }));
+}
+
+function compactJudgeWinnersForStorage(list: JudgeWinnerItem[]) {
+  return list.map((item) => ({
+    ...item,
+    photo: stripInlineImage(item.photo),
+  }));
+}
+
+function compactResourceDocumentForStorage(document: ResourceDocument): ResourceDocument {
+  return {
+    ...document,
+    // Avoid quota issues from large inline base64 in localStorage.
+    fileDataUrl: document.fileDataUrl?.startsWith("data:") ? "" : document.fileDataUrl,
+  };
+}
+
+function compactResourceImageForStorage(image: ResourceImage): ResourceImage {
+  return {
+    ...image,
+    imageUrl: stripInlineImage(image.imageUrl),
+  };
+}
+
+function compactParticipantResourcesForStorage(resources: ParticipantResources): ParticipantResources {
+  return {
+    ...resources,
+    guideDocument: compactResourceDocumentForStorage(resources.guideDocument),
+    submissionDocument: compactResourceDocumentForStorage(resources.submissionDocument),
+    formS1Document: compactResourceDocumentForStorage(resources.formS1Document),
+    formS2Document: compactResourceDocumentForStorage(resources.formS2Document),
+    formS3Document: compactResourceDocumentForStorage(resources.formS3Document),
+    formS4Document: compactResourceDocumentForStorage(resources.formS4Document),
+    twibbonDocument: compactResourceDocumentForStorage(resources.twibbonDocument),
+    twibbonThumbnail: compactResourceImageForStorage(resources.twibbonThumbnail),
+    whatsappThumbnail: compactResourceImageForStorage(resources.whatsappThumbnail),
+    closeUpExamples: resources.closeUpExamples.map(compactResourceImageForStorage),
+    fullBodyExamples: resources.fullBodyExamples.map(compactResourceImageForStorage),
+  };
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function buildVoteDisplayName(gender: "Encik" | "Puan", rawName: string) {
+  const normalized = rawName.trim().replace(/^(encik|puan)\s+/i, "");
+  const nickname = toTitleCase((normalized.split(/\s+/)[0] ?? "").trim());
+  const finalName = nickname || toTitleCase(normalized) || "Peserta";
+  return `${gender} ${finalName}`.trim();
+}
+
+function isDefaultPhoto(value?: string | null) {
+  if (!value) return true;
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized === "" ||
+    normalized.endsWith("/default-avatar.svg") ||
+    normalized.includes("default-avatar.svg")
+  );
+}
+
+function normalizeVoteCandidatePhoto(raw?: string | null) {
+  const value = raw?.trim();
+  if (!value) return "/default-avatar.svg";
+
+  // Keep frontend static assets as-is.
+  if (
+    value.startsWith("/vote-candidates/") ||
+    value.startsWith("/storage/") ||
+    value === "/default-avatar.svg"
+  ) {
+    return value;
+  }
+
+  // Keep backend/public absolute URLs as-is.
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    const defaultAvatarIndex = value.indexOf("/default-avatar.svg");
+    if (defaultAvatarIndex >= 0) {
+      return "/default-avatar.svg";
+    }
+    return value;
+  }
+
+  return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
+}
+
 function buildVoteCandidates(participants: Participant[]): VotePublicCandidate[] {
   return participants
     .filter((participant) => {
@@ -434,13 +624,15 @@ function buildVoteCandidates(participants: Participant[]): VotePublicCandidate[]
         id: `vc-${participant.id}`,
         participantId: participant.id,
         number: participant.number,
-        name: participant.name,
+        name: buildVoteDisplayName(participant.gender, participant.name),
         gender: participant.gender,
         education: participant.education,
         photo: participant.photo,
         instagramHandle: instagram.handle,
         instagramProfileUrl: instagram.profileUrl,
         instagramPostUrl: "",
+        officialLikeCount: participant.likes ?? 0,
+        likeUpdatedAt: null,
         enabled: true,
       };
     });
@@ -461,7 +653,7 @@ function buildInitialVoteTop(candidates: VotePublicCandidate[], participants: Pa
       id: `vt-${index + 1}`,
       participantId: participant.id,
       number: participant.number,
-      name: participant.name,
+      name: buildVoteDisplayName(participant.gender, participant.name),
       gender: participant.gender,
       photo: candidate?.photo ?? participant.photo,
       instagramHandle: candidate?.instagramHandle ?? participant.instagram,
@@ -470,6 +662,98 @@ function buildInitialVoteTop(candidates: VotePublicCandidate[], participants: Pa
       voteCount: participant.likes ?? 0,
       rank: (index + 1) as 1 | 2 | 3,
     };
+  });
+}
+
+function buildVoteCandidatesFromPublicFinalists(
+  finalists: PublicFinalistListItem[],
+  previousCandidates: VotePublicCandidate[]
+): VotePublicCandidate[] {
+  const previousMap = new Map(previousCandidates.map((item) => [item.participantId, item] as const));
+  const mappedFinalists = finalists
+    .map((item) => {
+      const participantId = `P_API_${item.id}`;
+      const number = item.participant_code ?? item.audition_number ?? item.participant_number ?? "-";
+      const instagram = normalizeInstagram(item.instagram ?? "");
+      const education = [
+        item.education_category?.trim(),
+        item.education_institution?.trim(),
+        item.education_degree?.trim(),
+        item.education_major?.trim(),
+      ]
+        .filter(Boolean)
+        .join(" - ");
+      const previous = previousMap.get(participantId);
+
+      return {
+        id: previous?.id ?? `vc-${participantId}`,
+        participantId,
+        number,
+        name: buildVoteDisplayName(item.gender ?? "Encik", item.name ?? "Peserta"),
+        gender: item.gender ?? "Encik",
+        education: education || "-",
+        photo: normalizeVoteCandidatePhoto(item.photo),
+        instagramHandle: instagram.handle,
+        instagramProfileUrl:
+          item.vote_instagram_profile_url?.trim() ||
+          previous?.instagramProfileUrl ||
+          instagram.profileUrl,
+        instagramPostUrl:
+          item.vote_instagram_post_url?.trim() ||
+          previous?.instagramPostUrl ||
+          "",
+        officialLikeCount:
+          typeof item.vote_official_like_count === "number"
+            ? item.vote_official_like_count
+            : previous?.officialLikeCount ?? 0,
+        likeUpdatedAt: item.vote_like_updated_at ?? previous?.likeUpdatedAt ?? null,
+        enabled:
+          typeof item.vote_is_enabled === "boolean"
+            ? item.vote_is_enabled
+            : previous?.enabled ?? true,
+      } satisfies VotePublicCandidate;
+    });
+
+  // Keep admin-managed candidates that may not be returned by public finalists endpoint yet
+  // (e.g., local manual curation in progress), and merge backend updates into existing records.
+  const mergedMap = new Map(previousCandidates.map((item) => [item.participantId, item] as const));
+  mappedFinalists.forEach((item) => {
+    const existing = mergedMap.get(item.participantId);
+    if (!existing) {
+      mergedMap.set(item.participantId, item);
+      return;
+    }
+
+    mergedMap.set(item.participantId, {
+      ...existing,
+      number: item.number || existing.number,
+      name: item.name || existing.name,
+      gender: item.gender || existing.gender,
+      education: item.education || existing.education,
+      photo: isDefaultPhoto(item.photo) ? existing.photo || item.photo : item.photo || existing.photo,
+      instagramHandle: item.instagramHandle || existing.instagramHandle,
+      instagramProfileUrl:
+        item.instagramProfileUrl !== undefined && item.instagramProfileUrl !== null
+          ? item.instagramProfileUrl || existing.instagramProfileUrl
+          : existing.instagramProfileUrl,
+      instagramPostUrl:
+        item.instagramPostUrl !== undefined && item.instagramPostUrl !== null
+          ? item.instagramPostUrl || existing.instagramPostUrl
+          : existing.instagramPostUrl,
+      officialLikeCount:
+        typeof item.officialLikeCount === "number"
+          ? item.officialLikeCount
+          : existing.officialLikeCount,
+      likeUpdatedAt:
+        item.likeUpdatedAt !== undefined ? item.likeUpdatedAt : existing.likeUpdatedAt,
+      enabled:
+        typeof item.enabled === "boolean" ? item.enabled : existing.enabled,
+    });
+  });
+
+  return Array.from(mergedMap.values()).sort((a, b) => {
+    if (a.gender !== b.gender) return a.gender === "Encik" ? -1 : 1;
+    return a.number.localeCompare(b.number, "id-ID");
   });
 }
 
@@ -555,6 +839,10 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const tabIdRef = useRef("");
+  const jurySyncChannelRef = useRef<BroadcastChannel | null>(null);
+  const applyingRemoteJurySyncRef = useRef(false);
+
   const [authInitialized, setAuthInitialized] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
 
@@ -579,8 +867,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     buildInitialVoteTop(buildVoteCandidates(mockParticipants), mockParticipants)
   );
   const [voteTopPublished, setVoteTopPublished] = useState<boolean>(true);
+  const [voteRankingPublished, setVoteRankingPublished] = useState<boolean>(true);
   const [judgeWinnerList, setJudgeWinnerList] = useState<JudgeWinnerItem[]>([]);
+  const [judgeEncikWinnerList, setJudgeEncikWinnerList] = useState<JudgeWinnerItem[]>([]);
+  const [judgePuanWinnerList, setJudgePuanWinnerList] = useState<JudgeWinnerItem[]>([]);
+  const [judgePairRankingList, setJudgePairRankingList] = useState<JudgePairRankingItem[]>([]);
+  const [judgeEncikPublished, setJudgeEncikPublished] = useState<boolean>(false);
+  const [judgePuanPublished, setJudgePuanPublished] = useState<boolean>(false);
+  const [judgePairPublished, setJudgePairPublished] = useState<boolean>(false);
+  const [judgeEncikDisplayMode, setJudgeEncikDisplayMode] =
+    useState<JudgeWinnerDisplayMode>("name_with_score");
+  const [judgePuanDisplayMode, setJudgePuanDisplayMode] =
+    useState<JudgeWinnerDisplayMode>("name_with_score");
+  // Legacy aggregate settings
   const [judgeWinnersPublished, setJudgeWinnersPublished] = useState<boolean>(false);
+  const [judgeWinnerDisplayMode, setJudgeWinnerDisplayMode] =
+    useState<JudgeWinnerDisplayMode>("name_with_score");
   const [feedbackList, setFeedbackList] = useState<FeedbackEntry[]>([]);
   const [participantResources, setParticipantResources] =
     useState<ParticipantResources>(defaultParticipantResources);
@@ -598,6 +900,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const storedParticipants = readStoredJson<Participant[]>(PARTICIPANT_LIST_STORAGE_KEY);
       const storedParticipantResources = readStoredJson<ParticipantResources>(PARTICIPANT_RESOURCES_STORAGE_KEY);
       const storedLandingPageContent = readStoredJson<LandingPageContent>(LANDING_PAGE_CONTENT_STORAGE_KEY);
+      const storedVoteCandidateList = readStoredJson<VotePublicCandidate[]>(VOTE_CANDIDATE_LIST_STORAGE_KEY);
+      const storedVoteTopList = readStoredJson<VoteTopItem[]>(VOTE_TOP_LIST_STORAGE_KEY);
+      const storedVoteTopPublished = readStoredJson<boolean>(VOTE_TOP_PUBLISHED_STORAGE_KEY);
+      const storedVoteRankingPublished = readStoredJson<boolean>(VOTE_RANKING_PUBLISHED_STORAGE_KEY);
+      const storedJudgeEncikWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_ENCIK_WINNERS_STORAGE_KEY);
+      const storedJudgePuanWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_PUAN_WINNERS_STORAGE_KEY);
+      const storedJudgePairRankingList = readStoredJson<JudgePairRankingItem[]>(JUDGE_PAIR_RANKING_STORAGE_KEY);
+      const storedJudgeEncikPublished = readStoredJson<boolean>(JUDGE_ENCIK_PUBLISHED_STORAGE_KEY);
+      const storedJudgePuanPublished = readStoredJson<boolean>(JUDGE_PUAN_PUBLISHED_STORAGE_KEY);
+      const storedJudgePairPublished = readStoredJson<boolean>(JUDGE_PAIR_PUBLISHED_STORAGE_KEY);
+      const storedJudgeEncikDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY);
+      const storedJudgePuanDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY);
+      const storedJudgeWinnersPublished = readStoredJson<boolean>(JUDGE_WINNERS_PUBLISHED_STORAGE_KEY);
+      const storedJudgeWinnersDisplayMode =
+        readStoredJson<JudgeWinnerDisplayMode>(JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY);
 
       if (storedNews) setNewsList(storedNews);
       if (storedFaq) setFaqList(storedFaq);
@@ -605,6 +922,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setParticipantList(normalizeStoredParticipants(storedParticipants));
       }
       if (storedParticipantResources) setParticipantResources(storedParticipantResources);
+      if (storedVoteCandidateList?.length) setVoteCandidateList(storedVoteCandidateList);
+      if (storedVoteTopList?.length) setVoteTopList(storedVoteTopList);
+      if (typeof storedVoteTopPublished === "boolean") setVoteTopPublished(storedVoteTopPublished);
+      if (typeof storedVoteRankingPublished === "boolean") setVoteRankingPublished(storedVoteRankingPublished);
+      if (storedJudgeEncikWinnerList?.length) setJudgeEncikWinnerList(storedJudgeEncikWinnerList);
+      if (storedJudgePuanWinnerList?.length) setJudgePuanWinnerList(storedJudgePuanWinnerList);
+      if (storedJudgePairRankingList?.length) setJudgePairRankingList(storedJudgePairRankingList);
+      if (typeof storedJudgeEncikPublished === "boolean") setJudgeEncikPublished(storedJudgeEncikPublished);
+      if (typeof storedJudgePuanPublished === "boolean") setJudgePuanPublished(storedJudgePuanPublished);
+      if (typeof storedJudgePairPublished === "boolean") setJudgePairPublished(storedJudgePairPublished);
+      if (typeof storedJudgeWinnersPublished === "boolean") setJudgeWinnersPublished(storedJudgeWinnersPublished);
+      if (
+        storedJudgeEncikDisplayMode === "name_only" ||
+        storedJudgeEncikDisplayMode === "name_with_score"
+      ) {
+        setJudgeEncikDisplayMode(storedJudgeEncikDisplayMode);
+      }
+      if (
+        storedJudgePuanDisplayMode === "name_only" ||
+        storedJudgePuanDisplayMode === "name_with_score"
+      ) {
+        setJudgePuanDisplayMode(storedJudgePuanDisplayMode);
+      }
+      if (
+        storedJudgeWinnersDisplayMode === "name_only" ||
+        storedJudgeWinnersDisplayMode === "name_with_score"
+      ) {
+        setJudgeWinnerDisplayMode(storedJudgeWinnersDisplayMode);
+      }
+
+      // Backward compatibility: when old aggregate publish/mode exists and new keys are absent.
+      if (
+        typeof storedJudgeWinnersPublished === "boolean" &&
+        typeof storedJudgeEncikPublished !== "boolean" &&
+        typeof storedJudgePuanPublished !== "boolean" &&
+        typeof storedJudgePairPublished !== "boolean"
+      ) {
+        setJudgeEncikPublished(storedJudgeWinnersPublished);
+        setJudgePuanPublished(storedJudgeWinnersPublished);
+        setJudgePairPublished(storedJudgeWinnersPublished);
+      }
+      if (
+        (storedJudgeWinnersDisplayMode === "name_only" || storedJudgeWinnersDisplayMode === "name_with_score") &&
+        storedJudgeEncikDisplayMode !== "name_only" &&
+        storedJudgeEncikDisplayMode !== "name_with_score" &&
+        storedJudgePuanDisplayMode !== "name_only" &&
+        storedJudgePuanDisplayMode !== "name_with_score"
+      ) {
+        setJudgeEncikDisplayMode(storedJudgeWinnersDisplayMode);
+        setJudgePuanDisplayMode(storedJudgeWinnersDisplayMode);
+      }
       if (storedLandingPageContent) {
         setLandingPageContent({
           ...defaultLandingPageContent,
@@ -643,35 +1011,346 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const syncPublicFinalists = async () => {
+      try {
+        const response = await fetchPublicFinalists();
+        if (cancelled) return;
+
+        setVoteCandidateList((prev) => {
+          const mapped = buildVoteCandidatesFromPublicFinalists(response.data, prev);
+          return mapped.length > 0 ? mapped : prev;
+        });
+        if (typeof response.vote_top_published === "boolean") {
+          setVoteTopPublished(response.vote_top_published);
+        }
+        if (typeof response.vote_ranking_published === "boolean") {
+          setVoteRankingPublished(response.vote_ranking_published);
+        }
+        if (typeof response.judge_encik_published === "boolean") {
+          setJudgeEncikPublished(response.judge_encik_published);
+        }
+        if (typeof response.judge_puan_published === "boolean") {
+          setJudgePuanPublished(response.judge_puan_published);
+        }
+        if (typeof response.judge_pair_published === "boolean") {
+          setJudgePairPublished(response.judge_pair_published);
+        }
+        if (
+          response.judge_encik_display_mode === "name_only" ||
+          response.judge_encik_display_mode === "name_with_score"
+        ) {
+          setJudgeEncikDisplayMode(response.judge_encik_display_mode);
+        }
+        if (
+          response.judge_puan_display_mode === "name_only" ||
+          response.judge_puan_display_mode === "name_with_score"
+        ) {
+          setJudgePuanDisplayMode(response.judge_puan_display_mode);
+        }
+        if (Array.isArray(response.judge_encik_winners)) {
+          setJudgeEncikWinnerList(response.judge_encik_winners as JudgeWinnerItem[]);
+        }
+        if (Array.isArray(response.judge_puan_winners)) {
+          setJudgePuanWinnerList(response.judge_puan_winners as JudgeWinnerItem[]);
+        }
+        if (Array.isArray(response.judge_pair_rankings)) {
+          setJudgePairRankingList(response.judge_pair_rankings as JudgePairRankingItem[]);
+        }
+      } catch {
+        // fallback to local/mock data
+      }
+    };
+
+    void syncPublicFinalists();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!authInitialized || typeof window === "undefined") return;
-    window.localStorage.setItem(NEWS_STORAGE_KEY, JSON.stringify(newsList));
+
+    const syncJuryPublishSettings = () => {
+      const storedJudgeEncikWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_ENCIK_WINNERS_STORAGE_KEY);
+      const storedJudgePuanWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_PUAN_WINNERS_STORAGE_KEY);
+      const storedJudgePairRankingList = readStoredJson<JudgePairRankingItem[]>(JUDGE_PAIR_RANKING_STORAGE_KEY);
+      const storedEncikPublished = readStoredJson<boolean>(JUDGE_ENCIK_PUBLISHED_STORAGE_KEY);
+      const storedPuanPublished = readStoredJson<boolean>(JUDGE_PUAN_PUBLISHED_STORAGE_KEY);
+      const storedPairPublished = readStoredJson<boolean>(JUDGE_PAIR_PUBLISHED_STORAGE_KEY);
+      const storedEncikDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY);
+      const storedPuanDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY);
+      const storedJudgeWinnersPublished = readStoredJson<boolean>(JUDGE_WINNERS_PUBLISHED_STORAGE_KEY);
+      const storedJudgeWinnersDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY);
+
+      if (Array.isArray(storedJudgeEncikWinnerList)) setJudgeEncikWinnerList(storedJudgeEncikWinnerList);
+      if (Array.isArray(storedJudgePuanWinnerList)) setJudgePuanWinnerList(storedJudgePuanWinnerList);
+      if (Array.isArray(storedJudgePairRankingList)) setJudgePairRankingList(storedJudgePairRankingList);
+
+      if (typeof storedEncikPublished === "boolean") setJudgeEncikPublished(storedEncikPublished);
+      if (typeof storedPuanPublished === "boolean") setJudgePuanPublished(storedPuanPublished);
+      if (typeof storedPairPublished === "boolean") setJudgePairPublished(storedPairPublished);
+      if (typeof storedJudgeWinnersPublished === "boolean") setJudgeWinnersPublished(storedJudgeWinnersPublished);
+
+      if (storedEncikDisplayMode === "name_only" || storedEncikDisplayMode === "name_with_score") {
+        setJudgeEncikDisplayMode(storedEncikDisplayMode);
+      }
+      if (storedPuanDisplayMode === "name_only" || storedPuanDisplayMode === "name_with_score") {
+        setJudgePuanDisplayMode(storedPuanDisplayMode);
+      }
+      if (
+        storedJudgeWinnersDisplayMode === "name_only" ||
+        storedJudgeWinnersDisplayMode === "name_with_score"
+      ) {
+        setJudgeWinnerDisplayMode(storedJudgeWinnersDisplayMode);
+      }
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key) return;
+      if (
+        event.key === JUDGE_ENCIK_WINNERS_STORAGE_KEY ||
+        event.key === JUDGE_PUAN_WINNERS_STORAGE_KEY ||
+        event.key === JUDGE_PAIR_RANKING_STORAGE_KEY ||
+        event.key === JUDGE_ENCIK_PUBLISHED_STORAGE_KEY ||
+        event.key === JUDGE_PUAN_PUBLISHED_STORAGE_KEY ||
+        event.key === JUDGE_PAIR_PUBLISHED_STORAGE_KEY ||
+        event.key === JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY ||
+        event.key === JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY ||
+        event.key === JUDGE_WINNERS_PUBLISHED_STORAGE_KEY ||
+        event.key === JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY
+      ) {
+        syncJuryPublishSettings();
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [authInitialized]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!tabIdRef.current) {
+      tabIdRef.current =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : "jury-tab";
+    }
+    if (typeof BroadcastChannel === "undefined") return;
+
+    const channel = new BroadcastChannel("duta-wisata-jury-sync");
+    jurySyncChannelRef.current = channel;
+
+    channel.onmessage = (event: MessageEvent) => {
+      const message = event.data as
+        | {
+            type?: string;
+            source?: string;
+            payload?: {
+              judgeEncikWinnerList?: JudgeWinnerItem[];
+              judgePuanWinnerList?: JudgeWinnerItem[];
+              judgePairRankingList?: JudgePairRankingItem[];
+              judgeEncikPublished?: boolean;
+              judgePuanPublished?: boolean;
+              judgePairPublished?: boolean;
+              judgeEncikDisplayMode?: JudgeWinnerDisplayMode;
+              judgePuanDisplayMode?: JudgeWinnerDisplayMode;
+              judgeWinnersPublished?: boolean;
+              judgeWinnerDisplayMode?: JudgeWinnerDisplayMode;
+            };
+          }
+        | undefined;
+
+      if (!message || message.type !== "jury-sync") return;
+      if (message.source === tabIdRef.current) return;
+      const payload = message.payload;
+      if (!payload) return;
+
+      applyingRemoteJurySyncRef.current = true;
+      if (Array.isArray(payload.judgeEncikWinnerList)) setJudgeEncikWinnerList(payload.judgeEncikWinnerList);
+      if (Array.isArray(payload.judgePuanWinnerList)) setJudgePuanWinnerList(payload.judgePuanWinnerList);
+      if (Array.isArray(payload.judgePairRankingList)) setJudgePairRankingList(payload.judgePairRankingList);
+      if (typeof payload.judgeEncikPublished === "boolean") setJudgeEncikPublished(payload.judgeEncikPublished);
+      if (typeof payload.judgePuanPublished === "boolean") setJudgePuanPublished(payload.judgePuanPublished);
+      if (typeof payload.judgePairPublished === "boolean") setJudgePairPublished(payload.judgePairPublished);
+      if (payload.judgeEncikDisplayMode === "name_only" || payload.judgeEncikDisplayMode === "name_with_score") {
+        setJudgeEncikDisplayMode(payload.judgeEncikDisplayMode);
+      }
+      if (payload.judgePuanDisplayMode === "name_only" || payload.judgePuanDisplayMode === "name_with_score") {
+        setJudgePuanDisplayMode(payload.judgePuanDisplayMode);
+      }
+      if (typeof payload.judgeWinnersPublished === "boolean") setJudgeWinnersPublished(payload.judgeWinnersPublished);
+      if (payload.judgeWinnerDisplayMode === "name_only" || payload.judgeWinnerDisplayMode === "name_with_score") {
+        setJudgeWinnerDisplayMode(payload.judgeWinnerDisplayMode);
+      }
+
+      window.requestAnimationFrame(() => {
+        applyingRemoteJurySyncRef.current = false;
+      });
+    };
+
+    return () => {
+      channel.close();
+      if (jurySyncChannelRef.current === channel) {
+        jurySyncChannelRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(NEWS_STORAGE_KEY, newsList);
   }, [authInitialized, newsList]);
 
   useEffect(() => {
     if (!authInitialized || typeof window === "undefined") return;
-    window.localStorage.setItem(FAQ_STORAGE_KEY, JSON.stringify(faqList));
+    setStoredJsonSafely(FAQ_STORAGE_KEY, faqList);
   }, [authInitialized, faqList]);
 
   useEffect(() => {
     if (!authInitialized || typeof window === "undefined") return;
-    window.localStorage.setItem(PARTICIPANT_LIST_STORAGE_KEY, JSON.stringify(participantList));
+    setStoredJsonSafely(PARTICIPANT_LIST_STORAGE_KEY, participantList);
   }, [authInitialized, participantList]);
 
   useEffect(() => {
     if (!authInitialized || typeof window === "undefined") return;
-    window.localStorage.setItem(
+    setStoredJsonSafely(
       PARTICIPANT_RESOURCES_STORAGE_KEY,
-      JSON.stringify(participantResources)
+      compactParticipantResourcesForStorage(participantResources)
     );
   }, [authInitialized, participantResources]);
 
   useEffect(() => {
     if (!authInitialized || typeof window === "undefined") return;
-    window.localStorage.setItem(
-      LANDING_PAGE_CONTENT_STORAGE_KEY,
-      JSON.stringify(landingPageContent)
-    );
+    setStoredJsonSafely(LANDING_PAGE_CONTENT_STORAGE_KEY, landingPageContent);
   }, [authInitialized, landingPageContent]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(
+      VOTE_CANDIDATE_LIST_STORAGE_KEY,
+      compactVoteCandidatesForStorage(voteCandidateList)
+    );
+  }, [authInitialized, voteCandidateList]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(VOTE_TOP_LIST_STORAGE_KEY, compactVoteTopForStorage(voteTopList));
+  }, [authInitialized, voteTopList]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(VOTE_TOP_PUBLISHED_STORAGE_KEY, voteTopPublished);
+  }, [authInitialized, voteTopPublished]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(VOTE_RANKING_PUBLISHED_STORAGE_KEY, voteRankingPublished);
+  }, [authInitialized, voteRankingPublished]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(
+      JUDGE_ENCIK_WINNERS_STORAGE_KEY,
+      compactJudgeWinnersForStorage(judgeEncikWinnerList)
+    );
+  }, [authInitialized, judgeEncikWinnerList]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(
+      JUDGE_PUAN_WINNERS_STORAGE_KEY,
+      compactJudgeWinnersForStorage(judgePuanWinnerList)
+    );
+  }, [authInitialized, judgePuanWinnerList]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(JUDGE_PAIR_RANKING_STORAGE_KEY, judgePairRankingList);
+  }, [authInitialized, judgePairRankingList]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(JUDGE_ENCIK_PUBLISHED_STORAGE_KEY, judgeEncikPublished);
+  }, [authInitialized, judgeEncikPublished]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(JUDGE_PUAN_PUBLISHED_STORAGE_KEY, judgePuanPublished);
+  }, [authInitialized, judgePuanPublished]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(JUDGE_PAIR_PUBLISHED_STORAGE_KEY, judgePairPublished);
+  }, [authInitialized, judgePairPublished]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY, judgeEncikDisplayMode);
+  }, [authInitialized, judgeEncikDisplayMode]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    setStoredJsonSafely(JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY, judgePuanDisplayMode);
+  }, [authInitialized, judgePuanDisplayMode]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    const aggregatePublished =
+      judgeWinnersPublished || judgeEncikPublished || judgePuanPublished || judgePairPublished;
+    setStoredJsonSafely(JUDGE_WINNERS_PUBLISHED_STORAGE_KEY, aggregatePublished);
+  }, [authInitialized, judgeWinnersPublished, judgeEncikPublished, judgePuanPublished, judgePairPublished]);
+
+  useEffect(() => {
+    if (!authInitialized || typeof window === "undefined") return;
+    const aggregateDisplayMode: JudgeWinnerDisplayMode =
+      judgeWinnerDisplayMode ||
+      (judgeEncikDisplayMode === "name_with_score" || judgePuanDisplayMode === "name_with_score"
+        ? "name_with_score"
+        : "name_only");
+    setStoredJsonSafely(JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY, aggregateDisplayMode);
+  }, [authInitialized, judgeWinnerDisplayMode, judgeEncikDisplayMode, judgePuanDisplayMode]);
+
+  useEffect(() => {
+    if (!authInitialized) return;
+    if (applyingRemoteJurySyncRef.current) return;
+    const channel = jurySyncChannelRef.current;
+    if (!channel) return;
+
+    channel.postMessage({
+      type: "jury-sync",
+      source: tabIdRef.current,
+      payload: {
+        judgeEncikWinnerList,
+        judgePuanWinnerList,
+        judgePairRankingList,
+        judgeEncikPublished,
+        judgePuanPublished,
+        judgePairPublished,
+        judgeEncikDisplayMode,
+        judgePuanDisplayMode,
+        judgeWinnersPublished,
+        judgeWinnerDisplayMode,
+      },
+    });
+  }, [
+    authInitialized,
+    judgeEncikWinnerList,
+    judgePuanWinnerList,
+    judgePairRankingList,
+    judgeEncikPublished,
+    judgePuanPublished,
+    judgePairPublished,
+    judgeEncikDisplayMode,
+    judgePuanDisplayMode,
+    judgeWinnersPublished,
+    judgeWinnerDisplayMode,
+  ]);
 
   const [passwordStore, setPasswordStore] = useState<Record<string, string>>({
     "admin@dutawisatabatam.id": "admin123",
@@ -907,11 +1586,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setVoteTopList,
       voteTopPublished,
       setVoteTopPublished,
+      voteRankingPublished,
+      setVoteRankingPublished,
 
       judgeWinnerList,
       setJudgeWinnerList,
+      judgeEncikWinnerList,
+      setJudgeEncikWinnerList,
+      judgePuanWinnerList,
+      setJudgePuanWinnerList,
+      judgePairRankingList,
+      setJudgePairRankingList,
+      judgeEncikPublished,
+      setJudgeEncikPublished,
+      judgePuanPublished,
+      setJudgePuanPublished,
+      judgePairPublished,
+      setJudgePairPublished,
+      judgeEncikDisplayMode,
+      setJudgeEncikDisplayMode,
+      judgePuanDisplayMode,
+      setJudgePuanDisplayMode,
       judgeWinnersPublished,
       setJudgeWinnersPublished,
+      judgeWinnerDisplayMode,
+      setJudgeWinnerDisplayMode,
 
       feedbackList,
       setFeedbackList,
@@ -943,8 +1642,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       voteCandidateList,
       voteTopList,
       voteTopPublished,
+      voteRankingPublished,
       judgeWinnerList,
+      judgeEncikWinnerList,
+      judgePuanWinnerList,
+      judgePairRankingList,
+      judgeEncikPublished,
+      judgePuanPublished,
+      judgePairPublished,
+      judgeEncikDisplayMode,
+      judgePuanDisplayMode,
       judgeWinnersPublished,
+      judgeWinnerDisplayMode,
       feedbackList,
       addFeedbackEntry,
       participantResources,

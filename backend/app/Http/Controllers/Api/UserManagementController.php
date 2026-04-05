@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ParticipantDocument;
 use App\Models\ParticipantProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,17 @@ use Illuminate\Validation\Rule;
 
 class UserManagementController extends Controller
 {
+    private const PARTICIPANT_REQUIRED_DOCUMENTS = [
+        'identityCard' => ['label' => 'KTP / SIM / Paspor / Kartu Pelajar', 'required' => true],
+        'closeUpPhoto' => ['label' => 'Foto Close Up 4R', 'required' => true],
+        'fullBodyPhoto' => ['label' => 'Foto Full Body 4R', 'required' => true],
+        'formS01' => ['label' => 'Formulir S-01', 'required' => true],
+        'formS02' => ['label' => 'Formulir S-02', 'required' => true],
+        'formS03' => ['label' => 'Formulir S-03', 'required' => true],
+        'formS04' => ['label' => 'Formulir S-04', 'required' => true],
+        'certificate' => ['label' => 'Sertifikat / Piagam Prestasi', 'required' => false],
+    ];
+
     private const ALLOWED_JUDGE_STAGES = ['Audition', 'Pre Camp', 'Camp', 'Grand Final'];
     private const ALLOWED_JUDGE_TYPES = ['judge', 'committee', 'mentor', 'camp_team'];
     private const DEFAULT_JUDGE_TYPE = 'judge';
@@ -432,6 +444,111 @@ class UserManagementController extends Controller
                 'participant_code' => $profile->participant_code,
                 'eliminated_in_audition' => (bool) $profile->eliminated_in_audition,
                 'eliminated_at' => $profile->eliminated_at?->toISOString(),
+            ],
+        ]);
+    }
+
+    public function updateParticipantDocumentReviews(Request $request, int $id): JsonResponse
+    {
+        /** @var User|null $participant */
+        $participant = User::query()
+            ->where('role', 'participant')
+            ->find($id);
+
+        if (! $participant) {
+            return response()->json([
+                'message' => 'Peserta tidak ditemukan.',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'documents' => ['required', 'array', 'min:1'],
+            'documents.*.key' => ['required', 'string', Rule::in(array_keys(self::PARTICIPANT_REQUIRED_DOCUMENTS))],
+            'documents.*.status' => ['required', Rule::in(['submitted', 'revision_required', 'verified', 'missing'])],
+            'documents.*.note' => ['nullable', 'string', 'max:3000'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $payload = $validator->validated();
+
+        foreach ($payload['documents'] as $docPayload) {
+            $key = (string) $docPayload['key'];
+            $meta = self::PARTICIPANT_REQUIRED_DOCUMENTS[$key] ?? null;
+            if (! $meta) {
+                continue;
+            }
+
+            /** @var ParticipantDocument|null $existing */
+            $existing = ParticipantDocument::query()
+                ->where('user_id', $participant->id)
+                ->where('document_key', $key)
+                ->first();
+
+            if (! $existing) {
+                ParticipantDocument::query()->create([
+                    'user_id' => $participant->id,
+                    'document_key' => $key,
+                    'label' => $meta['label'],
+                    'is_required' => (bool) $meta['required'],
+                    'status' => $docPayload['status'],
+                    'note' => $docPayload['note'] ?? null,
+                ]);
+                continue;
+            }
+
+            $existing->status = $docPayload['status'];
+            $existing->note = $docPayload['note'] ?? null;
+            if (! $existing->label) {
+                $existing->label = $meta['label'];
+            }
+            $existing->is_required = (bool) $meta['required'];
+            $existing->save();
+        }
+
+        $updatedDocuments = ParticipantDocument::query()
+            ->where('user_id', $participant->id)
+            ->orderBy('document_key')
+            ->get()
+            ->map(function (ParticipantDocument $doc): array {
+                $rawUrl = is_string($doc->url) ? trim($doc->url) : null;
+                $rawPath = is_string($doc->path) ? trim($doc->path) : null;
+
+                $resolvedUrl = null;
+                if ($rawUrl !== null && $rawUrl !== '') {
+                    $resolvedUrl = str_starts_with($rawUrl, 'http://') || str_starts_with($rawUrl, 'https://')
+                        ? $rawUrl
+                        : asset(ltrim($rawUrl, '/'));
+                } elseif ($rawPath !== null && $rawPath !== '') {
+                    $resolvedUrl = asset('storage/'.ltrim($rawPath, '/'));
+                }
+
+                return [
+                    'key' => $doc->document_key,
+                    'label' => $doc->label,
+                    'required' => (bool) $doc->is_required,
+                    'status' => $doc->status ?: 'missing',
+                    'original_name' => $doc->original_name,
+                    'size_bytes' => $doc->size_bytes,
+                    'mime_type' => $doc->mime_type,
+                    'path' => $doc->path,
+                    'url' => $resolvedUrl,
+                    'uploaded_at' => $doc->uploaded_at?->toIso8601String(),
+                    'note' => $doc->note,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'message' => 'Status dokumen verifikasi berhasil disimpan.',
+            'data' => [
+                'user_id' => $participant->id,
+                'documents' => $updatedDocuments,
             ],
         ]);
     }

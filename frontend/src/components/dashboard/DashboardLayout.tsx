@@ -3,9 +3,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, ChevronRight, PanelLeft, PanelRight, ChevronDown, KeyRound, UserCircle2, Bell, AlertCircle, CheckCircle2, Clock3 } from "lucide-react";
+import { LogOut, Menu, ChevronRight, PanelLeft, PanelRight, ChevronDown, KeyRound, UserCircle2, Bell, AlertCircle, CheckCircle2, Clock3, Star } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { resolveApiAssetUrl } from "../../lib/api";
+import { resolveApiAssetUrl, resolveAvatarUrl } from "../../lib/api";
 
 type NavItem = {
   label: string;
@@ -25,7 +25,21 @@ export default function DashboardLayout({
   children,
   role,
 }: DashboardLayoutProps) {
-  const { user, logout, currentParticipant, judgeList } = useApp();
+  const {
+    user,
+    logout,
+    currentParticipant,
+    participantList,
+    judgeList,
+    voteTopList,
+    voteRankingPublished,
+    judgeEncikWinnerList,
+    judgePuanWinnerList,
+    judgePairRankingList,
+    judgeEncikPublished,
+    judgePuanPublished,
+    judgePairPublished,
+  } = useApp();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,57 +57,176 @@ export default function DashboardLayout({
           (judge) =>
             judge.id === user?.judgeId ||
             (judge.email ?? "").trim().toLowerCase() === (user?.email ?? "").trim().toLowerCase()
-        ) ?? judgeList[0]
+        ) ?? null
       : null;
   const profilePhoto =
     role === "participant"
       ? resolveApiAssetUrl(participant?.photo)
       : role === "judge"
-      ? resolveApiAssetUrl(activeJudge?.avatar)
+      ? resolveAvatarUrl(activeJudge?.avatar)
       : undefined;
   const displayName =
     role === "participant"
       ? participant?.name || user?.name || "Peserta"
       : user?.name || (role === "judge" ? "Juri" : "Pengguna");
-  const displayEmail = role === "participant" ? participant?.email || user?.email || "" : user?.email || "";
+  const displayEmail =
+    role === "participant"
+      ? participant?.email || user?.email || ""
+      : role === "judge"
+      ? activeJudge?.email || user?.email || ""
+      : user?.email || "";
   const verificationIssues = participant?.verificationIssues ?? [];
   const participantNotifications = useMemo(
-    () =>
-      role === "participant" && participant
-        ? [
-            verificationIssues.length > 0
-              ? {
-                  id: "revision-note",
-                  title: "Perlu Revisi Berkas",
-                  message: `${verificationIssues.length} item memerlukan perbaikan. Buka halaman dokumen untuk melihat catatan admin dan upload ulang.`,
-                  color: "#ef4444",
-                  icon: <AlertCircle size={14} />,
-                  href: "/pages/participant/dokumen",
-                }
-              : null,
-            participant.submittedToAdmin && participant.status === "Pending"
-              ? {
-                  id: "pending-review",
-                  title: "Menunggu Verifikasi",
-                  message: "Berkas Anda sudah dikirim dan sedang ditinjau oleh admin panitia.",
-                  color: "#C8A24D",
-                  icon: <Clock3 size={14} />,
-                  href: "/pages/participant/status",
-                }
-              : null,
-            participant.status === "Verified"
-              ? {
-                  id: "verified",
-                  title: "Berkas Terverifikasi",
-                  message: "Administrasi Anda dinyatakan lengkap. Silakan pantau tahap seleksi berikutnya.",
-                  color: "#22c55e",
-                  icon: <CheckCircle2 size={14} />,
-                  href: "/pages/participant/status",
-                }
-              : null,
-          ].filter(Boolean)
-        : [],
-    [participant, role, verificationIssues.length]
+    () => {
+      if (role !== "participant" || !participant) return [];
+
+      const baseNotifications = [
+        verificationIssues.length > 0
+          ? {
+              id: "revision-note",
+              title: "Perlu Revisi Berkas",
+              message: `${verificationIssues.length} item memerlukan perbaikan. Buka halaman dokumen untuk melihat catatan admin dan upload ulang.`,
+              color: "#ef4444",
+              icon: <AlertCircle size={14} />,
+              href: "/pages/participant/dokumen",
+            }
+          : null,
+        participant.submittedToAdmin && participant.status === "Pending"
+          ? {
+              id: "pending-review",
+              title: "Menunggu Verifikasi",
+              message: "Berkas Anda sudah dikirim dan sedang ditinjau oleh admin panitia.",
+              color: "#C8A24D",
+              icon: <Clock3 size={14} />,
+              href: "/pages/participant/status",
+            }
+          : null,
+        participant.status === "Verified"
+          ? {
+              id: "verified",
+              title: "Berkas Terverifikasi",
+              message: "Administrasi Anda dinyatakan lengkap. Silakan pantau tahap seleksi berikutnya.",
+              color: "#22c55e",
+              icon: <CheckCircle2 size={14} />,
+              href: "/pages/participant/status",
+            }
+          : null,
+      ].filter(Boolean) as Array<{
+        id: string;
+        title: string;
+        message: string;
+        color: string;
+        icon: React.ReactNode;
+        href: string;
+      }>;
+
+      const participantId = participant.id;
+      const participantNumber = participant.number;
+      const isSameParticipant = (candidateId?: string, candidateNumber?: string) =>
+        Boolean(
+          (candidateId && candidateId === participantId) ||
+            (candidateNumber && candidateNumber === participantNumber)
+        );
+
+      const achievementNotifications: Array<{
+        id: string;
+        title: string;
+        message: string;
+        color: string;
+        icon: React.ReactNode;
+        href: string;
+      }> = [];
+
+      if (judgeEncikPublished) {
+        const encikWinner = judgeEncikWinnerList.find((item) =>
+          isSameParticipant(item.participantId, item.number)
+        );
+        if (encikWinner) {
+          achievementNotifications.push({
+            id: `jury-encik-${encikWinner.rank}`,
+            title: `Juara Encik Versi Juri #${encikWinner.rank}`,
+            message: "Selamat! Status juara Encik versi juri Anda sudah dipublikasikan.",
+            color: "#22c55e",
+            icon: <Star size={14} />,
+            href: "/pages/participant/status",
+          });
+        }
+      }
+
+      if (judgePuanPublished) {
+        const puanWinner = judgePuanWinnerList.find((item) =>
+          isSameParticipant(item.participantId, item.number)
+        );
+        if (puanWinner) {
+          achievementNotifications.push({
+            id: `jury-puan-${puanWinner.rank}`,
+            title: `Juara Puan Versi Juri #${puanWinner.rank}`,
+            message: "Selamat! Status juara Puan versi juri Anda sudah dipublikasikan.",
+            color: "#22c55e",
+            icon: <Star size={14} />,
+            href: "/pages/participant/status",
+          });
+        }
+      }
+
+      if (judgePairPublished) {
+        const pairWinner = judgePairRankingList.find(
+          (item) =>
+            item.encikParticipantId === participantId ||
+            item.puanParticipantId === participantId
+        );
+        if (pairWinner) {
+          const partnerId =
+            pairWinner.encikParticipantId === participantId
+              ? pairWinner.puanParticipantId
+              : pairWinner.encikParticipantId;
+          const partner = participantList.find((item) => item.id === partnerId);
+
+          achievementNotifications.push({
+            id: `jury-pair-${pairWinner.rank}`,
+            title: `Juara Pasangan Versi Juri #${pairWinner.rank}`,
+            message: `Selamat! Anda ditetapkan sebagai juara pasangan versi juri${
+              partner ? ` bersama ${partner.name}.` : "."
+            }`,
+            color: "#22c55e",
+            icon: <Star size={14} />,
+            href: "/pages/participant/status",
+          });
+        }
+      }
+
+      if (voteRankingPublished) {
+        const voteWinner = voteTopList.find((item) =>
+          isSameParticipant(item.participantId, item.number)
+        );
+        if (voteWinner) {
+          achievementNotifications.push({
+            id: `vote-top-${voteWinner.rank}`,
+            title: `Juara Vote Terfavorit #${voteWinner.rank}`,
+            message: "Like tertinggi Anda sudah tercatat dalam ranking vote favorit publik.",
+            color: "#22c55e",
+            icon: <Star size={14} />,
+            href: "/vote",
+          });
+        }
+      }
+
+      return [...achievementNotifications, ...baseNotifications];
+    },
+    [
+      judgeEncikPublished,
+      judgeEncikWinnerList,
+      judgePairPublished,
+      judgePairRankingList,
+      judgePuanPublished,
+      judgePuanWinnerList,
+      participant,
+      participantList,
+      role,
+      verificationIssues.length,
+      voteRankingPublished,
+      voteTopList,
+    ]
   );
 
   const participantNotificationStorageKey =
@@ -604,7 +737,7 @@ export default function DashboardLayout({
                   />
                 )}
                 <span className="hidden sm:block text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                  {displayEmail}
+                  {displayName}
                 </span>
                 <ChevronDown size={14} style={{ color: "#C8A24D" }} />
               </button>

@@ -26,6 +26,7 @@ class JudgeNoteController extends Controller
             'stage' => $note->stage,
             'author_user_id' => $note->author_user_id,
             'author_name' => $note->author?->name,
+            'author_avatar' => $note->author?->judge_avatar,
             'author_role' => $note->author_role,
             'content' => $note->content,
             'created_at' => $note->created_at_note?->toISOString(),
@@ -51,7 +52,7 @@ class JudgeNoteController extends Controller
         }
 
         $payload = $validator->validated();
-        $query = JudgeNote::query()->with('author:id,name');
+        $query = JudgeNote::query()->with('author:id,name,judge_avatar');
 
         if ($authRole === 'judge') {
             // Juri boleh lihat semua catatan tahapan peserta untuk konteks penilaian.
@@ -115,7 +116,7 @@ class JudgeNoteController extends Controller
             'created_at_note' => Carbon::now(),
         ]);
 
-        $note->load('author:id,name');
+        $note->load('author:id,name,judge_avatar');
 
         return response()->json([
             'message' => 'Catatan berhasil disimpan ke database.',
@@ -123,4 +124,3 @@ class JudgeNoteController extends Controller
         ], 201);
     }
 }
-

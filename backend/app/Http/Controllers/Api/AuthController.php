@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\EmailVerificationOtp;
 use App\Models\PasswordResetOtp;
+use App\Models\ParticipantProfile;
 use App\Models\User;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Carbon;
@@ -333,6 +334,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['required', 'string', 'max:30'],
+            'gender' => ['required', 'string', 'in:Encik,Puan,encik,puan'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -352,6 +354,11 @@ class AuthController extends Controller
             'account_status' => 'active',
             'email_verified_at' => Carbon::now(),
         ]);
+
+        ParticipantProfile::query()->firstOrCreate(
+            ['user_id' => $user->id],
+            ['gender' => strtolower($request->string('gender')->toString()) === 'puan' ? 'Puan' : 'Encik']
+        );
 
         $response = [
             'message' => 'Registrasi berhasil. Akun peserta Anda sudah aktif dan siap digunakan.',

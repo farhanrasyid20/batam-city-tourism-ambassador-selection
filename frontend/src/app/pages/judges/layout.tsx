@@ -6,7 +6,7 @@ import { LayoutDashboard, Star } from "lucide-react";
 import DashboardLayout from "../../../components/dashboard/DashboardLayout";
 import { useApp } from "../../../context/AppContext";
 import { fetchAuthenticatedParticipant, fetchJudgeParticipants } from "../../../lib/auth-api";
-import { resolveApiAssetUrl } from "../../../lib/api";
+import { resolveAvatarUrl, resolveApiAssetUrl } from "../../../lib/api";
 import { getParticipantAuthSession } from "../../../lib/auth-storage";
 import type { JudgeAssignedStageKey, JudgeType, Participant } from "../../../data/mockData";
 
@@ -56,6 +56,12 @@ export default function JudgePagesLayout({
         if (cancelled) return;
 
         const payload = response.user;
+        if ((payload.role ?? "").toLowerCase() !== "judge") {
+          setAuthenticatedUser(null);
+          router.replace("/auth/login");
+          return;
+        }
+
         const assignedStages = (payload.judge_assigned_stages?.length
           ? payload.judge_assigned_stages
           : ["Audition", "Pre Camp", "Camp", "Grand Final"]) as JudgeAssignedStageKey[];
@@ -63,7 +69,7 @@ export default function JudgePagesLayout({
         const judgeId = `J_API_${payload.id}`;
         const nextTitle = payload.judge_title || "Dewan Juri";
         const nextOrganization = payload.judge_organization || "Duta Wisata Kota Batam";
-        const nextAvatar = resolveApiAssetUrl(payload.judge_avatar) || "/default-avatar.svg";
+        const nextAvatar = resolveAvatarUrl(payload.judge_avatar) || "/default-avatar.svg";
 
         const hasSameStages = (left: JudgeAssignedStageKey[], right: JudgeAssignedStageKey[]) =>
           left.length === right.length && left.every((value, index) => value === right[index]);
@@ -137,6 +143,7 @@ export default function JudgePagesLayout({
     userJudgeId,
     setAuthenticatedUser,
     setJudgeList,
+    router,
   ]);
 
   useEffect(() => {

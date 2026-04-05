@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import NextImage from "next/image";
-import { Save, Upload, CheckCircle } from "lucide-react";
+import { Save, Upload, CheckCircle, X, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
@@ -49,7 +49,6 @@ type FormState = {
   mission: string;
   experience: string;
   achievement: string;
-  introVideoUrl: string;
   profilePhoto: string;
   educationCategory: "SMA" | "SMK" | "MA" | "Kuliah";
   educationDegree: string;
@@ -71,6 +70,23 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "var(--font-poppins)",
 };
 
+const languagePresetOptions = [
+  "Indonesia",
+  "Inggris",
+  "Melayu",
+  "Mandarin",
+  "Jepang",
+  "Korea",
+  "Jerman",
+  "Prancis",
+  "Arab",
+  "Spanyol",
+  "Belanda",
+  "Thailand",
+  "Tamil",
+  "Hokkien",
+];
+
 const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
 
 function resolveParticipantPhotoUrl(photo?: string | null): string | undefined {
@@ -85,6 +101,32 @@ function resolveParticipantPhotoUrl(photo?: string | null): string | undefined {
     return value;
   }
   return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
+}
+
+function normalizeSocialHandle(value?: string | null): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return "";
+
+  let candidate = raw;
+  if (/^https?:\/\//i.test(candidate)) {
+    try {
+      const url = new URL(candidate);
+      candidate = url.pathname;
+    } catch {
+      candidate = candidate.replace(/^https?:\/\/(www\.)?/i, "");
+      candidate = candidate.replace(/^[^/]*\//, "");
+    }
+  }
+
+  candidate = candidate.split(/[?#]/)[0] ?? "";
+  const segments = candidate
+    .split("/")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const primary = segments[0] ?? candidate;
+  const cleaned = decodeURIComponent(primary).replace(/^@+/, "").replace(/\s+/g, "");
+
+  return cleaned ? `@${cleaned}` : "";
 }
 
 function mapBiodataStatus(accountStatus?: string, fallback?: StageStatus): StageStatus {
@@ -150,6 +192,13 @@ function parseDisplayDateToIso(display: string): string | null {
   const mm = String(month).padStart(2, "0");
   const dd = String(day).padStart(2, "0");
   return `${year}-${mm}-${dd}`;
+}
+
+function formatDisplayDateInput(value: string): string {
+  const digitsOnly = value.replace(/\D/g, "").slice(0, 8);
+  if (digitsOnly.length <= 2) return digitsOnly;
+  if (digitsOnly.length <= 4) return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
+  return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2, 4)}/${digitsOnly.slice(4)}`;
 }
 
 function parseIsoDateToDate(iso: string): Date | null {
@@ -238,7 +287,8 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
     birthDate: data.birth_date ?? base?.birthDate ?? "",
     heightCm: data.height_cm ?? base?.heightCm ?? 0,
     education: buildEducationTextFromBiodata(data) || base?.education || "",
-    instagram: data.instagram ?? base?.instagram ?? "",
+    instagram: normalizeSocialHandle(data.instagram ?? base?.instagram ?? ""),
+    tiktok: normalizeSocialHandle(data.tiktok ?? base?.tiktok ?? ""),
     phone: data.phone ?? base?.phone ?? "",
     email: data.email ?? base?.email ?? "",
     photo: resolveParticipantPhotoUrl(data.photo) ?? base?.photo ?? "",
@@ -272,13 +322,17 @@ export default function BiodataPage() {
   const { currentParticipant, setCurrentParticipant, setParticipantList, user } = useApp();
   const participant = currentParticipant;
   const [isSaved, setIsSaved] = useState(false);
+  const [hasDraftChanges, setHasDraftChanges] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSyncingBiodata, setIsSyncingBiodata] = useState(false);
   const [isSavingBiodata, setIsSavingBiodata] = useState(false);
   const [showInstitutionDropdown, setShowInstitutionDropdown] = useState(false);
   const [showMajorDropdown, setShowMajorDropdown] = useState(false);
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [customLanguageInput, setCustomLanguageInput] = useState("");
   const institutionRef = useRef<HTMLDivElement | null>(null);
   const majorRef = useRef<HTMLDivElement | null>(null);
+  const languageRef = useRef<HTMLDivElement | null>(null);
   const birthDatePickerWrapperRef = useRef<HTMLDivElement | null>(null);
 
   // Data referensi pendidikan per kategori (SMA/SMK/MA/Kuliah).
@@ -435,8 +489,8 @@ export default function BiodataPage() {
     email: participant?.email ?? user?.email ?? "",
     phone: participant?.phone ?? "",
     parentPhone: "",
-    instagram: participant?.instagram ?? "",
-    tiktok: "",
+    instagram: normalizeSocialHandle(participant?.instagram ?? ""),
+    tiktok: normalizeSocialHandle(participant?.tiktok ?? ""),
     occupation: "",
     skills: "",
     hobbies: "",
@@ -445,7 +499,6 @@ export default function BiodataPage() {
     mission: "",
     experience: "",
     achievement: "",
-    introVideoUrl: "",
     profilePhoto: participant?.photo ?? "",
     agreementNoAgency: participant?.agreementNoAgency ?? "",
     agencyName: participant?.agencyName ?? "",
@@ -459,6 +512,9 @@ export default function BiodataPage() {
     formatIsoDateToDisplay(participant?.birthDate ?? "")
   );
   const [isBirthDatePickerOpen, setIsBirthDatePickerOpen] = useState(false);
+  const [birthDatePickerMode, setBirthDatePickerMode] = useState<
+    "day" | "month" | "year" | "decade"
+  >("day");
   const [birthDateView, setBirthDateView] = useState<Date>(
     () => parseIsoDateToDate(participant?.birthDate ?? "") ?? new Date()
   );
@@ -503,8 +559,8 @@ export default function BiodataPage() {
           email: data.email ?? prev.email,
           phone: data.phone ?? prev.phone,
           parentPhone: data.parent_phone ?? prev.parentPhone,
-          instagram: data.instagram ?? prev.instagram,
-          tiktok: data.tiktok ?? prev.tiktok,
+          instagram: normalizeSocialHandle(data.instagram ?? prev.instagram),
+          tiktok: normalizeSocialHandle(data.tiktok ?? prev.tiktok),
           occupation: data.occupation ?? prev.occupation,
           skills: data.skills ?? prev.skills,
           hobbies: data.hobbies ?? prev.hobbies,
@@ -513,7 +569,6 @@ export default function BiodataPage() {
           mission: data.mission ?? prev.mission,
           experience: data.experience ?? prev.experience,
           achievement: data.achievement ?? prev.achievement,
-          introVideoUrl: data.intro_video_url ?? prev.introVideoUrl,
           profilePhoto: data.photo ?? prev.profilePhoto,
           agreementNoAgency: data.agreement_no_agency ?? prev.agreementNoAgency,
           agencyName: data.agency_name ?? prev.agencyName,
@@ -525,6 +580,7 @@ export default function BiodataPage() {
           publicSpeakingExperience:
             data.public_speaking_experience ?? prev.publicSpeakingExperience,
         }));
+        setHasDraftChanges(false);
         setBirthDateDisplay(formatIsoDateToDisplay(data.birth_date ?? ""));
 
         setCurrentParticipant((prev) => mergeParticipantFromBiodata(prev, data));
@@ -626,7 +682,6 @@ export default function BiodataPage() {
       form.motivationStatement,
       form.contributionIdea,
       form.publicSpeakingExperience,
-      form.introVideoUrl,
     ];
     const filledCount = requiredFields.filter(Boolean).length;
     return Math.round((filledCount / requiredFields.length) * 100);
@@ -649,6 +704,18 @@ export default function BiodataPage() {
     ? majorOptions.filter((item) => item.toLowerCase().includes(majorKeyword))
     : majorOptions;
 
+  const selectedLanguages = useMemo(
+    () =>
+      form.languages
+        .split(/[,\n;]+/)
+        .map((item) => item.replace(/\s*[x×]\s*$/i, "").trim())
+        .filter(Boolean),
+    [form.languages]
+  );
+  const availableLanguageOptions = languagePresetOptions.filter(
+    (option) => !selectedLanguages.some((selected) => selected.toLowerCase() === option.toLowerCase())
+  );
+
   // Menutup dropdown jika klik di luar area field.
   useEffect(() => {
     const onClickOutside = (event: MouseEvent) => {
@@ -659,6 +726,9 @@ export default function BiodataPage() {
       if (majorRef.current && !majorRef.current.contains(target)) {
         setShowMajorDropdown(false);
       }
+      if (languageRef.current && !languageRef.current.contains(target)) {
+        setShowLanguageDropdown(false);
+      }
     };
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
@@ -666,7 +736,26 @@ export default function BiodataPage() {
 
   // Helper update field agar penulisan state tetap konsisten.
   const updateFormField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setHasDraftChanges(true);
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const addLanguageItem = (rawValue: string) => {
+    const cleaned = rawValue.trim();
+    if (!cleaned) return;
+    const exists = selectedLanguages.some(
+      (item) => item.toLowerCase() === cleaned.toLowerCase()
+    );
+    if (exists) return;
+    const next = [...selectedLanguages, cleaned].join(", ");
+    updateFormField("languages", next);
+  };
+
+  const removeLanguageItemByIndex = (indexToRemove: number) => {
+    const next = selectedLanguages
+      .filter((_, index) => index !== indexToRemove)
+      .join(", ");
+    updateFormField("languages", next);
   };
 
   // Merangkai teks pendidikan ke format penyimpanan peserta.
@@ -685,18 +774,29 @@ export default function BiodataPage() {
     setErrorMessage("");
     setIsSavingBiodata(true);
 
-    const parsedHeight = Number(form.heightCm);
-    if (!Number.isFinite(parsedHeight) || parsedHeight <= 0) {
-      setErrorMessage("Tinggi badan tidak valid. Mohon isi angka yang benar.");
-      setIsSavingBiodata(false);
-      return;
+    const rawHeight = form.heightCm.trim();
+    let normalizedHeight: number | undefined;
+    if (rawHeight !== "") {
+      const parsedHeight = Number(rawHeight);
+      if (Number.isFinite(parsedHeight) && parsedHeight > 0) {
+        normalizedHeight = Math.round(parsedHeight);
+      }
     }
-    const normalizedHeight = Math.round(parsedHeight);
 
     const educationValue = buildEducationValue();
+    const normalizedInstagram = normalizeSocialHandle(form.instagram);
+    const normalizedTiktok = normalizeSocialHandle(form.tiktok);
     const token = getParticipantAuthSession()?.token;
 
     try {
+      if (normalizedInstagram !== form.instagram || normalizedTiktok !== form.tiktok) {
+        setForm((prev) => ({
+          ...prev,
+          instagram: normalizedInstagram,
+          tiktok: normalizedTiktok,
+        }));
+      }
+
       if (token) {
         const response = await updateParticipantBiodata(token, {
           name: form.fullName,
@@ -708,7 +808,7 @@ export default function BiodataPage() {
           birth_date: form.birthDate,
           domicile_address: form.domicileAddress.trim() || undefined,
           ktp_address: form.ktpAddress.trim() || undefined,
-          height_cm: normalizedHeight || undefined,
+          height_cm: normalizedHeight,
           weight_kg: form.weightKg.trim() || undefined,
           shirt_size: form.shirtSize.trim() || undefined,
           chest_circumference_cm: form.chestCircumferenceCm.trim() || undefined,
@@ -716,8 +816,8 @@ export default function BiodataPage() {
           hip_circumference_cm: form.hipCircumferenceCm.trim() || undefined,
           pants_size: form.pantsSize.trim() || undefined,
           shoe_size: form.shoeSize.trim() || undefined,
-          instagram: form.instagram,
-          tiktok: form.tiktok.trim() || undefined,
+          instagram: normalizedInstagram,
+          tiktok: normalizedTiktok || undefined,
           parent_phone: form.parentPhone.trim() || undefined,
           photo: form.profilePhoto || undefined,
           education_category: form.educationCategory,
@@ -732,7 +832,6 @@ export default function BiodataPage() {
           mission: form.mission,
           experience: form.experience || undefined,
           achievement: form.achievement || undefined,
-          intro_video_url: form.introVideoUrl,
           agreement_no_agency: form.agreementNoAgency || undefined,
           agency_name: form.agencyName.trim() || undefined,
           agreement_parent_permission: form.agreementParentPermission || undefined,
@@ -764,11 +863,12 @@ export default function BiodataPage() {
           nationalId: form.nationalId,
           birthPlace: form.birthPlace,
           birthDate: form.birthDate,
-          heightCm: normalizedHeight,
+          heightCm: normalizedHeight ?? participant.heightCm,
           education: educationValue,
           email: participant.email || form.email,
           phone: form.phone,
-          instagram: form.instagram,
+          instagram: normalizedInstagram,
+          tiktok: normalizedTiktok || undefined,
           photo: form.profilePhoto || participant.photo,
           agreementNoAgency: form.agreementNoAgency || undefined,
           agencyName: form.agencyName.trim() || undefined,
@@ -785,6 +885,7 @@ export default function BiodataPage() {
       }
 
       setIsSaved(true);
+      setHasDraftChanges(false);
       window.setTimeout(() => setIsSaved(false), 2800);
     } catch (error) {
       setErrorMessage(getReadableApiError(error));
@@ -845,6 +946,13 @@ export default function BiodataPage() {
           }
         }}
         onBlur={(e) => {
+          if ((name === "instagram" || name === "tiktok") && !readOnly && !disabled) {
+            const normalized = normalizeSocialHandle(e.target.value);
+            if (normalized !== e.target.value) {
+              setHasDraftChanges(true);
+              setForm((prev) => ({ ...prev, [name]: normalized }));
+            }
+          }
           if (!readOnly && !disabled) {
             e.target.style.borderColor = "rgba(200,162,77,0.25)";
           }
@@ -896,6 +1004,153 @@ export default function BiodataPage() {
           {hint}
         </p>
       ) : null}
+    </div>
+  );
+
+  const renderLanguageField = () => (
+    <div>
+      <label
+        className="block text-xs mb-1.5"
+        style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)", fontWeight: 600 }}
+      >
+        Bahasa yang Dikuasai <span style={{ color: "#ef4444" }}>*</span>
+      </label>
+      <div className="relative" ref={languageRef}>
+        <div
+          className="w-full rounded-xl px-3 py-2 text-sm transition-all"
+          style={{
+            ...inputStyle,
+            minHeight: 52,
+          }}
+          onClick={() => setShowLanguageDropdown(true)}
+        >
+          <div className="flex flex-wrap gap-2">
+            {selectedLanguages.length === 0 ? (
+              <span style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                Pilih dari dropdown atau ketik manual...
+              </span>
+            ) : (
+              selectedLanguages.map((language, index) => (
+                <span
+                  key={`${language}-${index}`}
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs"
+                  style={{
+                    background: "rgba(200,162,77,0.18)",
+                    border: "1px solid rgba(200,162,77,0.34)",
+                    color: "#F5E6C8",
+                    fontFamily: "var(--font-poppins)",
+                  }}
+                >
+                  {language}
+                  <button
+                    type="button"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      removeLanguageItemByIndex(index);
+                    }}
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full"
+                    style={{
+                      color: "#111",
+                      background: "#F5D06F",
+                    }}
+                    aria-label={`Hapus ${language}`}
+                  >
+                    <X size={11} />
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+
+        {showLanguageDropdown ? (
+          <div
+            className="absolute left-0 right-0 top-[calc(100%+8px)] z-40 rounded-xl border p-3"
+            style={{
+              background: "#111",
+              borderColor: "rgba(200,162,77,0.35)",
+              boxShadow: "0 14px 34px rgba(0,0,0,0.45)",
+            }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                Pilihan populer:
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowLanguageDropdown(false)}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full"
+                style={{
+                  color: "#111",
+                  background: "#F5D06F",
+                }}
+                aria-label="Tutup pilihan bahasa"
+              >
+                <X size={13} />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {availableLanguageOptions.map((language) => (
+                <button
+                  key={language}
+                  type="button"
+                  onClick={() => addLanguageItem(language)}
+                  className="rounded-full px-2.5 py-1 text-xs transition-all"
+                  style={{
+                    background: "rgba(200,162,77,0.08)",
+                    border: "1px solid rgba(200,162,77,0.22)",
+                    color: "#F5E6C8",
+                    fontFamily: "var(--font-poppins)",
+                  }}
+                >
+                  {language}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customLanguageInput}
+                onChange={(event) => setCustomLanguageInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addLanguageItem(customLanguageInput);
+                    setCustomLanguageInput("");
+                  }
+                }}
+                placeholder="Tambah bahasa lain (manual)"
+                className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  addLanguageItem(customLanguageInput);
+                  setCustomLanguageInput("");
+                }}
+                className="rounded-lg px-3 py-2 text-xs font-semibold"
+                style={{
+                  background: "linear-gradient(135deg, #F5D06F, #C8A24D)",
+                  color: "#111",
+                  fontFamily: "var(--font-poppins)",
+                }}
+              >
+                Tambah
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+        Pilih dari dropdown, lalu tambah manual jika bahasa belum tersedia.
+      </p>
     </div>
   );
 
@@ -972,7 +1227,7 @@ export default function BiodataPage() {
           type="text"
           value={birthDateDisplay}
           onChange={(event) => {
-            const next = event.target.value;
+            const next = formatDisplayDateInput(event.target.value);
             setBirthDateDisplay(next);
             const iso = parseDisplayDateToIso(next);
             if (iso !== null) {
@@ -1013,6 +1268,7 @@ export default function BiodataPage() {
           }}
           onFocus={(e) => {
             setIsBirthDatePickerOpen(true);
+            setBirthDatePickerMode("day");
             e.target.style.borderColor = "rgba(200,162,77,0.6)";
           }}
         />
@@ -1020,6 +1276,7 @@ export default function BiodataPage() {
           type="button"
           onClick={() => {
             setIsBirthDatePickerOpen((prev) => !prev);
+            setBirthDatePickerMode("day");
           }}
           className="absolute inset-y-0 right-0 flex items-center pr-3"
           style={{ color: "#BDBDBD" }}
@@ -1065,7 +1322,23 @@ export default function BiodataPage() {
               const selectedDate = parseIsoDateToDate(form.birthDate);
               const today = new Date();
               const weekdayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+              const monthLabels = [
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "Mei",
+                "Jun",
+                "Jul",
+                "Agu",
+                "Sep",
+                "Okt",
+                "Nov",
+                "Des",
+              ];
               const maxDate = new Date();
+              const maxYear = maxDate.getFullYear();
+              const minYear = 1900;
               const cells: { date: Date; currentMonth: boolean }[] = [];
               for (let i = 0; i < 42; i += 1) {
                 const dayOffset = i - startWeekday + 1;
@@ -1092,67 +1365,215 @@ export default function BiodataPage() {
                   <div className="mb-3 flex items-center justify-between">
                     <button
                       type="button"
-                      onClick={() =>
-                        setBirthDateView((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
-                      }
+                      onClick={() => {
+                        if (birthDatePickerMode === "day") {
+                          setBirthDateView((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+                          return;
+                        }
+                        if (birthDatePickerMode === "month") {
+                          setBirthDateView((prev) => new Date(prev.getFullYear() - 1, prev.getMonth(), 1));
+                          return;
+                        }
+                        if (birthDatePickerMode === "year") {
+                          setBirthDateView((prev) => new Date(prev.getFullYear() - 10, prev.getMonth(), 1));
+                          return;
+                        }
+                        setBirthDateView((prev) => new Date(prev.getFullYear() - 100, prev.getMonth(), 1));
+                      }}
                       className="rounded-md px-2 py-1 text-sm"
                       style={{ color: "#F5E6C8", border: "1px solid rgba(200,162,77,0.2)" }}
                     >
                       {"<"}
                     </button>
-                    <p style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)", fontWeight: 600 }}>
-                      {monthName}
-                    </p>
                     <button
                       type="button"
-                      onClick={() =>
-                        setBirthDateView((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
-                      }
+                      onClick={() => {
+                        if (birthDatePickerMode === "day") setBirthDatePickerMode("month");
+                        else if (birthDatePickerMode === "month") setBirthDatePickerMode("year");
+                        else if (birthDatePickerMode === "year") setBirthDatePickerMode("decade");
+                      }}
+                      style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)", fontWeight: 600 }}
+                    >
+                      {(() => {
+                        if (birthDatePickerMode === "day") return monthName;
+                        if (birthDatePickerMode === "month") return String(currentYear);
+                        if (birthDatePickerMode === "year") {
+                          const decadeStart = Math.floor(currentYear / 10) * 10;
+                          return `${decadeStart} - ${decadeStart + 9}`;
+                        }
+                        const centuryStart = Math.floor(currentYear / 100) * 100;
+                        return `${centuryStart} - ${centuryStart + 99}`;
+                      })()}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (birthDatePickerMode === "day") {
+                          setBirthDateView((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+                          return;
+                        }
+                        if (birthDatePickerMode === "month") {
+                          setBirthDateView((prev) => new Date(prev.getFullYear() + 1, prev.getMonth(), 1));
+                          return;
+                        }
+                        if (birthDatePickerMode === "year") {
+                          setBirthDateView((prev) => new Date(prev.getFullYear() + 10, prev.getMonth(), 1));
+                          return;
+                        }
+                        setBirthDateView((prev) => new Date(prev.getFullYear() + 100, prev.getMonth(), 1));
+                      }}
                       className="rounded-md px-2 py-1 text-sm"
                       style={{ color: "#F5E6C8", border: "1px solid rgba(200,162,77,0.2)" }}
                     >
                       {">"}
                     </button>
                   </div>
-                  <div className="mb-2 grid grid-cols-7 text-center text-xs">
-                    {weekdayLabels.map((label) => (
-                      <span key={label} style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-7 gap-1">
-                    {cells.map(({ date, currentMonth }) => {
-                      const disabled = date > maxDate;
-                      const selected = selectedDate ? isSameDate(date, selectedDate) : false;
-                      const todayCell = isSameDate(date, today);
-                      return (
-                        <button
-                          key={date.toISOString()}
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => {
-                            const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                            updateFormField("birthDate", iso);
-                            setBirthDateDisplay(formatIsoDateToDisplay(iso));
-                            setBirthDateView(new Date(date.getFullYear(), date.getMonth(), 1));
-                            setIsBirthDatePickerOpen(false);
-                          }}
-                          className="h-9 rounded-md text-sm"
-                          style={{
-                            fontFamily: "var(--font-poppins)",
-                            background: selected ? "#C8A24D" : todayCell ? "rgba(200,162,77,0.2)" : "transparent",
-                            color: selected ? "#111" : currentMonth ? "#F5E6C8" : "#8E8E8E",
-                            border: selected ? "1px solid #C8A24D" : "1px solid transparent",
-                            opacity: disabled ? 0.35 : 1,
-                            cursor: disabled ? "not-allowed" : "pointer",
-                          }}
-                        >
-                          {date.getDate()}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {birthDatePickerMode === "day" ? (
+                    <>
+                      <div className="mb-2 grid grid-cols-7 text-center text-xs">
+                        {weekdayLabels.map((label) => (
+                          <span key={label} style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {cells.map(({ date, currentMonth }) => {
+                          const disabled = date > maxDate;
+                          const selected = selectedDate ? isSameDate(date, selectedDate) : false;
+                          const todayCell = isSameDate(date, today);
+                          return (
+                            <button
+                              key={date.toISOString()}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => {
+                                const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                                updateFormField("birthDate", iso);
+                                setBirthDateDisplay(formatIsoDateToDisplay(iso));
+                                setBirthDateView(new Date(date.getFullYear(), date.getMonth(), 1));
+                                setIsBirthDatePickerOpen(false);
+                                setBirthDatePickerMode("day");
+                              }}
+                              className="h-9 rounded-md text-sm"
+                              style={{
+                                fontFamily: "var(--font-poppins)",
+                                background: selected ? "#C8A24D" : todayCell ? "rgba(200,162,77,0.2)" : "transparent",
+                                color: selected ? "#111" : currentMonth ? "#F5E6C8" : "#8E8E8E",
+                                border: selected ? "1px solid #C8A24D" : "1px solid transparent",
+                                opacity: disabled ? 0.35 : 1,
+                                cursor: disabled ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              {date.getDate()}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
+                  {birthDatePickerMode === "month" ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {monthLabels.map((label, monthIndex) => {
+                        const disabled =
+                          currentYear > maxYear ||
+                          (currentYear === maxYear && monthIndex > maxDate.getMonth());
+                        const selected = monthIndex === currentMonth;
+                        return (
+                          <button
+                            key={label}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                              setBirthDateView(new Date(currentYear, monthIndex, 1));
+                              setBirthDatePickerMode("day");
+                            }}
+                            className="h-10 rounded-md text-sm"
+                            style={{
+                              fontFamily: "var(--font-poppins)",
+                              background: selected ? "#C8A24D" : "transparent",
+                              color: selected ? "#111" : "#F5E6C8",
+                              border: selected ? "1px solid #C8A24D" : "1px solid rgba(200,162,77,0.18)",
+                              opacity: disabled ? 0.35 : 1,
+                              cursor: disabled ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                  {birthDatePickerMode === "year" ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {(() => {
+                        const decadeStart = Math.floor(currentYear / 10) * 10;
+                        return Array.from({ length: 12 }).map((_, index) => {
+                          const year = decadeStart - 1 + index;
+                          const disabled = year > maxYear || year < minYear;
+                          const selected = year === currentYear;
+                          return (
+                            <button
+                              key={year}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => {
+                                setBirthDateView((prev) => new Date(year, prev.getMonth(), 1));
+                                setBirthDatePickerMode("month");
+                              }}
+                              className="h-10 rounded-md text-sm"
+                              style={{
+                                fontFamily: "var(--font-poppins)",
+                                background: selected ? "#C8A24D" : "transparent",
+                                color: selected ? "#111" : "#F5E6C8",
+                                border: selected ? "1px solid #C8A24D" : "1px solid rgba(200,162,77,0.18)",
+                                opacity: disabled ? 0.35 : 1,
+                                cursor: disabled ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              {year}
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  ) : null}
+                  {birthDatePickerMode === "decade" ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {(() => {
+                        const centuryStart = Math.floor(currentYear / 100) * 100;
+                        return Array.from({ length: 12 }).map((_, index) => {
+                          const decadeStart = centuryStart - 10 + index * 10;
+                          const decadeEnd = decadeStart + 9;
+                          const disabled = decadeStart > maxYear || decadeEnd < minYear;
+                          const selected = currentYear >= decadeStart && currentYear <= decadeEnd;
+                          return (
+                            <button
+                              key={`${decadeStart}-${decadeEnd}`}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => {
+                                const nextYear = Math.min(Math.max(decadeStart, minYear), maxYear);
+                                setBirthDateView((prev) => new Date(nextYear, prev.getMonth(), 1));
+                                setBirthDatePickerMode("year");
+                              }}
+                              className="h-10 rounded-md text-xs"
+                              style={{
+                                fontFamily: "var(--font-poppins)",
+                                background: selected ? "#C8A24D" : "transparent",
+                                color: selected ? "#111" : "#F5E6C8",
+                                border: selected ? "1px solid #C8A24D" : "1px solid rgba(200,162,77,0.18)",
+                                opacity: disabled ? 0.35 : 1,
+                                cursor: disabled ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              {decadeStart}-{decadeEnd}
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  ) : null}
                 </>
               );
             })()}
@@ -1187,6 +1608,12 @@ export default function BiodataPage() {
       setErrorMessage("");
     };
     reader.readAsDataURL(file);
+  };
+
+  const scrollToSaveButton = () => {
+    const saveSection = document.getElementById("save-draft-actions");
+    if (!saveSection) return;
+    saveSection.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   return (
@@ -1236,6 +1663,46 @@ export default function BiodataPage() {
           </div>
         </div>
       </div>
+
+      <GoldCard glow className="mb-6">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-2">
+            <AlertTriangle
+              size={16}
+              style={{ color: hasDraftChanges ? "#f59e0b" : "#22c55e", marginTop: 2 }}
+            />
+            <div>
+              <p
+                className="text-sm font-semibold"
+                style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
+              >
+                {hasDraftChanges
+                  ? "Ada perubahan yang belum disimpan."
+                  : "Data terakhir sudah tersimpan."}
+              </p>
+              <p
+                className="text-xs mt-1"
+                style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}
+              >
+                Tombol <strong>Simpan Draft</strong> ada di paling bawah form.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={scrollToSaveButton}
+            className="rounded-lg px-3 py-2 text-xs font-semibold"
+            style={{
+              background: "rgba(200,162,77,0.16)",
+              border: "1px solid rgba(200,162,77,0.28)",
+              color: "#F5D06F",
+              fontFamily: "var(--font-poppins)",
+            }}
+          >
+            Ke Tombol Simpan
+          </button>
+        </div>
+      </GoldCard>
 
       <form onSubmit={handleSaveDraft} className="space-y-6">
         {/* Section data pribadi peserta */}
@@ -1620,17 +2087,18 @@ export default function BiodataPage() {
               required: true,
             })}
             {renderInputField({
-              label: "Link Instagram",
+              label: "Username Instagram",
               name: "instagram",
-              placeholder: "https://instagram.com/username",
+              placeholder: "@username",
               required: true,
-              hint: "Sesuai kolom Media sosial pada spreadsheet.",
+              hint: "Masukkan username. Jika tempel link, sistem otomatis ubah jadi @username.",
             })}
             {renderInputField({
-              label: "Link TikTok",
+              label: "Username TikTok",
               name: "tiktok",
-              placeholder: "https://tiktok.com/@username",
+              placeholder: "@username",
               required: true,
+              hint: "Masukkan username. Jika tempel link, sistem otomatis ubah jadi @username.",
             })}
           </div>
         </GoldCard>
@@ -1671,13 +2139,7 @@ export default function BiodataPage() {
               required: true,
               rows: 2,
             })}
-            {renderTextAreaField({
-              label: "Bahasa yang Dikuasai",
-              name: "languages",
-              placeholder: "Contoh: Indonesia, Inggris, Melayu",
-              required: true,
-              rows: 2,
-            })}
+            {renderLanguageField()}
             {renderTextAreaField({
               label: "Visi",
               name: "vision",
@@ -1788,18 +2250,11 @@ export default function BiodataPage() {
               placeholder: "Sebutkan prestasi, penghargaan, atau sertifikasi...",
               rows: 3,
             })}
-            {renderInputField({
-              label: "Link Video Perkenalan",
-              name: "introVideoUrl",
-              placeholder: "https://youtube.com/... atau https://drive.google.com/...",
-              required: true,
-              hint: "Video perkenalan maksimal 3 menit.",
-            })}
           </div>
         </GoldCard>
 
         {/* Tombol aksi utama halaman biodata */}
-        <div className="flex gap-3 flex-wrap">
+        <div id="save-draft-actions" className="flex gap-3 flex-wrap">
           <GoldButton type="submit" variant="outline" size="md" disabled={isSavingBiodata}>
             <Save size={16} />
             {isSavingBiodata ? "Menyimpan..." : "Simpan Draft"}

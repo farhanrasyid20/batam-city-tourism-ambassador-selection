@@ -32,7 +32,7 @@ export default function JudgeProfilePage() {
         (judge) =>
           judge.id === user?.judgeId ||
           (judge.email ?? "").trim().toLowerCase() === (user?.email ?? "").trim().toLowerCase()
-      ) ?? judgeList[0],
+      ) ?? null,
     [judgeList, user?.email, user?.judgeId]
   );
 
@@ -91,8 +91,8 @@ export default function JudgeProfilePage() {
       setError("Data juri tidak ditemukan.");
       return;
     }
-    if (!form.name.trim() || !form.email.trim()) {
-      setError("Nama dan email wajib diisi.");
+    if (!form.name.trim()) {
+      setError("Nama wajib diisi.");
       return;
     }
     if (!token) {
@@ -100,13 +100,11 @@ export default function JudgeProfilePage() {
       return;
     }
 
-    const normalizedEmail = form.email.trim().toLowerCase();
     setSaving(true);
 
     try {
       const response = await updateAuthenticatedProfile(token, {
         name: form.name.trim(),
-        email: normalizedEmail,
         judge_title: form.title.trim() || undefined,
         judge_organization: form.organization.trim() || undefined,
         judge_avatar: form.avatar || undefined,
@@ -170,7 +168,7 @@ export default function JudgeProfilePage() {
         </p>
       </div>
 
-      <GoldCard glow className="max-w-3xl">
+      <GoldCard glow className="w-full max-w-6xl">
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-xs mb-2" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)", fontWeight: 600 }}>
@@ -230,10 +228,20 @@ export default function JudgeProfilePage() {
               <input
                 type="email"
                 value={form.email}
-                onChange={(event) => updateField("email", event.target.value)}
+                readOnly
+                disabled
                 className="w-full rounded-xl px-4 py-3 text-sm outline-none"
-                style={{ background: "#111", border: "1px solid rgba(212,175,55,0.25)", color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(212,175,55,0.18)",
+                  color: "#9ca3af",
+                  fontFamily: "var(--font-poppins)",
+                  cursor: "not-allowed",
+                }}
               />
+              <p className="mt-1 text-[11px]" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                Email akun hanya bisa diubah oleh admin.
+              </p>
             </div>
             <div>
               <label className="block text-xs mb-1.5" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)", fontWeight: 600 }}>

@@ -2,16 +2,20 @@
 
 import React, { useMemo, useState } from "react";
 import Image from "next/image";
-import { CheckCircle, XCircle, Clock, FileText, Eye, AlertTriangle, MessageSquareMore } from "lucide-react";
+import { CheckCircle, XCircle, Clock, FileText, Eye, AlertTriangle, MessageSquareMore, ExternalLink, Download } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import VerificationDocumentLink, { getVerificationDocumentMeta } from "./components/VerificationDocumentLink";
 import { useApp } from "../../../../context/AppContext";
+import { updateParticipantDocumentReviews } from "../../../../lib/auth-api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import { resolveApiAssetUrl } from "../../../../lib/api";
 import {
   getParticipantVerificationStatus,
   verificationStatusLabels,
   type Participant,
   type VerificationStatus,
+  type ParticipantVerificationIssue,
   type SelectionStageKey,
 } from "../../../../data/mockData";
 
@@ -46,6 +50,65 @@ const statusColors: Record<VerificationStatus, { color: string; bg: string; icon
   },
 };
 
+const documentDisplayOrder = [
+  "identityCard",
+  "closeUpPhoto",
+  "fullBodyPhoto",
+  "formS01",
+  "formS02",
+  "formS03",
+  "formS04",
+  "certificate",
+] as const;
+
+const documentOrderMap = new Map<string, number>(
+  documentDisplayOrder.map((key, index) => [key, index])
+);
+
+const documentIssueTargetMap: Record<string, ParticipantVerificationIssue["target"]> = {
+  identityCard: "identityCard",
+  closeUpPhoto: "closeUpPhoto",
+  fullBodyPhoto: "fullBodyPhoto",
+  formS01: "formS01",
+  formS02: "formS02",
+  formS03: "formS03",
+  formS04: "formS04",
+};
+
+function toSocialHandle(value?: string | null): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return "-";
+  if (raw.startsWith("@")) return raw;
+  try {
+    const normalized = raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+    const url = new URL(normalized);
+    const firstPath = url.pathname.split("/").filter(Boolean)[0];
+    if (firstPath) return `@${firstPath}`;
+  } catch {
+    // ignore parse error
+  }
+  return raw;
+}
+
+function buildVerificationIssuesFromDocuments(
+  participant: Participant,
+  documents: NonNullable<Participant["documents"]>
+): ParticipantVerificationIssue[] {
+  return documents
+    .filter((document) => document.status === "revision_required")
+    .map((document) => {
+      const target = documentIssueTargetMap[document.key];
+      if (!target) return null;
+      return {
+        id: `issue-${participant.id}-${document.key}`,
+        target,
+        status: "revision_required" as const,
+        message: document.note?.trim() || `Dokumen ${document.label} perlu diperbaiki.`,
+      };
+    })
+    .filter((issue): issue is ParticipantVerificationIssue => Boolean(issue));
+}
+
 function getSelectionStageAfterVerification(status: VerificationStatus): SelectionStageKey {
   if (status === "Verified") return "Audition";
   return "Verification";
@@ -57,6 +120,19 @@ export default function AdminVerificationPage() {
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [noteDraftById, setNoteDraftById] = useState<Record<string, string>>({});
   const [openRejectInputId, setOpenRejectInputId] = useState<string | null>(null);
+  const [savingDocumentsFor, setSavingDocumentsFor] = useState<string | null>(null);
+  const [saveDocumentNotice, setSaveDocumentNotice] = useState<Record<string, { type: "success" | "error"; message: string }>>({});
+  const [previewState, setPreviewState] = useState<{
+    open: boolean;
+    href: string;
+    title: string;
+    previewType: "image" | "pdf" | "file";
+  }>({
+    open: false,
+    href: "",
+    title: "",
+    previewType: "file",
+  });
 
   const updateParticipantFields = (
     participantId: string,
@@ -84,7 +160,11 @@ export default function AdminVerificationPage() {
     list: participantList.filter((participant) => verificationMap[participant.id] === status),
   }));
 
-  const activeList = tabs.find((tab) => tab.key === activeTab)?.list ?? [];
+  const resolvedActiveTab =
+    tabs.find((tab) => tab.key === activeTab && tab.count > 0)?.key ??
+    tabs.find((tab) => tab.count > 0)?.key ??
+    activeTab;
+  const activeList = tabs.find((tab) => tab.key === resolvedActiveTab)?.list ?? [];
   const selectedParticipant = participantList.find((participant) => participant.id === selectedParticipantId) ?? null;
 
   const updateParticipantVerification = (participantId: string, nextStatus: VerificationStatus, note?: string) => {
@@ -145,13 +225,14 @@ export default function AdminVerificationPage() {
 
           return {
             ...document,
-            status: linkedItem.status === "revision_required" ? "revision_required" : "submitted",
+            status: linkedItem.status === "revision_required" ? "revision_required" : "verified",
             note: linkedItem.status === "revision_required" ? linkedItem.note : "",
           };
         }) ?? participant.documents;
 
       const hasRevisionItems = reviewItems.some((item) => item.status === "revision_required");
       const draftNote = noteDraftById[participantId]?.trim();
+      const verificationIssues = buildVerificationIssuesFromDocuments(participant, documents ?? []);
 
       return {
         ...participant,
@@ -164,6 +245,7 @@ export default function AdminVerificationPage() {
         adminVerificationNote: hasRevisionItems
           ? participant.adminVerificationNote || "Ada item biodata atau dokumen yang perlu diperbaiki sebelum verifikasi dilanjutkan."
           : participant.adminVerificationNote,
+        verificationIssues,
       };
     });
   };
@@ -171,7 +253,7 @@ export default function AdminVerificationPage() {
   const updateDocumentReview = (
     participantId: string,
     documentKey: string,
-    patch: { status?: "submitted" | "revision_required"; note?: string }
+    patch: { status?: "verified" | "revision_required"; note?: string }
   ) => {
     updateParticipantFields(participantId, (participant) => {
       const documents =
@@ -187,6 +269,7 @@ export default function AdminVerificationPage() {
 
       const hasRevisionDocuments = documents.some((document) => document.status === "revision_required");
       const draftNote = noteDraftById[participantId]?.trim();
+      const verificationIssues = buildVerificationIssuesFromDocuments(participant, documents ?? []);
 
       return {
         ...participant,
@@ -195,8 +278,66 @@ export default function AdminVerificationPage() {
         adminRevisionNote: hasRevisionDocuments
           ? draftNote || participant.adminRevisionNote || "Ada dokumen yang perlu diperbaiki."
           : participant.adminRevisionNote,
+        verificationIssues,
       };
     });
+  };
+
+  const handleSaveDocumentReviews = async (participant: Participant) => {
+    const token = getParticipantAuthSession()?.token;
+    const participantUserIdRaw = participant.id.replace("P_API_", "");
+    const participantUserId = Number(participantUserIdRaw);
+
+    if (!token || Number.isNaN(participantUserId)) {
+      setSaveDocumentNotice((prev) => ({
+        ...prev,
+        [participant.id]: { type: "error", message: "Sesi admin tidak valid. Silakan login ulang." },
+      }));
+      return;
+    }
+
+    const payloadDocuments = (participant.documents ?? []).map((doc) => ({
+      key: doc.key,
+      status: doc.status,
+      note: doc.note ?? null,
+    }));
+
+    setSavingDocumentsFor(participant.id);
+    try {
+      const response = await updateParticipantDocumentReviews(token, participantUserId, {
+        documents: payloadDocuments,
+      });
+
+      updateParticipantFields(participant.id, (prev) => {
+        const nextDocuments = response.data.documents.map((doc) => ({
+          key: doc.key,
+          label: doc.label,
+          status: doc.status,
+          note: doc.note ?? undefined,
+          url: resolveApiAssetUrl(doc.url) ?? undefined,
+          mimeType: doc.mime_type ?? undefined,
+          originalName: doc.original_name ?? undefined,
+        }));
+
+        return {
+          ...prev,
+          documents: nextDocuments,
+          verificationIssues: buildVerificationIssuesFromDocuments(prev, nextDocuments),
+        };
+      });
+
+      setSaveDocumentNotice((prev) => ({
+        ...prev,
+        [participant.id]: { type: "success", message: "Status dokumen berhasil disimpan ke backend." },
+      }));
+    } catch {
+      setSaveDocumentNotice((prev) => ({
+        ...prev,
+        [participant.id]: { type: "error", message: "Gagal simpan status dokumen. Coba lagi." },
+      }));
+    } finally {
+      setSavingDocumentsFor(null);
+    }
   };
 
   return (
@@ -217,8 +358,8 @@ export default function AdminVerificationPage() {
             onClick={() => setActiveTab(tab.key)}
             className="rounded-2xl p-4 text-center transition-all duration-200"
             style={{
-              background: activeTab === tab.key ? `${tab.color}15` : "#1A1A1A",
-              border: `1px solid ${activeTab === tab.key ? tab.color : "rgba(212,175,55,0.2)"}`,
+              background: resolvedActiveTab === tab.key ? `${tab.color}15` : "#1A1A1A",
+              border: `1px solid ${resolvedActiveTab === tab.key ? tab.color : "rgba(212,175,55,0.2)"}`,
               cursor: "pointer",
             }}
             type="button"
@@ -279,7 +420,15 @@ export default function AdminVerificationPage() {
                       {participant.number} - {participant.education} - Daftar: {participant.registeredAt}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {(participant.documents ?? []).map((document) => (
+                      {(participant.documents ?? [])
+                        .slice()
+                        .sort((a, b) => {
+                          const rankA = documentOrderMap.get(a.key) ?? 999;
+                          const rankB = documentOrderMap.get(b.key) ?? 999;
+                          if (rankA !== rankB) return rankA - rankB;
+                          return a.label.localeCompare(b.label);
+                        })
+                        .map((document) => (
                         <span
                           key={`${participant.id}-${document.key}`}
                           className="text-xs px-2 py-0.5 rounded-full"
@@ -386,6 +535,69 @@ export default function AdminVerificationPage() {
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                           Tahap setelah verifikasi: {participant.selectionStage ?? "Verification"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Submit ke admin: {participant.submittedToAdmin ? "Sudah" : "Belum"}
+                        </p>
+                        <p className="text-xs mt-3" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>
+                          Data Ukuran
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Tinggi/Berat: {participant.heightCm || "-"} cm / {participant.weightKg || "-"} kg
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Baju/Celana/Sepatu: {participant.shirtSize || "-"} / {participant.pantsSize || "-"} / {participant.shoeSize || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Lingkar Dada/Pinggang/Pinggul: {participant.chestCircumferenceCm || "-"} / {participant.waistCircumferenceCm || "-"} / {participant.hipCircumferenceCm || "-"} cm
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          NIK: {participant.nationalId || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          TTL: {participant.birthPlace || "-"}, {participant.birthDate || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Nama Panggilan: {participant.nickname || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Instagram: {toSocialHandle(participant.instagram)}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          TikTok: {toSocialHandle(participant.tiktok)}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Alamat Domisili: {participant.domicileAddress || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Alamat KTP: {participant.ktpAddress || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          No. HP Orang Tua/Wali: {participant.parentPhone || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Pekerjaan: {participant.occupation || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Keahlian/Bakat: {participant.skills || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Hobi: {participant.hobbies || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Bahasa: {participant.languages || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Visi: {participant.vision || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Misi: {participant.mission || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Pengalaman: {participant.experience || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Prestasi: {participant.achievement || "-"}
                         </p>
                         <p className="text-xs mt-3" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
                           {participant.adminVerificationNote}
@@ -503,7 +715,15 @@ export default function AdminVerificationPage() {
                           Status Dokumen
                         </p>
                         <div className="space-y-2">
-                          {(participant.documents ?? []).map((document) => {
+                          {(participant.documents ?? [])
+                            .slice()
+                            .sort((a, b) => {
+                              const rankA = documentOrderMap.get(a.key) ?? 999;
+                              const rankB = documentOrderMap.get(b.key) ?? 999;
+                              if (rankA !== rankB) return rankA - rankB;
+                              return a.label.localeCompare(b.label);
+                            })
+                            .map((document) => {
                             const documentMeta = getVerificationDocumentMeta(participant, document, participantResources);
 
                             return (
@@ -525,12 +745,25 @@ export default function AdminVerificationPage() {
                                   className="text-[10px] px-2 py-0.5 rounded-full"
                                   style={{
                                     background:
-                                      document.status === "revision_required" ? "rgba(249,115,22,0.14)" : "rgba(34,197,94,0.14)",
-                                    color: document.status === "revision_required" ? "#f97316" : "#22c55e",
+                                      document.status === "revision_required"
+                                        ? "rgba(249,115,22,0.14)"
+                                        : document.status === "verified"
+                                        ? "rgba(34,197,94,0.14)"
+                                        : "rgba(245,158,11,0.14)",
+                                    color:
+                                      document.status === "revision_required"
+                                        ? "#f97316"
+                                        : document.status === "verified"
+                                        ? "#22c55e"
+                                        : "#f59e0b",
                                     fontFamily: "var(--font-poppins)",
                                   }}
                                 >
-                                  {document.status === "revision_required" ? "Perlu revisi" : "Tersubmit"}
+                                  {document.status === "revision_required"
+                                    ? "Perlu revisi"
+                                    : document.status === "verified"
+                                    ? "Terverifikasi"
+                                    : "Menunggu cek admin"}
                                 </span>
                               </div>
                               <div className="mt-2 mb-2 flex flex-wrap items-start justify-between gap-2">
@@ -555,15 +788,75 @@ export default function AdminVerificationPage() {
                                     {documentMeta.fileName || "File belum diisi"}
                                   </p>
                                 </div>
+                                {documentMeta.href ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setPreviewState({
+                                          open: true,
+                                          href: documentMeta.href,
+                                          title: document.label,
+                                          previewType: documentMeta.previewType,
+                                        })
+                                      }
+                                      className="px-2 py-1 rounded-lg text-[10px]"
+                                      style={{
+                                        background: "rgba(59,130,246,0.12)",
+                                        border: "1px solid rgba(59,130,246,0.3)",
+                                        color: "#60a5fa",
+                                        fontFamily: "var(--font-poppins)",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      <Eye size={11} className="inline mr-1" />
+                                      Lihat
+                                    </button>
+                                    <a
+                                      href={documentMeta.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-2 py-1 rounded-lg text-[10px] inline-flex items-center"
+                                      style={{
+                                        background: "rgba(212,175,55,0.12)",
+                                        border: "1px solid rgba(212,175,55,0.3)",
+                                        color: "#D4AF37",
+                                        fontFamily: "var(--font-poppins)",
+                                      }}
+                                    >
+                                      <ExternalLink size={11} className="mr-1" />
+                                      Tab Baru
+                                    </a>
+                                    <a
+                                      href={documentMeta.href}
+                                      download
+                                      className="px-2 py-1 rounded-lg text-[10px] inline-flex items-center"
+                                      style={{
+                                        background: "rgba(34,197,94,0.12)",
+                                        border: "1px solid rgba(34,197,94,0.3)",
+                                        color: "#22c55e",
+                                        fontFamily: "var(--font-poppins)",
+                                      }}
+                                    >
+                                      <Download size={11} className="mr-1" />
+                                      Download
+                                    </a>
+                                  </div>
+                                ) : null}
                                 <div className="flex gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => updateDocumentReview(participant.id, document.key, { status: "submitted" })}
+                                  onClick={() =>
+                                    updateDocumentReview(participant.id, document.key, {
+                                      status: "verified",
+                                      note: "",
+                                    })
+                                  }
                                   className="px-2 py-1 rounded-lg text-[10px]"
                                   style={{
-                                    background: document.status !== "revision_required" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.06)",
-                                    border: `1px solid ${document.status !== "revision_required" ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.08)"}`,
-                                    color: document.status !== "revision_required" ? "#22c55e" : "#888",
+                                    background: document.status === "verified" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.06)",
+                                    border: `1px solid ${document.status === "verified" ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.08)"}`,
+                                    color: document.status === "verified" ? "#22c55e" : "#888",
                                     fontFamily: "var(--font-poppins)",
                                     cursor: "pointer",
                                   }}
@@ -603,6 +896,27 @@ export default function AdminVerificationPage() {
                               />
                             </div>
                           )})}
+                        </div>
+                        <div className="mt-3 flex items-center gap-3 flex-wrap">
+                          <GoldButton
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleSaveDocumentReviews(participant)}
+                            disabled={savingDocumentsFor === participant.id}
+                          >
+                            {savingDocumentsFor === participant.id ? "Menyimpan..." : "Simpan Status Dokumen"}
+                          </GoldButton>
+                          {saveDocumentNotice[participant.id] ? (
+                            <p
+                              className="text-xs"
+                              style={{
+                                color: saveDocumentNotice[participant.id].type === "success" ? "#22c55e" : "#ef4444",
+                                fontFamily: "var(--font-poppins)",
+                              }}
+                            >
+                              {saveDocumentNotice[participant.id].message}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -677,6 +991,76 @@ export default function AdminVerificationPage() {
               Alasan penolakan terakhir: {selectedParticipant.rejectionReason}
             </p>
           </GoldCard>
+        </div>
+      ) : null}
+
+      {previewState.open ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.72)" }}
+          onClick={() => setPreviewState((prev) => ({ ...prev, open: false }))}
+        >
+          <div
+            className="w-full max-w-5xl rounded-2xl overflow-hidden"
+            style={{ background: "#101010", border: "1px solid rgba(212,175,55,0.35)" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div
+              className="flex items-center justify-between gap-3 px-4 py-3"
+              style={{ borderBottom: "1px solid rgba(212,175,55,0.2)" }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                Preview Dokumen: {previewState.title}
+              </p>
+              <button
+                type="button"
+                onClick={() => setPreviewState((prev) => ({ ...prev, open: false }))}
+                className="px-3 py-1.5 rounded-lg text-xs"
+                style={{
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  color: "#ef4444",
+                  fontFamily: "var(--font-poppins)",
+                }}
+              >
+                Tutup
+              </button>
+            </div>
+            <div className="p-3" style={{ maxHeight: "75vh", overflow: "auto" }}>
+              {previewState.previewType === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={previewState.href} alt={previewState.title} className="w-full h-auto rounded-xl" />
+              ) : previewState.previewType === "pdf" ? (
+                <iframe
+                  src={previewState.href}
+                  title={previewState.title}
+                  className="w-full rounded-xl"
+                  style={{ minHeight: "70vh", border: "1px solid rgba(212,175,55,0.2)" }}
+                />
+              ) : (
+                <div className="p-6 text-center">
+                  <p className="text-sm mb-3" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                    Preview langsung belum didukung untuk tipe file ini.
+                  </p>
+                  <a
+                    href={previewState.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-xl inline-flex items-center"
+                    style={{
+                      background: "rgba(212,175,55,0.14)",
+                      border: "1px solid rgba(212,175,55,0.35)",
+                      color: "#D4AF37",
+                      fontFamily: "var(--font-poppins)",
+                    }}
+                  >
+                    <ExternalLink size={14} className="mr-2" />
+                    Buka Dokumen
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

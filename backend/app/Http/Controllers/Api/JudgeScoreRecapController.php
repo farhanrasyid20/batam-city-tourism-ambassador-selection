@@ -18,6 +18,38 @@ class JudgeScoreRecapController extends Controller
     private const GENDER_VALUES = ['Encik', 'Puan'];
 
     /**
+     * @var array<string, array<int, string>>
+     */
+    private const STAGE_CRITERIA_KEYS = [
+        'Audition' => [
+            'auditionAppearanceGrooming',
+            'auditionConfidenceBodyLanguage',
+            'auditionEthicsPersonality',
+            'auditionBatamTourismKnowledge',
+            'auditionMalayCultureWisdom',
+            'auditionCommunicationPublicSpeaking',
+            'auditionIdeaDeliveryAnswering',
+            'auditionForeignLanguage',
+            'auditionSupportingTalent',
+            'auditionVisionMotivationCommitment',
+        ],
+        'Camp' => [
+            'campDisciplinePunctuality',
+            'campAttitudeEthics',
+            'campTeamwork',
+            'campActivenessInitiative',
+            'campTaskResponsibility',
+        ],
+        'Grand Final' => [
+            'grandFinalAppearancePersonality',
+            'grandFinalTourismCultureInsight',
+            'grandFinalCommunicationPublicSpeaking',
+            'grandFinalIntelligenceAttitude',
+            'grandFinalDutaPotential',
+        ],
+    ];
+
+    /**
      * @param  Collection<int, JudgeScore>  $rows
      * @return array{
      *   judges_count:int,
@@ -53,6 +85,44 @@ class JudgeScoreRecapController extends Controller
             'total' => $total,
             'average' => $average,
         ];
+    }
+
+    /**
+     * @param Collection<int, JudgeScore> $rows
+     * @return array<string, float>
+     */
+    private function summarizeCriteriaAverage(Collection $rows, string $stage): array
+    {
+        $keys = self::STAGE_CRITERIA_KEYS[$stage] ?? [];
+        if (empty($keys)) {
+            return [];
+        }
+
+        $totals = array_fill_keys($keys, 0.0);
+        $counts = array_fill_keys($keys, 0);
+
+        foreach ($rows as $row) {
+            $scoreMap = is_array($row->score) ? $row->score : [];
+            foreach ($keys as $key) {
+                if (! array_key_exists($key, $scoreMap) || ! is_numeric($scoreMap[$key])) {
+                    continue;
+                }
+                $totals[$key] += (float) $scoreMap[$key];
+                $counts[$key] += 1;
+            }
+        }
+
+        $averages = [];
+        foreach ($keys as $key) {
+            $count = (int) ($counts[$key] ?? 0);
+            if ($count <= 0) {
+                $averages[$key] = 0.0;
+                continue;
+            }
+            $averages[$key] = round(((float) $totals[$key]) / $count, 2);
+        }
+
+        return $averages;
     }
 
     /**
@@ -115,6 +185,7 @@ class JudgeScoreRecapController extends Controller
                 'participant_id',
                 'judge_user_id',
                 'stage',
+                'score',
                 'total_score',
                 'submitted_at',
             ]);
@@ -138,11 +209,23 @@ class JudgeScoreRecapController extends Controller
             $audition = $this->summarizeStage(
                 $participantScores->where('stage', 'Audition')->values()
             );
+            $auditionCriteria = $this->summarizeCriteriaAverage(
+                $participantScores->where('stage', 'Audition')->values(),
+                'Audition'
+            );
             $camp = $this->summarizeStage(
                 $participantScores->where('stage', 'Camp')->values()
             );
+            $campCriteria = $this->summarizeCriteriaAverage(
+                $participantScores->where('stage', 'Camp')->values(),
+                'Camp'
+            );
             $grandFinal = $this->summarizeStage(
                 $participantScores->where('stage', 'Grand Final')->values()
+            );
+            $grandFinalCriteria = $this->summarizeCriteriaAverage(
+                $participantScores->where('stage', 'Grand Final')->values(),
+                'Grand Final'
             );
 
             $campWeighted = round($camp['average'] * 0.30, 2);
@@ -158,8 +241,11 @@ class JudgeScoreRecapController extends Controller
                 'participant_name' => $participant->name,
                 'gender' => $profile?->gender,
                 'audition' => $audition,
+                'audition_criteria_average' => $auditionCriteria,
                 'camp' => $camp,
+                'camp_criteria_average' => $campCriteria,
                 'grand_final' => $grandFinal,
+                'grand_final_criteria_average' => $grandFinalCriteria,
                 'audition_total' => $audition['total'],
                 'audition_average' => $audition['average'],
                 'camp_total' => $camp['total'],
@@ -213,10 +299,10 @@ class JudgeScoreRecapController extends Controller
                     'grand_final' => 0.70,
                 ],
                 'max_judges' => $maxJudgeCount,
+                'criteria_keys' => self::STAGE_CRITERIA_KEYS,
             ],
             'data' => $rows,
             'total' => $rows->count(),
         ]);
     }
 }
-

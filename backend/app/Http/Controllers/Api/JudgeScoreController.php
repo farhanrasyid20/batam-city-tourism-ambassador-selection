@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -48,6 +49,9 @@ class JudgeScoreController extends Controller
 
     private function toPayload(JudgeScore $score): array
     {
+        $scoreMap = is_array($score->score) ? $score->score : [];
+        $breakdown = $this->buildScoreBreakdown((string) $score->stage, $scoreMap);
+
         return [
             'id' => $score->id,
             'participant_id' => $score->participant_id,
@@ -57,12 +61,39 @@ class JudgeScoreController extends Controller
             'stage' => $score->stage,
             'score_type' => $score->score_type,
             'score' => $score->score,
+            'score_breakdown' => $breakdown,
             'total_score' => (float) $score->total_score,
             'note' => $score->note,
             'submitted_at' => $score->submitted_at?->toISOString(),
             'created_at' => $score->created_at?->toISOString(),
             'updated_at' => $score->updated_at?->toISOString(),
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $scoreMap
+     * @return array<int, array<string, float|string>>
+     */
+    private function buildScoreBreakdown(string $stage, array $scoreMap): array
+    {
+        $criteria = self::STAGE_CRITERIA[$stage] ?? [];
+        $items = [];
+
+        foreach ($criteria as $criterion) {
+            $key = (string) ($criterion['key'] ?? '');
+            $weight = (float) ($criterion['weight'] ?? 0);
+            $value = (float) ($scoreMap[$key] ?? 0);
+            $weighted = round(($value * $weight) / 100, 2);
+
+            $items[] = [
+                'key' => $key,
+                'weight' => $weight,
+                'value' => $value,
+                'weighted' => $weighted,
+            ];
+        }
+
+        return $items;
     }
 
     /**
@@ -122,6 +153,49 @@ class JudgeScoreController extends Controller
         }
 
         return round($total, 2);
+    }
+
+    /**
+     * @param array<string, mixed> $scoreMap
+     */
+    private function syncScoreDetails(JudgeScore $record, string $stage, string $scoreType, array $scoreMap): void
+    {
+        $criteria = self::STAGE_CRITERIA[$stage] ?? [];
+
+        $record->details()->delete();
+
+        if (empty($criteria)) {
+            return;
+        }
+
+        $now = Carbon::now();
+        $rows = [];
+
+        foreach ($criteria as $criterion) {
+            $key = (string) ($criterion['key'] ?? '');
+            $weight = (float) ($criterion['weight'] ?? 0);
+            $value = (float) ($scoreMap[$key] ?? 0);
+            $weighted = round(($value * $weight) / 100, 2);
+
+            $rows[] = [
+                'judge_score_id' => (int) $record->id,
+                'participant_id' => (string) $record->participant_id,
+                'judge_user_id' => (int) $record->judge_user_id,
+                'stage' => $stage,
+                'score_type' => $scoreType,
+                'criterion_key' => $key,
+                'criterion_weight' => $weight,
+                'criterion_value' => $value,
+                'weighted_value' => $weighted,
+                'submitted_at' => $record->submitted_at,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if (! empty($rows)) {
+            $record->details()->insert($rows);
+        }
     }
 
     public function index(Request $request): JsonResponse
@@ -216,23 +290,29 @@ class JudgeScoreController extends Controller
         $totalScore = $this->calculateTotalByStage($stage, $scoreMap);
         $scoreType = (string) ($payload['score_type'] ?? 'official');
 
-        $record = JudgeScore::query()->updateOrCreate(
-            [
-                'participant_id' => trim((string) $payload['participant_id']),
-                'judge_user_id' => (int) $authUser->id,
-                'stage' => $stage,
-                'score_type' => $scoreType,
-            ],
-            [
-                'participant_name' => isset($payload['participant_name'])
-                    ? trim((string) $payload['participant_name'])
-                    : null,
-                'score' => $scoreMap,
-                'total_score' => $totalScore,
-                'note' => isset($payload['note']) ? trim((string) $payload['note']) : null,
-                'submitted_at' => Carbon::now(),
-            ]
-        );
+        $record = DB::transaction(function () use ($payload, $authUser, $stage, $scoreType, $scoreMap, $totalScore): JudgeScore {
+            $scoreRecord = JudgeScore::query()->updateOrCreate(
+                [
+                    'participant_id' => trim((string) $payload['participant_id']),
+                    'judge_user_id' => (int) $authUser->id,
+                    'stage' => $stage,
+                    'score_type' => $scoreType,
+                ],
+                [
+                    'participant_name' => isset($payload['participant_name'])
+                        ? trim((string) $payload['participant_name'])
+                        : null,
+                    'score' => $scoreMap,
+                    'total_score' => $totalScore,
+                    'note' => isset($payload['note']) ? trim((string) $payload['note']) : null,
+                    'submitted_at' => Carbon::now(),
+                ]
+            );
+
+            $this->syncScoreDetails($scoreRecord, $stage, $scoreType, $scoreMap);
+
+            return $scoreRecord;
+        });
 
         $record->load('judge:id,name');
 
@@ -242,4 +322,3 @@ class JudgeScoreController extends Controller
         ], 201);
     }
 }
-

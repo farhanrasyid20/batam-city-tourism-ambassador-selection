@@ -81,6 +81,18 @@ function mapSelectionStatusToStage(
   return mapBackendAccountStatusToStage(accountStatus, fallback);
 }
 
+function shouldShowAuditionNumber(status: StageStatus): boolean {
+  return ["Verified", "TechnicalMeeting", "Audition", "Rejected"].includes(status);
+}
+
+function normalizeParticipantCode(
+  participantCode?: string | null
+): string {
+  const explicitCode = (participantCode ?? "").trim();
+  if (explicitCode) return explicitCode;
+  return "-";
+}
+
 const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
 
 function resolveParticipantPhotoUrl(photo?: string | null): string | undefined {
@@ -273,6 +285,10 @@ export default function ParticipantDashboardPage() {
 
   const statusValue = participant?.status ?? "Pending";
   const statusInfo = statusConfig[statusValue];
+  const showAuditionNumber = shouldShowAuditionNumber(statusValue);
+  const effectiveParticipantCode = normalizeParticipantCode(
+    participant?.participantCode
+  );
   const stageIndex = getStageIndex(statusValue);
 
   // Tahapan utama proses seleksi.
@@ -388,10 +404,7 @@ export default function ParticipantDashboardPage() {
   }, [setCurrentParticipant, setParticipantList]);
 
   useEffect(() => {
-    if (!revisionStorageKey || typeof window === "undefined") {
-      setResubmittedKeys([]);
-      return;
-    }
+    if (!revisionStorageKey || typeof window === "undefined") return;
 
     const syncFromStorage = () => {
       const saved = window.localStorage.getItem(revisionStorageKey);
@@ -413,9 +426,8 @@ export default function ParticipantDashboardPage() {
     return () => window.removeEventListener("focus", syncFromStorage);
   }, [revisionStorageKey]);
 
-  useEffect(() => {
-    setDismissedAlertId("");
-  }, [participantAlert?.id]);
+  const activeDismissedAlertId =
+    participantAlert?.id && dismissedAlertId === participantAlert.id ? dismissedAlertId : "";
 
   // Panduan penggunaan dashboard untuk peserta baru.
   const usageGuide = [
@@ -562,26 +574,30 @@ export default function ParticipantDashboardPage() {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                No. Audisi
+                {showAuditionNumber ? "No. Audisi" : "Nomor Seleksi"}
               </p>
               <p
                 className="text-sm font-bold"
                 style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
               >
-                {participant.auditionNumber ?? participant.number}
+                {showAuditionNumber
+                  ? (participant.auditionNumber ?? participant.number)
+                  : "Menunggu verifikasi admin"}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                Participant Code
-              </p>
-              <p
-                className="text-sm font-bold"
-                style={{ color: "#22c55e", fontFamily: "var(--font-cinzel)" }}
-              >
-                {participant.participantCode ?? "-"}
-              </p>
-            </div>
+            {showAuditionNumber ? (
+              <div className="text-right">
+                <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                  Kode Peserta
+                </p>
+                <p
+                  className="text-sm font-bold"
+                  style={{ color: "#22c55e", fontFamily: "var(--font-cinzel)" }}
+                >
+                  {effectiveParticipantCode}
+                </p>
+              </div>
+            ) : null}
             <div
               className="px-3 py-1 rounded-full text-xs capitalize font-semibold"
               style={{
@@ -596,7 +612,7 @@ export default function ParticipantDashboardPage() {
         </div>
       ) : null}
 
-      {participantAlert && dismissedAlertId !== participantAlert.id ? (
+      {participantAlert && activeDismissedAlertId !== participantAlert.id ? (
         <div
           className="mb-6 rounded-2xl p-4"
           style={{
@@ -901,7 +917,13 @@ export default function ParticipantDashboardPage() {
                       fontFamily: "var(--font-cinzel)",
                     }}
                   >
-                    {state === "done" ? "âœ“" : state === "failed" ? "âœ—" : index + 1}
+                    {state === "done" ? (
+                      <CheckCircle size={14} />
+                    ) : state === "failed" ? (
+                      <X size={14} />
+                    ) : (
+                      index + 1
+                    )}
                   </div>
                   <div className="flex-1">
                     <p
@@ -944,7 +966,9 @@ export default function ParticipantDashboardPage() {
                 border: `1px solid ${doc.done ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.2)"}`,
               }}
             >
-              <div className="text-base mb-1">{doc.done ? "âœ…" : "âŒ"}</div>
+              <div className="text-base mb-1 flex justify-center">
+                {doc.done ? <CheckCircle size={16} /> : <X size={16} />}
+              </div>
               <p className="text-xs" style={{ color: doc.done ? "#22c55e" : "#ef4444", fontFamily: "var(--font-poppins)" }}>
                 {doc.label}
               </p>

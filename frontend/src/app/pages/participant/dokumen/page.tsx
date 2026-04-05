@@ -5,13 +5,11 @@ import dynamic from "next/dynamic";
 import { AlertCircle, CheckCircle, FileText } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
-import { GoldButton } from "../../../../components/ui/GoldButton";
 import DocumentUploadCard from "../components/DocumentUploadCard";
 import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 import {
   fetchParticipantDocuments,
-  submitParticipantDocuments,
   uploadParticipantDocument,
   type ParticipantDocumentsResponse,
 } from "../../../../lib/auth-api";
@@ -43,11 +41,13 @@ export default function ParticipantDocumentsPage() {
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadFileInfo | null>>({});
   const [resubmittedKeys, setResubmittedKeys] = useState<string[]>([]);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
-  const [submittingToAdmin, setSubmittingToAdmin] = useState(false);
   const [isSyncingDocuments, setIsSyncingDocuments] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState("");
   const [noticeType, setNoticeType] = useState<"success" | "error">("success");
   const [serverDoneKeys, setServerDoneKeys] = useState<string[]>([]);
+  const [serverDocumentState, setServerDocumentState] = useState<
+    Record<string, { status: "submitted" | "verified" | "revision_required" | "missing"; note?: string }>
+  >({});
   const apiOrigin = API_BASE_URL.replace(/\/api$/i, "");
   const toAssetUrl = useCallback((url?: string) => {
     if (!url) return undefined;
@@ -64,10 +64,15 @@ export default function ParticipantDocumentsPage() {
   const allDocuments: DocumentItem[] = [...requiredDocuments, ...optionalDocuments];
   const verificationIssues = participant?.verificationIssues ?? [];
   const revisionStorageKey = participant ? `participant-revision-uploads:${participant.id}` : "";
-  const documentIssueMap = verificationIssues.reduce<Record<string, string>>((acc, issue) => {
+  const documentIssueMap = Object.entries(serverDocumentState).reduce<Record<string, string>>((acc, [key, value]) => {
+    if (value.status === "revision_required") {
+      acc[key] = value.note ?? "Dokumen ini perlu diperbaiki sesuai arahan admin.";
+    }
+    return acc;
+  }, verificationIssues.reduce<Record<string, string>>((acc, issue) => {
     acc[issue.target] = issue.message;
     return acc;
-  }, {});
+  }, {}));
   const revisedIssueCount = verificationIssues.filter((issue) => resubmittedKeys.includes(issue.target)).length;
   const allIssuesReuploaded = verificationIssues.length > 0 && revisedIssueCount === verificationIssues.length;
 
@@ -77,6 +82,22 @@ export default function ParticipantDocumentsPage() {
   };
 
   const syncParticipantDocumentState = useCallback((data: ParticipantDocumentsResponse["data"]) => {
+    setServerDocumentState(
+      data.documents.reduce<Record<string, { status: "submitted" | "verified" | "revision_required" | "missing"; note?: string }>>(
+        (acc, doc) => {
+          acc[doc.key] = {
+            status:
+              doc.status === "verified" || doc.status === "revision_required" || doc.status === "missing"
+                ? doc.status
+                : "submitted",
+            note: doc.note ?? undefined,
+          };
+          return acc;
+        },
+        {}
+      )
+    );
+
     const normalizedDocs =
       data.documents?.map((doc) => ({
         key: doc.key,
@@ -95,6 +116,12 @@ export default function ParticipantDocumentsPage() {
       data.documents
         .filter((doc) => doc.status === "submitted" || doc.status === "verified")
         .map((doc) => doc.key)
+    );
+
+    setResubmittedKeys((prev) =>
+      prev.filter((key) =>
+        data.documents.some((doc) => doc.key === key && doc.status === "submitted")
+      )
     );
 
     setUploadedFiles((prev) => {
@@ -183,28 +210,17 @@ export default function ParticipantDocumentsPage() {
 
     try {
       const parsed = JSON.parse(saved);
-      setResubmittedKeys(Array.isArray(parsed) ? parsed : []);
+      const keys = Array.isArray(parsed) ? parsed : [];
+      const stillWaitingKeys = keys.filter((key) => serverDocumentState[key]?.status === "submitted");
+      setResubmittedKeys(stillWaitingKeys);
     } catch {
       setResubmittedKeys([]);
     }
-  }, [revisionStorageKey]);
-
-  // Menentukan dokumen sudah lengkap berdasarkan data profil peserta.
-  const inferredDoneFromProfile = (key: string) => {
-    switch (key) {
-      case "identityCard":
-        return Boolean(participant?.nationalId);
-      case "closeUpPhoto":
-      case "fullBodyPhoto":
-        return Boolean(participant?.photo);
-      default:
-        return false;
-    }
-  };
+  }, [revisionStorageKey, serverDocumentState]);
 
   // Menentukan status selesai per dokumen (gabungan data existing + upload lokal).
   const isDone = (key: string) =>
-    Boolean(uploadedFiles[key]) || serverDoneKeys.includes(key) || inferredDoneFromProfile(key);
+    Boolean(uploadedFiles[key]) || serverDoneKeys.includes(key);
 
   // Handler upload file per jenis dokumen.
   const handleFileChange = async (key: string, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,30 +267,6 @@ export default function ParticipantDocumentsPage() {
 
     setNoticeType("success");
     setNoticeMessage(`Berkas ${file.name} berhasil diupload.`);
-  };
-
-  const handleSubmitToAdmin = async () => {
-    const token = getParticipantAuthSession()?.token;
-    if (!token) {
-      setNoticeType("error");
-      setNoticeMessage("Sesi login tidak ditemukan. Silakan login ulang.");
-      return;
-    }
-
-    setSubmittingToAdmin(true);
-    try {
-      const response = await submitParticipantDocuments(token);
-      syncParticipantDocumentState(response.data);
-      setNoticeType("success");
-      setNoticeMessage(
-        `Berkas berhasil dikirim ke admin. No. Audisi Anda: ${response.data.audition_number ?? response.data.participant_number ?? "-"}`
-      );
-    } catch (error) {
-      setNoticeType("error");
-      setNoticeMessage(getReadableApiError(error));
-    } finally {
-      setSubmittingToAdmin(false);
-    }
   };
 
   // Ringkasan progress upload dokumen wajib.
@@ -445,7 +437,8 @@ export default function ParticipantDocumentsPage() {
               uploaded={uploadedFiles[item.key]}
               revisionRequired={Boolean(documentIssueMap[item.key])}
               resubmitted={resubmittedKeys.includes(item.key)}
-              reviewNote={documentIssueMap[item.key]}
+              reviewNote={serverDocumentState[item.key]?.note ?? documentIssueMap[item.key]}
+              serverStatus={serverDocumentState[item.key]?.status}
               onFileChange={handleFileChange}
             />
           ))}
@@ -470,38 +463,13 @@ export default function ParticipantDocumentsPage() {
               uploaded={uploadedFiles[item.key]}
               revisionRequired={Boolean(documentIssueMap[item.key])}
               resubmitted={resubmittedKeys.includes(item.key)}
-              reviewNote={documentIssueMap[item.key]}
+              reviewNote={serverDocumentState[item.key]?.note ?? documentIssueMap[item.key]}
+              serverStatus={serverDocumentState[item.key]?.status}
               onFileChange={handleFileChange}
             />
           ))}
         </div>
       </div>
-
-      <GoldCard className="mt-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <p className="text-sm font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
-              Submit Berkas ke Admin
-            </p>
-            <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-              No. Audisi dibuat otomatis setelah berkas wajib lengkap dan Anda submit.
-            </p>
-            {participant?.eliminatedInAudition ? (
-              <p className="text-xs mt-1" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
-                Anda tereliminasi di tahap audisi, sehingga proses tidak dapat dilanjutkan.
-              </p>
-            ) : null}
-          </div>
-          <GoldButton
-            variant="primary"
-            size="sm"
-            onClick={handleSubmitToAdmin}
-            disabled={submittingToAdmin || completedRequired !== totalRequired || Boolean(participant?.eliminatedInAudition)}
-          >
-            {submittingToAdmin ? "Mengirim..." : "Kirim Berkas ke Admin"}
-          </GoldButton>
-        </div>
-      </GoldCard>
 
       {/* Toast notifikasi upload berhasil */}
       {noticeMessage ? (
