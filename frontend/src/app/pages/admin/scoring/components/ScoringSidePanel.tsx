@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import GoldCard from "../../../../../components/dashboard/GoldCard";
 import {
   getAdminScoreStageLabel,
+  type CriteriaItem,
   type AdminScoreStage,
   type Judge,
   type Participant,
@@ -16,7 +17,6 @@ import {
 
 type NoteDraft = {
   stage: ParticipantNoteStageKey;
-  authorName: string;
   authorRole: ParticipantNoteAuthorRole;
   content: string;
 };
@@ -25,29 +25,81 @@ type ScoringSidePanelProps = {
   activeStage: AdminScoreStage;
   selectedParticipant: Participant | null;
   judgesForStage: Judge[];
+  activeScoreCriteria: CriteriaItem[];
+  selectedJudgeId: string;
+  selectedJudgeName: string;
+  isScoreLocked: boolean;
+  scoreLockedAt?: string;
+  scoreInputs: Record<string, number>;
+  scoreTotal: number;
+  isScoreComplete: boolean;
+  isScoreSaving: boolean;
   availableNoteStages: ParticipantNoteStageKey[];
   resolvedNoteStage: ParticipantNoteStageKey;
   noteDraft: NoteDraft;
+  resolvedNoteAuthorName: string;
   visibleNotes: ParticipantStageNote[];
   formatDateTime: (value: string) => string;
   onCloseParticipant: () => void;
+  onSelectJudge: (judgeId: string) => void;
+  onScoreInputChange: (criterionKey: string, rawValue: string) => void;
+  onSaveScore: () => void;
   onSaveNote: () => void;
   onNoteDraftChange: (updater: (draft: NoteDraft) => NoteDraft) => void;
+};
+
+const toTitleCase = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+const getDisplayParticipantName = (participant: Participant) => {
+  const cleanedNickname = (participant.nickname ?? "")
+    .trim()
+    .replace(/^(encik|puan)\s+/i, "");
+  const cleanedName = participant.name
+    .trim()
+    .replace(/^(encik|puan)\s+/i, "");
+  const baseRaw = cleanedNickname || cleanedName.split(/\s+/)[0] || "Peserta";
+  const baseName = toTitleCase(baseRaw);
+  return `${participant.gender} ${baseName}`.trim();
 };
 
 export default function ScoringSidePanel({
   activeStage,
   selectedParticipant,
   judgesForStage,
+  activeScoreCriteria,
+  selectedJudgeId,
+  selectedJudgeName,
+  isScoreLocked,
+  scoreLockedAt,
+  scoreInputs,
+  scoreTotal,
+  isScoreComplete,
+  isScoreSaving,
   availableNoteStages,
   resolvedNoteStage,
   noteDraft,
+  resolvedNoteAuthorName,
   visibleNotes,
   formatDateTime,
   onCloseParticipant,
+  onSelectJudge,
+  onScoreInputChange,
+  onSaveScore,
   onSaveNote,
   onNoteDraftChange,
 }: ScoringSidePanelProps) {
+  const handleScoreInputWheel = (
+    event: React.WheelEvent<HTMLInputElement>,
+  ) => {
+    // Agar gesture dua jari tetap memindahkan scroll panel, bukan mengunci di input angka.
+    event.currentTarget.blur();
+  };
+
   return (
     <GoldCard className="h-fit">
       {selectedParticipant ? (
@@ -80,7 +132,7 @@ export default function ScoringSidePanel({
                     fontFamily: "var(--font-poppins)",
                   }}
                 >
-                  {selectedParticipant.name}
+                  {getDisplayParticipantName(selectedParticipant)}
                 </p>
                 <p
                   className="text-xs"
@@ -105,6 +157,147 @@ export default function ScoringSidePanel({
           </div>
 
           <div className="space-y-3 mb-5">
+            {activeScoreCriteria.length > 0 ? (
+              <div
+                className="p-3 rounded-2xl space-y-3"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(212,175,55,0.22)",
+                }}
+              >
+                <p
+                  className="text-xs font-semibold"
+                  style={{
+                    color: "#D4AF37",
+                    fontFamily: "var(--font-poppins)",
+                  }}
+                >
+                  Input Nilai Resmi (Admin sebagai Juri)
+                </p>
+
+                <select
+                  value={selectedJudgeId}
+                  onChange={(event) => onSelectJudge(event.target.value)}
+                  className="w-full px-3 py-3 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "#111",
+                    border: "1px solid rgba(212,175,55,0.25)",
+                    color: "#F5E6C8",
+                    fontFamily: "var(--font-poppins)",
+                  }}
+                >
+                  <option value="">Pilih akun juri</option>
+                  {judgesForStage.map((judge) => (
+                    <option key={judge.id} value={judge.id}>
+                      {judge.name} - {judge.title}
+                    </option>
+                  ))}
+                </select>
+
+                <div
+                  className="space-y-2 max-h-64 overflow-y-auto pr-1 dashboard-main-scroll"
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                >
+                  {activeScoreCriteria.map((criterion) => (
+                    <label
+                      key={criterion.key}
+                      className="block text-xs"
+                      style={{
+                        color: "#BDBDBD",
+                        fontFamily: "var(--font-poppins)",
+                      }}
+                    >
+                      <span className="block mb-1">{criterion.label}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        disabled={isScoreLocked || isScoreSaving}
+                        onWheel={handleScoreInputWheel}
+                        value={
+                          Number.isFinite(Number(scoreInputs[criterion.key]))
+                            ? String(scoreInputs[criterion.key] ?? 0)
+                            : ""
+                        }
+                        onChange={(event) =>
+                          onScoreInputChange(criterion.key, event.target.value)
+                        }
+                        className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                        style={{
+                          background: "#111",
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          color: "#F5E6C8",
+                          fontFamily: "var(--font-poppins)",
+                          opacity: isScoreLocked ? 0.6 : 1,
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <p
+                    className="text-xs"
+                    style={{
+                      color: "#888",
+                      fontFamily: "var(--font-poppins)",
+                    }}
+                  >
+                    {selectedJudgeName
+                      ? `Akun aktif: ${selectedJudgeName}`
+                      : "Pilih akun juri untuk menyimpan nilai."}
+                  </p>
+                  <p
+                    className="text-sm font-semibold"
+                    style={{
+                      color: "#F5E6C8",
+                      fontFamily: "var(--font-cinzel)",
+                    }}
+                  >
+                    Total: {scoreTotal.toFixed(2)}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onSaveScore}
+                  disabled={!selectedJudgeId || !isScoreComplete || isScoreSaving || isScoreLocked}
+                  className="w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    background:
+                      selectedJudgeId && isScoreComplete && !isScoreSaving && !isScoreLocked
+                        ? "linear-gradient(135deg, #F5D06F, #D4AF37)"
+                        : "rgba(255,255,255,0.06)",
+                    color:
+                      selectedJudgeId && isScoreComplete && !isScoreSaving && !isScoreLocked
+                        ? "#0F0F0F"
+                        : "#777",
+                    border: `1px solid ${
+                      selectedJudgeId && isScoreComplete && !isScoreSaving && !isScoreLocked
+                        ? "transparent"
+                        : "rgba(255,255,255,0.08)"
+                    }`,
+                    fontFamily: "var(--font-poppins)",
+                  }}
+                >
+                  {isScoreSaving
+                    ? "Menyimpan Nilai..."
+                    : isScoreLocked
+                      ? "Nilai Sudah Terkunci"
+                      : "Simpan Nilai Tahap Ini"}
+                </button>
+
+                {isScoreLocked ? (
+                  <p
+                    className="text-[11px]"
+                    style={{ color: "#F97316", fontFamily: "var(--font-poppins)" }}
+                  >
+                    Nilai juri ini sudah disubmit{scoreLockedAt ? ` (${formatDateTime(scoreLockedAt)})` : ""}. Pilih akun juri lain jika ingin input nilai.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             {/* Ubah dropdown ini kalau nanti urutan atau pilihan tahap catatan ingin diatur berbeda. */}
             <select
               value={resolvedNoteStage}
@@ -135,28 +328,22 @@ export default function ScoringSidePanel({
               ))}
             </select>
 
-            {/* Input ini dipakai untuk nama juri/panitia/admin yang memberi catatan. */}
-            <input
-              value={noteDraft.authorName}
-              onChange={(event) =>
-                onNoteDraftChange((prev) => ({
-                  ...prev,
-                  authorName: event.target.value,
-                }))
-              }
-              placeholder={
-                resolvedNoteStage === "Technical Meeting"
-                  ? "Contoh: Rika - Panitia Registrasi"
-                  : "Contoh: Bpk. Hendri Kusuma, S.Par"
-              }
-              className="w-full px-3 py-3 rounded-xl text-sm outline-none"
+            <div
+              className="w-full px-3 py-3 rounded-xl text-sm"
               style={{
                 background: "#111",
                 border: "1px solid rgba(212,175,55,0.25)",
                 color: "#F5E6C8",
                 fontFamily: "var(--font-poppins)",
               }}
-            />
+            >
+              <p className="text-[11px]" style={{ color: "#888" }}>
+                Nama penulis catatan (otomatis)
+              </p>
+              <p className="text-sm font-semibold" style={{ color: "#F5E6C8" }}>
+                {resolvedNoteAuthorName || "Pilih akun juri terlebih dahulu"}
+              </p>
+            </div>
 
             <select
               value={
@@ -215,19 +402,19 @@ export default function ScoringSidePanel({
             <button
               type="button"
               onClick={onSaveNote}
-              disabled={!noteDraft.authorName.trim() || !noteDraft.content.trim()}
+              disabled={!resolvedNoteAuthorName || !noteDraft.content.trim()}
               className="w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all"
               style={{
                 background:
-                  noteDraft.authorName.trim() && noteDraft.content.trim()
+                  resolvedNoteAuthorName && noteDraft.content.trim()
                     ? "linear-gradient(135deg, #F5D06F, #D4AF37)"
                     : "rgba(255,255,255,0.06)",
                 color:
-                  noteDraft.authorName.trim() && noteDraft.content.trim()
+                  resolvedNoteAuthorName && noteDraft.content.trim()
                     ? "#0F0F0F"
                     : "#777",
                 border: `1px solid ${
-                  noteDraft.authorName.trim() && noteDraft.content.trim()
+                  resolvedNoteAuthorName && noteDraft.content.trim()
                     ? "transparent"
                     : "rgba(255,255,255,0.08)"
                 }`,
@@ -238,7 +425,10 @@ export default function ScoringSidePanel({
             </button>
           </div>
 
-          <div className="space-y-4 max-h-[560px] overflow-y-auto pr-1">
+          <div
+            className="space-y-4 max-h-[560px] overflow-y-auto pr-1 dashboard-main-scroll"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
             {availableNoteStages.map((stage) => {
               const stageNotes = visibleNotes.filter((note) => note.stage === stage);
 

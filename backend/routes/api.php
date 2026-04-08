@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AuditionPromotionController;
 use App\Http\Controllers\Api\ExportReportController;
 use App\Http\Controllers\Api\JudgeNoteController;
 use App\Http\Controllers\Api\JudgeParticipantController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Api\JudgeScoreController;
 use App\Http\Controllers\Api\JudgeScoreRecapController;
 use App\Http\Controllers\Api\ParticipantBiodataController;
 use App\Http\Controllers\Api\ParticipantDocumentController;
+use App\Http\Controllers\Api\ParticipantResourceController;
 use App\Http\Controllers\Api\PublicFinalistController;
 use App\Http\Controllers\Api\PublicVoteAdminController;
 use App\Http\Controllers\Api\UserManagementController;
@@ -15,8 +17,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
-    Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/me', [AuthController::class, 'me'])->middleware('jwt.auth');
     Route::patch('/profile', [AuthController::class, 'updateProfile'])->middleware('jwt.auth');
@@ -25,13 +25,10 @@ Route::prefix('auth')->group(function (): void {
 });
 
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
-Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password/request-otp', [AuthController::class, 'requestPasswordResetOtp']);
-Route::post('/forgot-password/verify-otp', [AuthController::class, 'verifyPasswordResetOtp']);
 Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordDirect']);
 Route::get('/public/finalists', [PublicFinalistController::class, 'index']);
+Route::get('/public/participant-resources', [ParticipantResourceController::class, 'showPublic']);
 
 Route::prefix('participant')->middleware(['jwt.auth', 'role:participant'])->group(function (): void {
     Route::get('/biodata', [ParticipantBiodataController::class, 'show']);
@@ -53,7 +50,10 @@ Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])
     Route::patch('/vote/publication', [PublicVoteAdminController::class, 'updatePublication']);
     Route::post('/vote/candidates/{participantUserId}', [PublicVoteAdminController::class, 'updateCandidate']);
     Route::patch('/vote/jury', [PublicVoteAdminController::class, 'updateJuryWinners']);
+    Route::get('/scoring/audition/top20-preview', [AuditionPromotionController::class, 'preview']);
+    Route::post('/scoring/audition/top20-apply', [AuditionPromotionController::class, 'apply']);
     Route::post('/exports/upload', [ExportReportController::class, 'upload']);
+    Route::post('/participant-resources', [ParticipantResourceController::class, 'update']);
 });
 
 Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])->group(function (): void {
@@ -63,7 +63,10 @@ Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])
     Route::get('/scores/recap', [JudgeScoreRecapController::class, 'index']);
 });
 
-Route::prefix('judge')->middleware(['jwt.auth', 'role:judge'])->group(function (): void {
+Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])->group(function (): void {
     Route::post('/notes', [JudgeNoteController::class, 'store']);
+});
+
+Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])->group(function (): void {
     Route::post('/scores', [JudgeScoreController::class, 'store']);
 });

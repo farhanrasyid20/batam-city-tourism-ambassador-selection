@@ -7,7 +7,7 @@ import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import VerificationDocumentLink, { getVerificationDocumentMeta } from "./components/VerificationDocumentLink";
 import { useApp } from "../../../../context/AppContext";
-import { updateParticipantDocumentReviews } from "../../../../lib/auth-api";
+import { updateParticipantDocumentReviews, updateParticipantSelectionStatus } from "../../../../lib/auth-api";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 import { resolveApiAssetUrl } from "../../../../lib/api";
 import {
@@ -121,7 +121,9 @@ export default function AdminVerificationPage() {
   const [noteDraftById, setNoteDraftById] = useState<Record<string, string>>({});
   const [openRejectInputId, setOpenRejectInputId] = useState<string | null>(null);
   const [savingDocumentsFor, setSavingDocumentsFor] = useState<string | null>(null);
+  const [savingVerificationFor, setSavingVerificationFor] = useState<string | null>(null);
   const [saveDocumentNotice, setSaveDocumentNotice] = useState<Record<string, { type: "success" | "error"; message: string }>>({});
+  const [saveVerificationNotice, setSaveVerificationNotice] = useState<Record<string, { type: "success" | "error"; message: string }>>({});
   const [previewState, setPreviewState] = useState<{
     open: boolean;
     href: string;
@@ -167,8 +169,40 @@ export default function AdminVerificationPage() {
   const activeList = tabs.find((tab) => tab.key === resolvedActiveTab)?.list ?? [];
   const selectedParticipant = participantList.find((participant) => participant.id === selectedParticipantId) ?? null;
 
-  const updateParticipantVerification = (participantId: string, nextStatus: VerificationStatus, note?: string) => {
+  const updateParticipantVerification = async (participantId: string, nextStatus: VerificationStatus, note?: string) => {
     const cleanNote = note?.trim() ?? "";
+    const token = getParticipantAuthSession()?.token;
+    const participantUserId = Number(participantId.replace("P_API_", ""));
+
+    if (!token || Number.isNaN(participantUserId)) {
+      setSaveVerificationNotice((prev) => ({
+        ...prev,
+        [participantId]: { type: "error", message: "Sesi admin tidak valid. Silakan login ulang." },
+      }));
+      return;
+    }
+
+    const backendStatus =
+      nextStatus === "Verified"
+        ? "Verified"
+        : nextStatus === "Rejected"
+        ? "Rejected"
+        : "Pending";
+
+    setSavingVerificationFor(participantId);
+    try {
+      await updateParticipantSelectionStatus(token, participantUserId, {
+        selection_status: backendStatus,
+        selection_status_note: cleanNote || null,
+      });
+    } catch {
+      setSaveVerificationNotice((prev) => ({
+        ...prev,
+        [participantId]: { type: "error", message: "Gagal simpan status verifikasi ke backend." },
+      }));
+      setSavingVerificationFor(null);
+      return;
+    }
 
     const updateOne = (participant: Participant) => {
       if (participant.id !== participantId) return participant;
@@ -198,6 +232,11 @@ export default function AdminVerificationPage() {
     };
 
     updateParticipantFields(participantId, updateOne);
+    setSaveVerificationNotice((prev) => ({
+      ...prev,
+      [participantId]: { type: "success", message: "Status verifikasi berhasil disimpan ke backend." },
+    }));
+    setSavingVerificationFor(null);
     setOpenRejectInputId(null);
   };
 
@@ -477,19 +516,26 @@ export default function AdminVerificationPage() {
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    <GoldButton variant="primary" size="sm" onClick={() => updateParticipantVerification(participant.id, "Verified", noteDraftById[participant.id])}>
+                    <GoldButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => updateParticipantVerification(participant.id, "Verified", noteDraftById[participant.id])}
+                      disabled={savingVerificationFor === participant.id}
+                    >
                       <CheckCircle size={14} />
-                      Verifikasi
+                      {savingVerificationFor === participant.id ? "Menyimpan..." : "Verifikasi"}
                     </GoldButton>
                     <button
                       onClick={() => updateParticipantVerification(participant.id, "NeedsRevision", noteDraftById[participant.id])}
+                      disabled={savingVerificationFor === participant.id}
                       className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
                       style={{
                         background: "rgba(249,115,22,0.12)",
                         border: "1px solid rgba(249,115,22,0.3)",
                         color: "#f97316",
                         fontFamily: "var(--font-poppins)",
-                        cursor: "pointer",
+                        cursor: savingVerificationFor === participant.id ? "not-allowed" : "pointer",
+                        opacity: savingVerificationFor === participant.id ? 0.7 : 1,
                       }}
                       type="button"
                     >
@@ -498,13 +544,15 @@ export default function AdminVerificationPage() {
                     </button>
                     <button
                       onClick={() => setOpenRejectInputId((prev) => (prev === participant.id ? null : participant.id))}
+                      disabled={savingVerificationFor === participant.id}
                       className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
                       style={{
                         background: "rgba(239,68,68,0.1)",
                         border: "1px solid rgba(239,68,68,0.3)",
                         color: "#ef4444",
                         fontFamily: "var(--font-poppins)",
-                        cursor: "pointer",
+                        cursor: savingVerificationFor === participant.id ? "not-allowed" : "pointer",
+                        opacity: savingVerificationFor === participant.id ? 0.7 : 1,
                       }}
                       type="button"
                     >
@@ -512,6 +560,17 @@ export default function AdminVerificationPage() {
                       Tolak
                     </button>
                   </div>
+                  {saveVerificationNotice[participant.id] ? (
+                    <p
+                      className="text-xs mt-2"
+                      style={{
+                        color: saveVerificationNotice[participant.id].type === "success" ? "#22c55e" : "#ef4444",
+                        fontFamily: "var(--font-poppins)",
+                      }}
+                    >
+                      {saveVerificationNotice[participant.id].message}
+                    </p>
+                  ) : null}
                 </div>
 
                 {isSelected ? (
@@ -561,6 +620,12 @@ export default function AdminVerificationPage() {
                           Nama Panggilan: {participant.nickname || "-"}
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Agama: {participant.religion || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Status Saat Ini: {participant.currentStatus || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                           Instagram: {toSocialHandle(participant.instagram)}
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
@@ -574,6 +639,12 @@ export default function AdminVerificationPage() {
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                           No. HP Orang Tua/Wali: {participant.parentPhone || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Nama Ayah: {participant.fatherName || "-"}
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                          Nama Ibu: {participant.motherName || "-"}
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                           Pekerjaan: {participant.occupation || "-"}
@@ -950,12 +1021,14 @@ export default function AdminVerificationPage() {
                       <button
                         onClick={() => updateParticipantVerification(participant.id, "Rejected", noteDraftById[participant.id])}
                         className="px-4 py-2 rounded-xl text-xs font-semibold"
+                        disabled={savingVerificationFor === participant.id}
                         style={{
                           background: "rgba(239,68,68,0.15)",
                           border: "1px solid rgba(239,68,68,0.4)",
                           color: "#ef4444",
                           fontFamily: "var(--font-poppins)",
-                          cursor: "pointer",
+                          cursor: savingVerificationFor === participant.id ? "not-allowed" : "pointer",
+                          opacity: savingVerificationFor === participant.id ? 0.7 : 1,
                         }}
                         type="button"
                       >

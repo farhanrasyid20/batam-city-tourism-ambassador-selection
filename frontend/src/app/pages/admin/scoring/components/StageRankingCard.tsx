@@ -8,6 +8,7 @@ import GoldCard from "../../../../../components/dashboard/GoldCard";
 type RankedParticipant = {
   id: string;
   name: string;
+  nickname?: string;
   number: string;
   gender: string;
   photo: string;
@@ -20,6 +21,25 @@ type StageRankingCardProps = {
   rankings: RankedParticipant[];
   selectedParticipantId: string | null;
   onSelectParticipant: (participantId: string) => void;
+};
+
+const toTitleCase = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+const getDisplayParticipantName = (participant: RankedParticipant) => {
+  const cleanedNickname = (participant.nickname ?? "")
+    .trim()
+    .replace(/^(encik|puan)\s+/i, "");
+  const cleanedName = participant.name
+    .trim()
+    .replace(/^(encik|puan)\s+/i, "");
+  const baseRaw = cleanedNickname || cleanedName.split(/\s+/)[0] || "Peserta";
+  const baseName = toTitleCase(baseRaw);
+  return `${participant.gender} ${baseName}`.trim();
 };
 
 export default function StageRankingCard({
@@ -114,7 +134,7 @@ export default function StageRankingCard({
                     fontFamily: "var(--font-poppins)",
                   }}
                 >
-                  {participant.name}
+                  {getDisplayParticipantName(participant)}
                 </p>
                 <p
                   className="text-xs"

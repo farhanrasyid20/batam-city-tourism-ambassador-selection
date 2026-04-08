@@ -4,8 +4,10 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import { getParticipantAuthSession } from "../../lib/auth-storage";
 
 const PUBLIC_ROUTES = ["/", "/about", "/news", "/vote", "/faq", "/feedback"];
+const AUTH_ROUTE_PREFIX = "/auth";
 
 function isPublicRoute(pathname: string): boolean {
   if (pathname === "/") return true;
@@ -20,6 +22,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const showPublicLayout = isPublicRoute(pathname);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const isProtectedRoute =
+      !isPublicRoute(pathname) && !pathname.startsWith(AUTH_ROUTE_PREFIX);
+
+    if (!isProtectedRoute) return;
+
+    const checkSessionExpiry = () => {
+      const hasStoredSession = Boolean(window.localStorage.getItem("participant-auth-session"));
+      const session = getParticipantAuthSession();
+
+      if (hasStoredSession && !session) {
+        const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+        window.location.replace(`/auth/login?next=${next}`);
+      }
+    };
+
+    checkSessionExpiry();
+    const timer = window.setInterval(checkSessionExpiry, 15000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [pathname]);
+
   return (
     <>
       {showPublicLayout ? <Navbar /> : null}
@@ -28,4 +56,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </>
   );
 }
-

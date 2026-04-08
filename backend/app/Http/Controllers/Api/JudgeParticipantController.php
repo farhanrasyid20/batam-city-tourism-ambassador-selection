@@ -19,8 +19,12 @@ class JudgeParticipantController extends Controller
         'formS04' => 'Formulir S-04',
     ];
 
-    private function mapSelectionStage(?string $selectionStatus): string
+    private function mapSelectionStage(?string $selectionStatus, bool $eliminatedInAudition = false): string
     {
+        if ($eliminatedInAudition || $selectionStatus === 'Rejected') {
+            return 'Audition';
+        }
+
         return match ($selectionStatus) {
             'Audition' => 'Audition',
             'Top20', 'PreCamp' => 'Pre Camp',
@@ -37,7 +41,7 @@ class JudgeParticipantController extends Controller
         $participants = User::query()
             ->where('role', 'participant')
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,nickname,national_id,birth_place,birth_date,domicile_address,ktp_address,height_cm,weight_kg,shirt_size,chest_circumference_cm,waist_circumference_cm,hip_circumference_cm,pants_size,shoe_size,instagram,tiktok,parent_phone,photo,education_category,education_institution,education_degree,education_major,occupation,skills,hobbies,languages,vision,mission,experience,achievement,selection_status,submitted_to_admin,submitted_to_admin_at',
+                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,nickname,religion,national_id,current_status,birth_place,birth_date,domicile_address,ktp_address,height_cm,weight_kg,shirt_size,chest_circumference_cm,waist_circumference_cm,hip_circumference_cm,pants_size,shoe_size,instagram,tiktok,parent_phone,father_name,mother_name,photo,education_category,education_institution,education_degree,education_major,occupation,skills,hobbies,languages,vision,mission,experience,achievement,selection_status,selection_status_note,eliminated_in_audition,eliminated_at,submitted_to_admin,submitted_to_admin_at',
                 'participantDocuments:user_id,document_key,label,is_required,status,original_name,size_bytes,mime_type,path,url,uploaded_at,note',
             ])
             ->orderByDesc('id')
@@ -46,6 +50,7 @@ class JudgeParticipantController extends Controller
         $data = $participants->map(function (User $user): array {
             $profile = $user->participantProfile;
             $selectionStatus = $profile?->selection_status;
+            $eliminatedInAudition = (bool) $profile?->eliminated_in_audition;
             $documents = $user->participantDocuments
                 ->sortBy('document_key')
                 ->map(function ($doc): array {
@@ -105,7 +110,9 @@ class JudgeParticipantController extends Controller
                 'participant_code' => $profile?->participant_code,
                 'gender' => $profile?->gender,
                 'nickname' => $profile?->nickname,
+                'religion' => $profile?->religion,
                 'national_id' => $profile?->national_id,
+                'current_status' => $profile?->current_status,
                 'birth_place' => $profile?->birth_place,
                 'birth_date' => $profile?->birth_date?->toDateString(),
                 'domicile_address' => $profile?->domicile_address,
@@ -121,6 +128,8 @@ class JudgeParticipantController extends Controller
                 'instagram' => $profile?->instagram,
                 'tiktok' => $profile?->tiktok,
                 'parent_phone' => $profile?->parent_phone,
+                'father_name' => $profile?->father_name,
+                'mother_name' => $profile?->mother_name,
                 'photo' => $profile?->photo,
                 'education_category' => $profile?->education_category,
                 'education_institution' => $profile?->education_institution,
@@ -135,7 +144,10 @@ class JudgeParticipantController extends Controller
                 'experience' => $profile?->experience,
                 'achievement' => $profile?->achievement,
                 'selection_status' => $selectionStatus,
-                'selection_stage' => $this->mapSelectionStage($selectionStatus),
+                'selection_status_note' => $profile?->selection_status_note,
+                'selection_stage' => $this->mapSelectionStage($selectionStatus, $eliminatedInAudition),
+                'eliminated_in_audition' => $eliminatedInAudition,
+                'eliminated_at' => $profile?->eliminated_at?->toIso8601String(),
                 'submitted_to_admin' => (bool) $profile?->submitted_to_admin,
                 'submitted_to_admin_at' => $profile?->submitted_to_admin_at?->toIso8601String(),
                 'documents' => $documents,

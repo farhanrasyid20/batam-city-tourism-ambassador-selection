@@ -17,10 +17,16 @@ class PublicFinalistController extends Controller
             ->whereHas('participantProfile', function ($query): void {
                 // Untuk kebutuhan halaman vote publik, tampilkan peserta yang sudah lolos audisi
                 // (minimal Top 20) hingga tahap final.
-                $query->whereIn('selection_status', ['Top20', 'PreCamp', 'Camp', 'GrandFinal', 'Winner']);
+                $query
+                    ->whereIn('selection_status', ['Top20', 'PreCamp', 'Camp', 'GrandFinal', 'Winner'])
+                    ->where(function ($inner): void {
+                        $inner
+                            ->whereNull('eliminated_in_audition')
+                            ->orWhere('eliminated_in_audition', false);
+                    });
             })
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,photo,instagram,education_category,education_institution,education_degree,education_major,selection_status',
+                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,photo,instagram,education_category,education_institution,education_degree,education_major,selection_status,eliminated_in_audition',
             ])
             ->orderBy('name')
             ->get(['id', 'name']);

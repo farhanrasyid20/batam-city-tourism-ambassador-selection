@@ -97,17 +97,26 @@ class UserManagementController extends Controller
             ->lockForUpdate()
             ->pluck('participant_code');
 
-        $maxOdd = 0;
+        $maxSequence = 0;
         foreach ($codes as $code) {
             if (preg_match('/^'.$prefix.'-(\d+)$/', (string) $code, $matches)) {
                 $current = (int) $matches[1];
-                if ($current % 2 === 1 && $current > $maxOdd) {
-                    $maxOdd = $current;
+                if ($normalizedGender === 'Puan') {
+                    if ($current % 2 === 0 && $current > $maxSequence) {
+                        $maxSequence = $current;
+                    }
+                    continue;
+                }
+
+                if ($current % 2 === 1 && $current > $maxSequence) {
+                    $maxSequence = $current;
                 }
             }
         }
 
-        $next = $maxOdd > 0 ? ($maxOdd + 2) : 1;
+        $next = $maxSequence > 0
+            ? ($maxSequence + 2)
+            : ($normalizedGender === 'Puan' ? 2 : 1);
         return $prefix.'-'.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
     }
 
@@ -423,10 +432,13 @@ class UserManagementController extends Controller
             // Rejected pada fase ini dianggap eliminasi audisi (tidak lanjut tahap berikutnya).
             $profile->eliminated_in_audition = true;
             $profile->eliminated_at = Carbon::now();
-        } elseif ($this->isParticipantCodeEligibleStatus($payload['selection_status'])) {
+        } else {
+            // Saat admin mengubah status dari Rejected ke status lain, kunci eliminasi harus dibuka.
             $profile->eliminated_in_audition = false;
             $profile->eliminated_at = null;
+        }
 
+        if ($this->isParticipantCodeEligibleStatus($payload['selection_status'])) {
             if (! $profile->participant_code && ! empty($profile->gender)) {
                 $profile->participant_code = $this->nextParticipantCodeForGender($profile->gender);
             }

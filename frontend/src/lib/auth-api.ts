@@ -27,7 +27,9 @@ export type ParticipantBiodata = {
   phone?: string | null;
   gender?: "Encik" | "Puan" | null;
   nickname?: string | null;
+  religion?: string | null;
   national_id?: string | null;
+  current_status?: "Pelajar" | "Mahasiswa" | "Lainnya" | null;
   birth_place?: string | null;
   birth_date?: string | null;
   domicile_address?: string | null;
@@ -43,6 +45,8 @@ export type ParticipantBiodata = {
   instagram?: string | null;
   tiktok?: string | null;
   parent_phone?: string | null;
+  father_name?: string | null;
+  mother_name?: string | null;
   photo?: string | null;
   education_category?: "SMA" | "SMK" | "MA" | "Kuliah" | null;
   education_institution?: string | null;
@@ -110,7 +114,9 @@ export type UpdateParticipantBiodataPayload = Partial<{
   phone: string;
   gender: "Encik" | "Puan";
   nickname: string;
+  religion: string;
   national_id: string;
+  current_status: "Pelajar" | "Mahasiswa" | "Lainnya";
   birth_place: string;
   birth_date: string;
   domicile_address: string;
@@ -126,6 +132,8 @@ export type UpdateParticipantBiodataPayload = Partial<{
   instagram: string;
   tiktok: string;
   parent_phone: string;
+  father_name: string;
+  mother_name: string;
   photo: string;
   education_category: "SMA" | "SMK" | "MA" | "Kuliah";
   education_institution: string;
@@ -219,9 +227,11 @@ export type JudgeParticipantListItem = {
   id: number;
   name: string;
   nickname?: string | null;
+  religion?: string | null;
   email: string;
   phone?: string | null;
   national_id?: string | null;
+  current_status?: "Pelajar" | "Mahasiswa" | "Lainnya" | null;
   birth_place?: string | null;
   birth_date?: string | null;
   domicile_address?: string | null;
@@ -229,6 +239,8 @@ export type JudgeParticipantListItem = {
   instagram?: string | null;
   tiktok?: string | null;
   parent_phone?: string | null;
+  father_name?: string | null;
+  mother_name?: string | null;
   registered_at?: string | null;
   participant_number?: string | null;
   audition_number?: string | null;
@@ -268,6 +280,7 @@ export type JudgeParticipantListItem = {
     | "GrandFinal"
     | "Winner"
     | null;
+  selection_status_note?: string | null;
   selection_stage?:
     | "Verification"
     | "Technical Meeting"
@@ -277,6 +290,8 @@ export type JudgeParticipantListItem = {
     | "Grand Final"
     | "Final Result"
     | null;
+  eliminated_in_audition?: boolean;
+  eliminated_at?: string | null;
   submitted_to_admin?: boolean;
   submitted_to_admin_at?: string | null;
 };
@@ -409,6 +424,85 @@ export type UpdateParticipantDocumentReviewsResponse = {
   };
 };
 
+export type UpdateParticipantSelectionStatusPayload = {
+  selection_status:
+    | "Pending"
+    | "Verified"
+    | "TechnicalMeeting"
+    | "Rejected"
+    | "Audition"
+    | "Top20"
+    | "PreCamp"
+    | "Camp"
+    | "GrandFinal"
+    | "Winner";
+  selection_status_note?: string | null;
+};
+
+export type UpdateParticipantSelectionStatusResponse = {
+  message: string;
+  data: {
+    user_id: number;
+    selection_status: NonNullable<UpdateParticipantSelectionStatusPayload["selection_status"]>;
+    selection_status_note?: string | null;
+    selection_status_updated_at?: string | null;
+    participant_code?: string | null;
+    eliminated_in_audition?: boolean;
+    eliminated_at?: string | null;
+  };
+};
+
+export type AuditionTop20Candidate = {
+  rank?: number;
+  user_id: number;
+  participant_id: string;
+  name: string;
+  nickname?: string | null;
+  gender?: "Encik" | "Puan" | null;
+  participant_code?: string | null;
+  audition_number?: string | null;
+  selection_status?: string | null;
+  judges_count: number;
+  audition_total: number;
+  audition_average: number;
+};
+
+export type AuditionTop20PreviewResponse = {
+  message: string;
+  data: {
+    meta: {
+      stage: "Audition";
+      score_type: "official";
+      candidate_total: number;
+      candidate_scored: number;
+      encik_scored: number;
+      puan_scored: number;
+      encik_promoted_target: number;
+      puan_promoted_target: number;
+    };
+    top_encik: AuditionTop20Candidate[];
+    top_puan: AuditionTop20Candidate[];
+    all_candidates: AuditionTop20Candidate[];
+  };
+};
+
+export type AuditionTop20ApplyResponse = {
+  message: string;
+  data: {
+    applied_by?: {
+      id?: number;
+      name?: string;
+    };
+    applied_at: string;
+    promoted_total: number;
+    rejected_total: number;
+    promoted_user_ids: number[];
+    rejected_user_ids: number[];
+    top_encik: AuditionTop20Candidate[];
+    top_puan: AuditionTop20Candidate[];
+  };
+};
+
 export type UpdateAuthProfilePayload = Partial<{
   name: string;
   email: string;
@@ -463,6 +557,68 @@ export type ForgotPasswordResetPayload = {
 export type ForgotPasswordResetResponse = {
   message: string;
 };
+
+export type ParticipantResourceDocument = {
+  linkUrl: string;
+  fileName: string;
+  fileDataUrl: string;
+  fileMimeType: string;
+};
+
+export type ParticipantResourceImage = {
+  imageUrl: string;
+  imageName: string;
+  caption: string;
+};
+
+export type ParticipantResourcesPayload = {
+  guideDocument: ParticipantResourceDocument;
+  submissionDocument: ParticipantResourceDocument;
+  formS1Document: ParticipantResourceDocument;
+  formS2Document: ParticipantResourceDocument;
+  formS3Document: ParticipantResourceDocument;
+  formS4Document: ParticipantResourceDocument;
+  hardcopyGuide: string;
+  closeUpPhotoGuide: string;
+  fullBodyPhotoGuide: string;
+  twibbonDocument: ParticipantResourceDocument;
+  twibbonOpenLink: string;
+  whatsappGroupLink: string;
+  twibbonThumbnail: ParticipantResourceImage;
+  whatsappThumbnail: ParticipantResourceImage;
+  closeUpExamples: ParticipantResourceImage[];
+  fullBodyExamples: ParticipantResourceImage[];
+  instagramMentions: string;
+  hashtagList: string;
+  postingInstruction: string;
+  additionalNote: string;
+};
+
+export type PublicParticipantResourcesResponse = {
+  message: string;
+  data: ParticipantResourcesPayload;
+  updated_at?: string | null;
+};
+
+export type UpdateParticipantResourcesResponse = PublicParticipantResourcesResponse;
+
+export type UpdateParticipantResourcesFiles = Partial<{
+  guideDocumentFile: File;
+  submissionDocumentFile: File;
+  formS1DocumentFile: File;
+  formS2DocumentFile: File;
+  formS3DocumentFile: File;
+  formS4DocumentFile: File;
+  twibbonDocumentFile: File;
+  twibbonThumbnailFile: File;
+  whatsappThumbnailFile: File;
+  closeUpExample1File: File;
+  closeUpExample2File: File;
+  closeUpExample3File: File;
+  fullBodyExample1File: File;
+  fullBodyExample2File: File;
+  fullBodyExample3File: File;
+}>;
 
 type CacheEnvelope<T> = {
   ts: number;
@@ -615,6 +771,52 @@ export function fetchPublicFinalists(options?: { force?: boolean; maxAgeMs?: num
   );
 }
 
+export function fetchPublicParticipantResources() {
+  return apiRequest<PublicParticipantResourcesResponse>("/public/participant-resources", {
+    method: "GET",
+  });
+}
+
+export function updateParticipantResources(
+  token: string,
+  payload: ParticipantResourcesPayload,
+  files: UpdateParticipantResourcesFiles = {}
+) {
+  const body = new FormData();
+  body.append("payload", JSON.stringify(payload));
+
+  const fileFieldMap: Array<[keyof UpdateParticipantResourcesFiles, string]> = [
+    ["guideDocumentFile", "guide_document_file"],
+    ["submissionDocumentFile", "submission_document_file"],
+    ["formS1DocumentFile", "form_s1_document_file"],
+    ["formS2DocumentFile", "form_s2_document_file"],
+    ["formS3DocumentFile", "form_s3_document_file"],
+    ["formS4DocumentFile", "form_s4_document_file"],
+    ["twibbonDocumentFile", "twibbon_document_file"],
+    ["twibbonThumbnailFile", "twibbon_thumbnail_file"],
+    ["whatsappThumbnailFile", "whatsapp_thumbnail_file"],
+    ["closeUpExample1File", "close_up_example_1_file"],
+    ["closeUpExample2File", "close_up_example_2_file"],
+    ["closeUpExample3File", "close_up_example_3_file"],
+    ["fullBodyExample1File", "full_body_example_1_file"],
+    ["fullBodyExample2File", "full_body_example_2_file"],
+    ["fullBodyExample3File", "full_body_example_3_file"],
+  ];
+
+  fileFieldMap.forEach(([localKey, backendKey]) => {
+    const file = files[localKey];
+    if (file instanceof File) {
+      body.append(backendKey, file);
+    }
+  });
+
+  return apiRequest<UpdateParticipantResourcesResponse>("/super-admin/participant-resources", {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
 export function updateVotePublication(token: string, payload: UpdateVotePublicationPayload) {
   return apiRequest<UpdateVotePublicationResponse>("/super-admin/vote/publication", {
     method: "PATCH",
@@ -665,6 +867,41 @@ export function updateParticipantDocumentReviews(
       method: "PATCH",
       token,
       body: payload,
+    }
+  );
+}
+
+export function updateParticipantSelectionStatus(
+  token: string,
+  participantUserId: number,
+  payload: UpdateParticipantSelectionStatusPayload
+) {
+  return apiRequest<UpdateParticipantSelectionStatusResponse>(
+    `/super-admin/participants/${participantUserId}/selection-status`,
+    {
+      method: "PATCH",
+      token,
+      body: payload,
+    }
+  );
+}
+
+export function fetchAuditionTop20Preview(token: string) {
+  return apiRequest<AuditionTop20PreviewResponse>(
+    "/super-admin/scoring/audition/top20-preview",
+    {
+      method: "GET",
+      token,
+    }
+  );
+}
+
+export function applyAuditionTop20(token: string) {
+  return apiRequest<AuditionTop20ApplyResponse>(
+    "/super-admin/scoring/audition/top20-apply",
+    {
+      method: "POST",
+      token,
     }
   );
 }

@@ -18,6 +18,8 @@ class JudgeScoreController extends Controller
 
     private const ALLOWED_SCORE_TYPES = ['official', 'mentor_observation'];
 
+    private const PROXY_SCORE_ROLES = ['admin', 'super_admin'];
+
     private const STAGE_CRITERIA = [
         'Audition' => [
             ['key' => 'auditionAppearanceGrooming', 'weight' => 10],
@@ -198,6 +200,16 @@ class JudgeScoreController extends Controller
         }
     }
 
+    private function canJudgeScoreStage(User $judgeUser, string $stage): bool
+    {
+        $assignedStages = $judgeUser->judge_assigned_stages;
+        if (! is_array($assignedStages) || empty($assignedStages)) {
+            return true;
+        }
+
+        return in_array($stage, $assignedStages, true);
+    }
+
     public function index(Request $request): JsonResponse
     {
         /** @var User|null $authUser */
@@ -253,9 +265,10 @@ class JudgeScoreController extends Controller
     {
         /** @var User|null $authUser */
         $authUser = $request->attributes->get('auth_user');
-        if (! $authUser || $authUser->role !== 'judge') {
+        $authRole = $authUser?->role;
+        if (! $authUser || ! in_array($authRole, ['judge', ...self::PROXY_SCORE_ROLES], true)) {
             return response()->json([
-                'message' => 'Hanya akun juri yang dapat mengirim nilai.',
+                'message' => 'Akun ini tidak memiliki akses untuk mengirim nilai.',
             ], 403);
         }
 
@@ -264,6 +277,7 @@ class JudgeScoreController extends Controller
             'participant_name' => ['nullable', 'string', 'max:255'],
             'stage' => ['required', Rule::in(self::ALLOWED_STAGES)],
             'score_type' => ['nullable', Rule::in(self::ALLOWED_SCORE_TYPES)],
+            'judge_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'score' => ['required', 'array', 'min:1'],
             'score.*' => ['required', 'numeric', 'min:0', 'max:100'],
             'note' => ['nullable', 'string', 'max:5000'],
@@ -279,6 +293,45 @@ class JudgeScoreController extends Controller
         $payload = $validator->validated();
         $stage = (string) $payload['stage'];
         $scoreMap = is_array($payload['score']) ? $payload['score'] : [];
+
+        $targetJudge = null;
+        if ($authRole === 'judge') {
+            if (isset($payload['judge_user_id']) && (int) $payload['judge_user_id'] !== (int) $authUser->id) {
+                return response()->json([
+                    'message' => 'Juri hanya boleh mengirim nilai untuk akunnya sendiri.',
+                ], 403);
+            }
+            $targetJudge = $authUser;
+        } else {
+            if (! array_key_exists('judge_user_id', $payload)) {
+                return response()->json([
+                    'message' => 'Validasi gagal.',
+                    'errors' => [
+                        'judge_user_id' => ['Pilih akun juri yang akan dipakai untuk input nilai.'],
+                    ],
+                ], 422);
+            }
+
+            $targetJudge = User::query()->find((int) $payload['judge_user_id']);
+            if (! $targetJudge || $targetJudge->role !== 'judge') {
+                return response()->json([
+                    'message' => 'Validasi gagal.',
+                    'errors' => [
+                        'judge_user_id' => ['Akun yang dipilih bukan akun juri.'],
+                    ],
+                ], 422);
+            }
+        }
+
+        if (! $this->canJudgeScoreStage($targetJudge, $stage)) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors' => [
+                    'stage' => ['Juri terpilih tidak memiliki hak akses pada tahap '.$stage.'.'],
+                ],
+            ], 422);
+        }
+
         $criteriaErrors = $this->validateScoreByStage($stage, $scoreMap);
         if ($criteriaErrors) {
             return response()->json([
@@ -289,25 +342,38 @@ class JudgeScoreController extends Controller
 
         $totalScore = $this->calculateTotalByStage($stage, $scoreMap);
         $scoreType = (string) ($payload['score_type'] ?? 'official');
+        $participantId = trim((string) $payload['participant_id']);
 
-        $record = DB::transaction(function () use ($payload, $authUser, $stage, $scoreType, $scoreMap, $totalScore): JudgeScore {
-            $scoreRecord = JudgeScore::query()->updateOrCreate(
-                [
-                    'participant_id' => trim((string) $payload['participant_id']),
-                    'judge_user_id' => (int) $authUser->id,
-                    'stage' => $stage,
-                    'score_type' => $scoreType,
-                ],
-                [
-                    'participant_name' => isset($payload['participant_name'])
-                        ? trim((string) $payload['participant_name'])
-                        : null,
-                    'score' => $scoreMap,
-                    'total_score' => $totalScore,
-                    'note' => isset($payload['note']) ? trim((string) $payload['note']) : null,
-                    'submitted_at' => Carbon::now(),
-                ]
-            );
+        $existingScore = JudgeScore::query()
+            ->where('participant_id', $participantId)
+            ->where('judge_user_id', (int) $targetJudge->id)
+            ->where('stage', $stage)
+            ->where('score_type', $scoreType)
+            ->first();
+
+        if ($existingScore) {
+            $existingScore->load('judge:id,name');
+
+            return response()->json([
+                'message' => 'Nilai juri untuk peserta dan tahap ini sudah disubmit, sehingga terkunci. Pilih akun juri lain jika ingin input nilai baru.',
+                'data' => $this->toPayload($existingScore),
+            ], 409);
+        }
+
+        $record = DB::transaction(function () use ($payload, $participantId, $targetJudge, $stage, $scoreType, $scoreMap, $totalScore): JudgeScore {
+            $scoreRecord = JudgeScore::query()->create([
+                'participant_id' => $participantId,
+                'judge_user_id' => (int) $targetJudge->id,
+                'stage' => $stage,
+                'score_type' => $scoreType,
+                'participant_name' => isset($payload['participant_name'])
+                    ? trim((string) $payload['participant_name'])
+                    : null,
+                'score' => $scoreMap,
+                'total_score' => $totalScore,
+                'note' => isset($payload['note']) ? trim((string) $payload['note']) : null,
+                'submitted_at' => Carbon::now(),
+            ]);
 
             $this->syncScoreDetails($scoreRecord, $stage, $scoreType, $scoreMap);
 

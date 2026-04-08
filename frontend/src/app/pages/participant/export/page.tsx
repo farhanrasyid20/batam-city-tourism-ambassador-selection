@@ -330,9 +330,26 @@ export default function ExportPDFPage() {
         height: biodataFromDb?.height_cm ?? participant?.heightCm,
         education: educationDisplay,
         instagram: instagramUsername,
+        tiktok: biodataFromDb?.tiktok,
+        religion: biodataFromDb?.religion,
+        currentStatus: biodataFromDb?.current_status,
         email: biodataFromDb?.email ?? participant?.email ?? user?.email,
         status: effectiveStageStatus,
         photo: biodataFromDb?.photo ?? participant?.photo,
+        parentPhone: biodataFromDb?.parent_phone,
+        fatherName: biodataFromDb?.father_name,
+        motherName: biodataFromDb?.mother_name,
+        occupation: biodataFromDb?.occupation,
+        skills: biodataFromDb?.skills,
+        hobbies: biodataFromDb?.hobbies,
+        languages: biodataFromDb?.languages,
+        vision: biodataFromDb?.vision,
+        mission: biodataFromDb?.mission,
+        experience: biodataFromDb?.experience,
+        achievement: biodataFromDb?.achievement,
+        motivation: biodataFromDb?.motivation_statement,
+        contribution: biodataFromDb?.contribution_idea,
+        speaking: biodataFromDb?.public_speaking_experience,
         docs: documentItems.map((item) => `${item.label}:${item.done ? "1" : "0"}`).join("|"),
       }),
     [
@@ -353,6 +370,23 @@ export default function ExportPDFPage() {
       participant?.birthDate,
       biodataFromDb?.height_cm,
       participant?.heightCm,
+      biodataFromDb?.religion,
+      biodataFromDb?.current_status,
+      biodataFromDb?.tiktok,
+      biodataFromDb?.parent_phone,
+      biodataFromDb?.father_name,
+      biodataFromDb?.mother_name,
+      biodataFromDb?.occupation,
+      biodataFromDb?.skills,
+      biodataFromDb?.hobbies,
+      biodataFromDb?.languages,
+      biodataFromDb?.vision,
+      biodataFromDb?.mission,
+      biodataFromDb?.experience,
+      biodataFromDb?.achievement,
+      biodataFromDb?.motivation_statement,
+      biodataFromDb?.contribution_idea,
+      biodataFromDb?.public_speaking_experience,
       educationDisplay,
       instagramUsername,
       biodataFromDb?.email,
@@ -381,10 +415,40 @@ export default function ExportPDFPage() {
     const participantBirthPlace = biodataFromDb?.birth_place ?? participant?.birthPlace ?? "";
     const participantBirthDate = biodataFromDb?.birth_date ?? participant?.birthDate ?? "";
     const participantHeight = biodataFromDb?.height_cm ?? participant?.heightCm ?? 0;
+    const participantWeight = biodataFromDb?.weight_kg ?? "";
+    const participantShirtSize = biodataFromDb?.shirt_size ?? "";
+    const participantChestCircumference = biodataFromDb?.chest_circumference_cm ?? "";
+    const participantWaistCircumference = biodataFromDb?.waist_circumference_cm ?? "";
+    const participantHipCircumference = biodataFromDb?.hip_circumference_cm ?? "";
+    const participantPantsSize = biodataFromDb?.pants_size ?? "";
+    const participantShoeSize = biodataFromDb?.shoe_size ?? "";
+    const participantDomicileAddress = biodataFromDb?.domicile_address ?? "";
+    const participantKtpAddress = biodataFromDb?.ktp_address ?? "";
     const participantInstagram = toInstagramUsername(
       biodataFromDb?.instagram ?? participant?.instagram
     );
+    const participantTiktok = toInstagramUsername(biodataFromDb?.tiktok ?? "");
     const participantPhone = biodataFromDb?.phone ?? participant?.phone ?? "";
+    const participantParentPhone = biodataFromDb?.parent_phone ?? "";
+    const participantFatherName = biodataFromDb?.father_name ?? "";
+    const participantMotherName = biodataFromDb?.mother_name ?? "";
+    const participantReligion = biodataFromDb?.religion ?? "";
+    const participantCurrentStatus = biodataFromDb?.current_status ?? "";
+    const participantNickname = biodataFromDb?.nickname ?? "";
+    const participantOccupation = biodataFromDb?.occupation ?? "";
+    const participantSkills = biodataFromDb?.skills ?? "";
+    const participantHobbies = biodataFromDb?.hobbies ?? "";
+    const participantLanguages = biodataFromDb?.languages ?? "";
+    const participantVision = biodataFromDb?.vision ?? "";
+    const participantMission = biodataFromDb?.mission ?? "";
+    const participantExperience = biodataFromDb?.experience ?? "";
+    const participantAchievement = biodataFromDb?.achievement ?? "";
+    const participantAgreementNoAgency = biodataFromDb?.agreement_no_agency ?? "";
+    const participantAgreementParentPermission = biodataFromDb?.agreement_parent_permission ?? "";
+    const participantAgreementAllStages = biodataFromDb?.agreement_all_stages ?? "";
+    const participantMotivation = biodataFromDb?.motivation_statement ?? "";
+    const participantContribution = biodataFromDb?.contribution_idea ?? "";
+    const participantPublicSpeaking = biodataFromDb?.public_speaking_experience ?? "";
     const participantEmail = biodataFromDb?.email ?? participant?.email ?? user?.email ?? "-";
     const participantStatus = effectiveStageStatus;
 
@@ -406,14 +470,44 @@ export default function ExportPDFPage() {
           participantCode,
           showAuditionNumber,
           name: participantName,
+          nickname: participantNickname,
+          religion: participantReligion,
           gender: participantGender,
+          currentStatus: participantCurrentStatus,
           nationalId: participantNationalId,
           birthPlace: participantBirthPlace,
           birthDate: participantBirthDate,
           heightCm: participantHeight,
+          weightKg: participantWeight,
+          shirtSize: participantShirtSize,
+          chestCircumferenceCm: participantChestCircumference,
+          waistCircumferenceCm: participantWaistCircumference,
+          hipCircumferenceCm: participantHipCircumference,
+          pantsSize: participantPantsSize,
+          shoeSize: participantShoeSize,
+          domicileAddress: participantDomicileAddress,
+          ktpAddress: participantKtpAddress,
           education: educationDisplay,
           instagram: participantInstagram,
+          tiktok: participantTiktok,
           phone: participantPhone,
+          parentPhone: participantParentPhone,
+          fatherName: participantFatherName,
+          motherName: participantMotherName,
+          occupation: participantOccupation,
+          skills: participantSkills,
+          hobbies: participantHobbies,
+          languages: participantLanguages,
+          vision: participantVision,
+          mission: participantMission,
+          experience: participantExperience,
+          achievement: participantAchievement,
+          agreementNoAgency: participantAgreementNoAgency,
+          agreementParentPermission: participantAgreementParentPermission,
+          agreementAllStages: participantAgreementAllStages,
+          motivationStatement: participantMotivation,
+          contributionIdea: participantContribution,
+          publicSpeakingExperience: participantPublicSpeaking,
           email: participantEmail,
           status: participantStatus,
           photo: profileSrcForPdf || resolvedPhoto,

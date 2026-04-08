@@ -12,22 +12,18 @@ import React, {
 } from "react";
 
 import {
-  buildParticipantStageProgress,
-  getParticipantSelectionStage,
-  getParticipantStageProgress,
   type Participant,
-  type ParticipantDocumentItem,
   type Judge,
   type NewsItem,
   type ScoreRecord, // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ INI YANG BENAR (bukan Score)
   mockParticipants,
-  mockJudges,
   mockNews,
-  mockScores, // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ ini harus ScoreRecord[]
 } from "../data/mockData";
 import { faqItems, type FAQItem } from "../data/faqData";
 import {
   fetchPublicFinalists,
+  fetchPublicParticipantResources,
+  type ParticipantResourcesPayload,
   type PublicFinalistListItem,
 } from "../lib/auth-api";
 import { resolveApiAssetUrl } from "../lib/api";
@@ -383,68 +379,6 @@ function readStoredJson<T>(key: string): T | null {
   }
 }
 
-const defaultParticipantById = new Map(
-  mockParticipants.map((participant) => [participant.id, participant])
-);
-const defaultDocumentLabelByKey = new Map(
-  mockParticipants.flatMap((participant) =>
-    (participant.documents ?? []).map((document) => [document.key, document.label] as const)
-  )
-);
-
-function hasMojibake(value?: string | null) {
-  return typeof value === "string" && /[ÃÂâ�]/.test(value);
-}
-
-function normalizeStoredDocuments(
-  participant: Participant,
-  sourceParticipant?: Participant
-): ParticipantDocumentItem[] | undefined {
-  const fallbackDocuments = sourceParticipant?.documents ?? [];
-  const storedDocuments = participant.documents ?? fallbackDocuments;
-
-  if (!storedDocuments.length) {
-    return undefined;
-  }
-
-  return storedDocuments.map((document) => {
-    const sourceDocument = fallbackDocuments.find((item) => item.key === document.key);
-
-    return {
-      ...document,
-      label:
-        defaultDocumentLabelByKey.get(document.key) ??
-        sourceDocument?.label ??
-        document.label,
-    };
-  });
-}
-
-function normalizeStoredParticipant(participant: Participant): Participant {
-  const sourceParticipant = defaultParticipantById.get(participant.id);
-
-  return {
-    ...participant,
-    number: hasMojibake(participant.number)
-      ? sourceParticipant?.number ?? participant.number
-      : participant.number,
-    education: hasMojibake(participant.education)
-      ? sourceParticipant?.education ?? participant.education
-      : participant.education,
-    registeredAt: hasMojibake(participant.registeredAt)
-      ? sourceParticipant?.registeredAt ?? participant.registeredAt
-      : participant.registeredAt,
-    stageProgress: participant.stageProgress
-      ? getParticipantStageProgress(participant)
-      : buildParticipantStageProgress(getParticipantSelectionStage(participant)),
-    documents: normalizeStoredDocuments(participant, sourceParticipant),
-  };
-}
-
-function normalizeStoredParticipants(participants: Participant[]) {
-  return participants.map(normalizeStoredParticipant);
-}
-
 function normalizeInstagram(raw: string) {
   const value = raw.trim();
   if (!value) {
@@ -577,14 +511,30 @@ function buildVoteDisplayName(gender: "Encik" | "Puan", rawName: string) {
   return `${gender} ${finalName}`.trim();
 }
 
-function isDefaultPhoto(value?: string | null) {
-  if (!value) return true;
-  const normalized = value.trim().toLowerCase();
-  return (
-    normalized === "" ||
-    normalized.endsWith("/default-avatar.svg") ||
-    normalized.includes("default-avatar.svg")
-  );
+function normalizeVoteDisplayCode(
+  rawCode: string | null | undefined,
+  gender: "Encik" | "Puan",
+  fallbackParticipantId?: string
+) {
+  const clean = (rawCode ?? "").trim().toUpperCase();
+  const matched = clean.match(/^(ECK|PUA)-(\d{1,4})$/i);
+
+  let value = matched ? Number.parseInt(matched[2], 10) : NaN;
+  if (!Number.isFinite(value)) {
+    const fallbackDigits = (fallbackParticipantId ?? "").match(/(\d{1,4})$/)?.[1] ?? "1";
+    value = Number.parseInt(fallbackDigits, 10);
+  }
+  if (!Number.isFinite(value) || value < 1) value = 1;
+
+  if (gender === "Encik" && value % 2 === 0) value = value > 1 ? value - 1 : 1;
+  if (gender === "Puan" && value % 2 === 1) value += 1;
+
+  const prefix = gender === "Encik" ? "ECK" : "PUA";
+  return `${prefix}-${String(value).padStart(3, "0")}`;
+}
+
+function isVoteEligibleSelectionStage(stage: string) {
+  return stage === "Top20" || stage === "PreCamp" || stage === "Camp" || stage === "GrandFinal" || stage === "Winner";
 }
 
 function normalizeVoteCandidatePhoto(raw?: string | null) {
@@ -612,68 +562,21 @@ function normalizeVoteCandidatePhoto(raw?: string | null) {
   return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
 }
 
-function buildVoteCandidates(participants: Participant[]): VotePublicCandidate[] {
-  return participants
-    .filter((participant) => {
-      const selectionStage = getParticipantSelectionStage(participant);
-      return selectionStage === "Grand Final" || selectionStage === "Final Result";
-    })
-    .map((participant) => {
-      const instagram = normalizeInstagram(participant.instagram);
-      return {
-        id: `vc-${participant.id}`,
-        participantId: participant.id,
-        number: participant.number,
-        name: buildVoteDisplayName(participant.gender, participant.name),
-        gender: participant.gender,
-        education: participant.education,
-        photo: participant.photo,
-        instagramHandle: instagram.handle,
-        instagramProfileUrl: instagram.profileUrl,
-        instagramPostUrl: "",
-        officialLikeCount: participant.likes ?? 0,
-        likeUpdatedAt: null,
-        enabled: true,
-      };
-    });
-}
-
-function buildInitialVoteTop(candidates: VotePublicCandidate[], participants: Participant[]): VoteTopItem[] {
-  const sorted = [...participants]
-    .filter((participant) => {
-      const selectionStage = getParticipantSelectionStage(participant);
-      return selectionStage === "Grand Final" || selectionStage === "Final Result";
-    })
-    .sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0))
-    .slice(0, 3);
-
-  return sorted.map((participant, index) => {
-    const candidate = candidates.find((item) => item.participantId === participant.id);
-    return {
-      id: `vt-${index + 1}`,
-      participantId: participant.id,
-      number: participant.number,
-      name: buildVoteDisplayName(participant.gender, participant.name),
-      gender: participant.gender,
-      photo: candidate?.photo ?? participant.photo,
-      instagramHandle: candidate?.instagramHandle ?? participant.instagram,
-      instagramProfileUrl: candidate?.instagramProfileUrl ?? "",
-      instagramPostUrl: candidate?.instagramPostUrl ?? "",
-      voteCount: participant.likes ?? 0,
-      rank: (index + 1) as 1 | 2 | 3,
-    };
-  });
-}
-
 function buildVoteCandidatesFromPublicFinalists(
   finalists: PublicFinalistListItem[],
   previousCandidates: VotePublicCandidate[]
 ): VotePublicCandidate[] {
   const previousMap = new Map(previousCandidates.map((item) => [item.participantId, item] as const));
   const mappedFinalists = finalists
+    .filter((item) => isVoteEligibleSelectionStage((item.selection_status ?? "").trim()))
     .map((item) => {
       const participantId = `P_API_${item.id}`;
-      const number = item.participant_code ?? item.audition_number ?? item.participant_number ?? "-";
+      const normalizedGender = (item.gender ?? "Encik") as "Encik" | "Puan";
+      const number = normalizeVoteDisplayCode(
+        item.participant_code ?? item.audition_number ?? item.participant_number ?? "-",
+        normalizedGender,
+        participantId,
+      );
       const instagram = normalizeInstagram(item.instagram ?? "");
       const education = [
         item.education_category?.trim(),
@@ -689,8 +592,8 @@ function buildVoteCandidatesFromPublicFinalists(
         id: previous?.id ?? `vc-${participantId}`,
         participantId,
         number,
-        name: buildVoteDisplayName(item.gender ?? "Encik", item.name ?? "Peserta"),
-        gender: item.gender ?? "Encik",
+        name: buildVoteDisplayName(normalizedGender, item.name ?? "Peserta"),
+        gender: normalizedGender,
         education: education || "-",
         photo: normalizeVoteCandidatePhoto(item.photo),
         instagramHandle: instagram.handle,
@@ -714,46 +617,42 @@ function buildVoteCandidatesFromPublicFinalists(
       } satisfies VotePublicCandidate;
     });
 
-  // Keep admin-managed candidates that may not be returned by public finalists endpoint yet
-  // (e.g., local manual curation in progress), and merge backend updates into existing records.
-  const mergedMap = new Map(previousCandidates.map((item) => [item.participantId, item] as const));
-  mappedFinalists.forEach((item) => {
-    const existing = mergedMap.get(item.participantId);
-    if (!existing) {
-      mergedMap.set(item.participantId, item);
-      return;
-    }
-
-    mergedMap.set(item.participantId, {
-      ...existing,
-      number: item.number || existing.number,
-      name: item.name || existing.name,
-      gender: item.gender || existing.gender,
-      education: item.education || existing.education,
-      photo: isDefaultPhoto(item.photo) ? existing.photo || item.photo : item.photo || existing.photo,
-      instagramHandle: item.instagramHandle || existing.instagramHandle,
-      instagramProfileUrl:
-        item.instagramProfileUrl !== undefined && item.instagramProfileUrl !== null
-          ? item.instagramProfileUrl || existing.instagramProfileUrl
-          : existing.instagramProfileUrl,
-      instagramPostUrl:
-        item.instagramPostUrl !== undefined && item.instagramPostUrl !== null
-          ? item.instagramPostUrl || existing.instagramPostUrl
-          : existing.instagramPostUrl,
-      officialLikeCount:
-        typeof item.officialLikeCount === "number"
-          ? item.officialLikeCount
-          : existing.officialLikeCount,
-      likeUpdatedAt:
-        item.likeUpdatedAt !== undefined ? item.likeUpdatedAt : existing.likeUpdatedAt,
-      enabled:
-        typeof item.enabled === "boolean" ? item.enabled : existing.enabled,
-    });
+  // Jangan bawa kandidat lama yang sudah tidak lolos di backend.
+  // Sumber kebenaran vote harus daftar finalis dari API.
+  const normalized = mappedFinalists.sort((a, b) => {
+    const aNum = Number.parseInt(a.number.match(/(\d{1,4})$/)?.[1] ?? "9999", 10);
+    const bNum = Number.parseInt(b.number.match(/(\d{1,4})$/)?.[1] ?? "9999", 10);
+    return aNum - bNum;
   });
 
-  return Array.from(mergedMap.values()).sort((a, b) => {
-    if (a.gender !== b.gender) return a.gender === "Encik" ? -1 : 1;
-    return a.number.localeCompare(b.number, "id-ID");
+  // Failsafe: jika ada nomor bentrok dari data lama, resequence otomatis agar tetap ganjil/genap konsisten.
+  const hasDuplicateNumbers =
+    new Set(normalized.map((item) => item.number.toUpperCase())).size !== normalized.length;
+  if (!hasDuplicateNumbers) return normalized;
+
+  const resequence = (items: VotePublicCandidate[]) =>
+    items
+      .sort((a, b) => {
+        const aNum = Number.parseInt(a.number.match(/(\d{1,4})$/)?.[1] ?? "9999", 10);
+        const bNum = Number.parseInt(b.number.match(/(\d{1,4})$/)?.[1] ?? "9999", 10);
+        if (aNum !== bNum) return aNum - bNum;
+        return a.name.localeCompare(b.name);
+      })
+      .map((item, index) => {
+        const rank = index + 1;
+        const code =
+          item.gender === "Encik"
+            ? `ECK-${String((rank * 2) - 1).padStart(3, "0")}`
+            : `PUA-${String(rank * 2).padStart(3, "0")}`;
+        return { ...item, number: code };
+      });
+
+  const encik = resequence(normalized.filter((item) => item.gender === "Encik"));
+  const puan = resequence(normalized.filter((item) => item.gender === "Puan"));
+  return [...encik, ...puan].sort((a, b) => {
+    const aNum = Number.parseInt(a.number.match(/(\d{1,4})$/)?.[1] ?? "9999", 10);
+    const bNum = Number.parseInt(b.number.match(/(\d{1,4})$/)?.[1] ?? "9999", 10);
+    return aNum - bNum;
   });
 }
 
@@ -846,26 +745,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authInitialized, setAuthInitialized] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  const [participantList, setParticipantList] =
-    useState<Participant[]>(mockParticipants);
+  const [participantList, setParticipantList] = useState<Participant[]>([]);
 
-  const [judgeList, setJudgeList] = useState<Judge[]>(mockJudges);
+  const [judgeList, setJudgeList] = useState<Judge[]>([]);
 
   const [newsList, setNewsList] = useState<NewsItem[]>(mockNews);
 
   // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ mockScores itu array ScoreRecord, bukan Score
-  const [scoreList, setScoreList] = useState<ScoreRecord[]>(mockScores);
+  const [scoreList, setScoreList] = useState<ScoreRecord[]>([]);
 
   const [currentParticipant, setCurrentParticipant] =
     useState<Participant | null>(null);
   const [faqList, setFaqList] = useState<FAQItem[]>(faqItems);
 
-  const [voteCandidateList, setVoteCandidateList] = useState<VotePublicCandidate[]>(
-    () => buildVoteCandidates(mockParticipants)
-  );
-  const [voteTopList, setVoteTopList] = useState<VoteTopItem[]>(() =>
-    buildInitialVoteTop(buildVoteCandidates(mockParticipants), mockParticipants)
-  );
+  const [voteCandidateList, setVoteCandidateList] = useState<VotePublicCandidate[]>([]);
+  const [voteTopList, setVoteTopList] = useState<VoteTopItem[]>([]);
   const [voteTopPublished, setVoteTopPublished] = useState<boolean>(true);
   const [voteRankingPublished, setVoteRankingPublished] = useState<boolean>(true);
   const [judgeWinnerList, setJudgeWinnerList] = useState<JudgeWinnerItem[]>([]);
@@ -897,11 +791,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const storedNews = readStoredJson<NewsItem[]>(NEWS_STORAGE_KEY);
       const storedFaq = readStoredJson<FAQItem[]>(FAQ_STORAGE_KEY);
-      const storedParticipants = readStoredJson<Participant[]>(PARTICIPANT_LIST_STORAGE_KEY);
       const storedParticipantResources = readStoredJson<ParticipantResources>(PARTICIPANT_RESOURCES_STORAGE_KEY);
       const storedLandingPageContent = readStoredJson<LandingPageContent>(LANDING_PAGE_CONTENT_STORAGE_KEY);
-      const storedVoteCandidateList = readStoredJson<VotePublicCandidate[]>(VOTE_CANDIDATE_LIST_STORAGE_KEY);
-      const storedVoteTopList = readStoredJson<VoteTopItem[]>(VOTE_TOP_LIST_STORAGE_KEY);
       const storedVoteTopPublished = readStoredJson<boolean>(VOTE_TOP_PUBLISHED_STORAGE_KEY);
       const storedVoteRankingPublished = readStoredJson<boolean>(VOTE_RANKING_PUBLISHED_STORAGE_KEY);
       const storedJudgeEncikWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_ENCIK_WINNERS_STORAGE_KEY);
@@ -918,12 +809,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (storedNews) setNewsList(storedNews);
       if (storedFaq) setFaqList(storedFaq);
-      if (storedParticipants?.length) {
-        setParticipantList(normalizeStoredParticipants(storedParticipants));
-      }
       if (storedParticipantResources) setParticipantResources(storedParticipantResources);
-      if (storedVoteCandidateList?.length) setVoteCandidateList(storedVoteCandidateList);
-      if (storedVoteTopList?.length) setVoteTopList(storedVoteTopList);
       if (typeof storedVoteTopPublished === "boolean") setVoteTopPublished(storedVoteTopPublished);
       if (typeof storedVoteRankingPublished === "boolean") setVoteRankingPublished(storedVoteRankingPublished);
       if (storedJudgeEncikWinnerList?.length) setJudgeEncikWinnerList(storedJudgeEncikWinnerList);
@@ -1015,7 +901,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const syncPublicFinalists = async () => {
       try {
-        const response = await fetchPublicFinalists();
+        const response = await fetchPublicFinalists({ force: true, maxAgeMs: 0 });
         if (cancelled) return;
 
         setVoteCandidateList((prev) => {
@@ -1063,7 +949,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const syncParticipantResources = async () => {
+      try {
+        const response = await fetchPublicParticipantResources();
+        if (cancelled) return;
+        if (response?.data) {
+          setParticipantResources(response.data as ParticipantResourcesPayload as ParticipantResources);
+        }
+      } catch {
+        // fallback to local storage / defaults
+      }
+    };
+
     void syncPublicFinalists();
+    void syncParticipantResources();
 
     return () => {
       cancelled = true;
@@ -1669,3 +1568,4 @@ export function useApp() {
   if (!ctx) throw new Error("useApp must be used within AppProvider");
   return ctx;
 }
+

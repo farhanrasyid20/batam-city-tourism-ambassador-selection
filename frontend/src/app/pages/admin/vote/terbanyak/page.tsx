@@ -75,13 +75,26 @@ function normalizeParticipantCode(
   gender: "Encik" | "Puan",
   participantId: string
 ) {
-  const cleanNumber = number.trim();
-  if (cleanNumber && cleanNumber !== "-") return cleanNumber;
+  const cleanNumber = number.trim().toUpperCase();
+  const explicitMatch = cleanNumber.match(/^(ECK|PUA)-(\d{1,4})$/i);
+  if (explicitMatch) {
+    let value = Number.parseInt(explicitMatch[2], 10);
+    if (gender === "Encik" && value % 2 === 0) {
+      value = value > 1 ? value - 1 : 1;
+    }
+    if (gender === "Puan" && value % 2 === 1) {
+      value += 1;
+    }
+    const prefix = gender === "Encik" ? "ECK" : "PUA";
+    return `${prefix}-${String(value).padStart(3, "0")}`;
+  }
 
-  const fallbackDigits =
-    participantId.match(/(\d{1,4})$/)?.[1] ??
-    "0";
-  const padded = fallbackDigits.padStart(3, "0");
+  const fallbackDigits = participantId.match(/(\d{1,4})$/)?.[1] ?? "0";
+  let value = Number.parseInt(fallbackDigits, 10);
+  if (!Number.isFinite(value) || value < 1) value = 1;
+  if (gender === "Encik" && value % 2 === 0) value = value > 1 ? value - 1 : 1;
+  if (gender === "Puan" && value % 2 === 1) value += 1;
+  const padded = String(value).padStart(3, "0");
   return gender === "Encik" ? `ECK-${padded}` : `PUA-${padded}`;
 }
 
@@ -151,8 +164,9 @@ function interleaveByCode<T extends { gender: "Encik" | "Puan"; number: string }
 }
 
 function pickTop20ByGender(participants: Participant[]) {
-  const encik = sortByPriorityAndNumber(participants.filter((item) => item.gender === "Encik")).slice(0, 10);
-  const puan = sortByPriorityAndNumber(participants.filter((item) => item.gender === "Puan")).slice(0, 10);
+  const eligible = participants.filter((item) => isPostAuditionStage(item.status));
+  const encik = sortByPriorityAndNumber(eligible.filter((item) => item.gender === "Encik")).slice(0, 10);
+  const puan = sortByPriorityAndNumber(eligible.filter((item) => item.gender === "Puan")).slice(0, 10);
   return interleaveByCode([...encik, ...puan]);
 }
 

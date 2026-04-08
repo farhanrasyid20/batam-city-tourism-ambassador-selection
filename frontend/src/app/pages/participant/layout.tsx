@@ -12,6 +12,7 @@ import DashboardLayout from "../../../components/dashboard/DashboardLayout";
 import { useApp } from "../../../context/AppContext";
 import { type Participant, type StageStatus } from "../../../data/mockData";
 import { fetchParticipantBiodata } from "../../../lib/auth-api";
+import { useRouter } from "next/navigation";
 import {
   getParticipantAuthSession,
   saveParticipantProfileSnapshot,
@@ -81,10 +82,36 @@ export default function ParticipantPagesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { setCurrentParticipant, setParticipantList, setAuthenticatedUser, user } = useApp();
+  const { setCurrentParticipant, setParticipantList, setAuthenticatedUser, user, authInitialized } = useApp();
+  const router = useRouter();
   const syncLockRef = useRef(false);
 
   useEffect(() => {
+    if (!authInitialized) return;
+
+    if (!user) {
+      router.replace("/auth/login");
+      return;
+    }
+
+    if (user.role === "participant") return;
+
+    if (user.role === "admin" || user.role === "super_admin") {
+      router.replace("/pages/admin/dashboard");
+      return;
+    }
+
+    if (user.role === "judge") {
+      router.replace("/pages/judges/dashboard");
+      return;
+    }
+
+    router.replace("/");
+  }, [authInitialized, router, user]);
+
+  useEffect(() => {
+    if (!authInitialized || !user || user.role !== "participant") return;
+
     const token = getParticipantAuthSession()?.token;
     if (!token) return;
 
@@ -162,20 +189,25 @@ export default function ParticipantPagesLayout({
           id: String(data.id),
           name: nextParticipant.name,
           email,
-          role: user?.role === "participant" ? "participant" : "participant",
+          role: "participant",
         });
 
         setCurrentParticipant((prev) => ({
           ...(prev ?? nextParticipant),
           ...nextParticipant,
-          status: prev?.status ?? nextParticipant.status,
+          // Status seleksi harus selalu mengikuti backend (source of truth admin/DB),
+          // jangan dipertahankan dari cache lokal sebelumnya.
+          status: nextParticipant.status,
           verificationStatus: prev?.verificationStatus,
           selectionStage: prev?.selectionStage,
           adminVerificationNote: prev?.adminVerificationNote,
           adminRevisionNote: prev?.adminRevisionNote,
           reviewItems: prev?.reviewItems ?? [],
           verificationIssues: nextParticipant.verificationIssues ?? [],
-          rejectionReason: prev?.rejectionReason,
+          rejectionReason:
+            data.selection_status === "Rejected"
+              ? (data.selection_status_note ?? prev?.rejectionReason)
+              : undefined,
           likes: prev?.likes ?? 0,
         }));
 
@@ -203,7 +235,7 @@ export default function ParticipantPagesLayout({
     };
 
     const onFocus = () => void syncProfile();
-    const intervalId = window.setInterval(() => void syncProfile(), 15000);
+    const intervalId = window.setInterval(() => void syncProfile(), 120000);
     window.addEventListener("focus", onFocus);
 
     void syncProfile();
@@ -213,9 +245,12 @@ export default function ParticipantPagesLayout({
       window.clearInterval(intervalId);
       window.removeEventListener("focus", onFocus);
     };
-  }, [setAuthenticatedUser, setCurrentParticipant, setParticipantList, user?.role]);
+  }, [authInitialized, setAuthenticatedUser, setCurrentParticipant, setParticipantList, user]);
 
   // Wrapper layout seluruh halaman /pages/participant/*
+  if (!authInitialized) return null;
+  if (!user || user.role !== "participant") return null;
+
   return (
     <DashboardLayout navItems={participantNavItems} role="participant">
       {children}

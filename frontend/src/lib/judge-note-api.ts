@@ -31,9 +31,10 @@ export type BackendJudgeNotesResponse = {
 export type SubmitJudgeNotePayload = {
   participant_id: string;
   participant_name?: string;
+  author_name?: string;
   stage: BackendJudgeNoteStage;
   content: string;
-  author_role?: "judge";
+  author_role?: "judge" | "admin" | "committee";
 };
 
 export type SubmitJudgeNoteResponse = {

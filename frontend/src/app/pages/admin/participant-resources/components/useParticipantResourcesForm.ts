@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   useApp,
   type ParticipantResources,
   type ResourceDocument,
   type ResourceImage,
 } from "../../../../../context/AppContext";
+import {
+  updateParticipantResources,
+  type UpdateParticipantResourcesFiles,
+} from "../../../../../lib/auth-api";
+import { getParticipantAuthSession } from "../../../../../lib/auth-storage";
 import type {
   ResourceDocumentField,
   ResourceImageField,
@@ -54,6 +59,24 @@ export function useParticipantResourcesForm() {
   const { participantResources, setParticipantResources } = useApp();
   const [form, setForm] = useState<ParticipantResources>(participantResources);
   const [saveMessage, setSaveMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<UpdateParticipantResourcesFiles>({});
+
+  useEffect(() => {
+    setForm(participantResources);
+  }, [participantResources]);
+
+  const markPendingFile = (key: keyof UpdateParticipantResourcesFiles, file: File | null) => {
+    setPendingFiles((prev) => {
+      const next = { ...prev };
+      if (file) {
+        next[key] = file;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  };
 
   const updateTextField = (key: ResourceTextField, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -83,6 +106,21 @@ export function useParticipantResourcesForm() {
         fileMimeType: file.type,
       },
     }));
+
+    const map: Partial<Record<ResourceDocumentField, keyof UpdateParticipantResourcesFiles>> = {
+      guideDocument: "guideDocumentFile",
+      submissionDocument: "submissionDocumentFile",
+      formS1Document: "formS1DocumentFile",
+      formS2Document: "formS2DocumentFile",
+      formS3Document: "formS3DocumentFile",
+      formS4Document: "formS4DocumentFile",
+      twibbonDocument: "twibbonDocumentFile",
+    };
+    const pendingKey = map[key];
+    if (pendingKey) {
+      markPendingFile(pendingKey, file);
+    }
+
     if (saveMessage) setSaveMessage("");
   };
 
@@ -96,6 +134,21 @@ export function useParticipantResourcesForm() {
         fileMimeType: "",
       },
     }));
+
+    const map: Partial<Record<ResourceDocumentField, keyof UpdateParticipantResourcesFiles>> = {
+      guideDocument: "guideDocumentFile",
+      submissionDocument: "submissionDocumentFile",
+      formS1Document: "formS1DocumentFile",
+      formS2Document: "formS2DocumentFile",
+      formS3Document: "formS3DocumentFile",
+      formS4Document: "formS4DocumentFile",
+      twibbonDocument: "twibbonDocumentFile",
+    };
+    const pendingKey = map[key];
+    if (pendingKey) {
+      markPendingFile(pendingKey, null);
+    }
+
     if (saveMessage) setSaveMessage("");
   };
 
@@ -115,6 +168,16 @@ export function useParticipantResourcesForm() {
         caption: prev[key].caption || fallbackCaption,
       },
     }));
+
+    const map: Partial<Record<ResourceImageField, keyof UpdateParticipantResourcesFiles>> = {
+      twibbonThumbnail: "twibbonThumbnailFile",
+      whatsappThumbnail: "whatsappThumbnailFile",
+    };
+    const pendingKey = map[key];
+    if (pendingKey) {
+      markPendingFile(pendingKey, file);
+    }
+
     if (saveMessage) setSaveMessage("");
   };
 
@@ -123,6 +186,16 @@ export function useParticipantResourcesForm() {
       ...prev,
       [key]: createEmptyImage(fallbackCaption),
     }));
+
+    const map: Partial<Record<ResourceImageField, keyof UpdateParticipantResourcesFiles>> = {
+      twibbonThumbnail: "twibbonThumbnailFile",
+      whatsappThumbnail: "whatsappThumbnailFile",
+    };
+    const pendingKey = map[key];
+    if (pendingKey) {
+      markPendingFile(pendingKey, null);
+    }
+
     if (saveMessage) setSaveMessage("");
   };
 
@@ -147,6 +220,16 @@ export function useParticipantResourcesForm() {
       };
       return { ...prev, [key]: nextList };
     });
+
+    if (key === "closeUpExamples") {
+      const targetKey = (["closeUpExample1File", "closeUpExample2File", "closeUpExample3File"] as const)[index];
+      markPendingFile(targetKey, file);
+    }
+    if (key === "fullBodyExamples") {
+      const targetKey = (["fullBodyExample1File", "fullBodyExample2File", "fullBodyExample3File"] as const)[index];
+      markPendingFile(targetKey, file);
+    }
+
     if (saveMessage) setSaveMessage("");
   };
 
@@ -179,17 +262,72 @@ export function useParticipantResourcesForm() {
       nextList[index] = createEmptyImage(`${fallbackCaption} ${index + 1}`);
       return { ...prev, [key]: nextList };
     });
+
+    if (key === "closeUpExamples") {
+      const targetKey = (["closeUpExample1File", "closeUpExample2File", "closeUpExample3File"] as const)[index];
+      markPendingFile(targetKey, null);
+    }
+    if (key === "fullBodyExamples") {
+      const targetKey = (["fullBodyExample1File", "fullBodyExample2File", "fullBodyExample3File"] as const)[index];
+      markPendingFile(targetKey, null);
+    }
+
     if (saveMessage) setSaveMessage("");
   };
 
-  const handleSave = () => {
-    setParticipantResources(form);
-    setSaveMessage("Pusat dokumen peserta berhasil diperbarui.");
+  const stripInlineDataUrls = (value: ParticipantResources): ParticipantResources => {
+    const sanitizeDoc = (doc: ResourceDocument): ResourceDocument => ({
+      ...doc,
+      fileDataUrl: doc.fileDataUrl.startsWith("data:") ? "" : doc.fileDataUrl,
+    });
+    const sanitizeImage = (img: ResourceImage): ResourceImage => ({
+      ...img,
+      imageUrl: img.imageUrl.startsWith("data:") ? "" : img.imageUrl,
+    });
+
+    return {
+      ...value,
+      guideDocument: sanitizeDoc(value.guideDocument),
+      submissionDocument: sanitizeDoc(value.submissionDocument),
+      formS1Document: sanitizeDoc(value.formS1Document),
+      formS2Document: sanitizeDoc(value.formS2Document),
+      formS3Document: sanitizeDoc(value.formS3Document),
+      formS4Document: sanitizeDoc(value.formS4Document),
+      twibbonDocument: sanitizeDoc(value.twibbonDocument),
+      twibbonThumbnail: sanitizeImage(value.twibbonThumbnail),
+      whatsappThumbnail: sanitizeImage(value.whatsappThumbnail),
+      closeUpExamples: value.closeUpExamples.map(sanitizeImage),
+      fullBodyExamples: value.fullBodyExamples.map(sanitizeImage),
+    };
+  };
+
+  const handleSave = async () => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setSaveMessage("Sesi login habis. Silakan login ulang.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const payload = stripInlineDataUrls(form);
+      const response = await updateParticipantResources(token, payload, pendingFiles);
+      setParticipantResources(response.data as ParticipantResources);
+      setForm(response.data as ParticipantResources);
+      setPendingFiles({});
+      setSaveMessage("Pusat dokumen peserta berhasil diperbarui.");
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : "Gagal menyimpan perubahan.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return {
     form,
     saveMessage,
+    isSaving,
     updateTextField,
     updateDocumentLink,
     updateDocumentFile,

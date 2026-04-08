@@ -85,12 +85,25 @@ function shouldShowAuditionNumber(status: StageStatus): boolean {
   return ["Verified", "TechnicalMeeting", "Audition", "Rejected"].includes(status);
 }
 
+function shouldShowParticipantCode(status: StageStatus): boolean {
+  return ["PreCamp", "Camp", "GrandFinal", "Winner"].includes(status);
+}
+
 function normalizeParticipantCode(
   participantCode?: string | null
 ): string {
   const explicitCode = (participantCode ?? "").trim();
   if (explicitCode) return explicitCode;
   return "-";
+}
+
+function getSelectionNumberForDisplay(participant: Participant | null): string {
+  if (!participant) return "-";
+  const audition = (participant.auditionNumber ?? "").trim();
+  if (audition) return audition;
+  const code = (participant.participantCode ?? "").trim();
+  if (code) return code;
+  return participant.number?.trim() || "-";
 }
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
@@ -168,7 +181,10 @@ function mergeParticipantWithBackend(
     documents: normalizedDocuments,
     submittedToAdmin: biodata?.submitted_to_admin ?? base?.submittedToAdmin ?? false,
     eliminatedInAudition: biodata?.eliminated_in_audition ?? base?.eliminatedInAudition ?? false,
-    rejectionReason: base?.rejectionReason,
+    rejectionReason:
+      biodata?.selection_status === "Rejected"
+        ? (biodata.selection_status_note ?? base?.rejectionReason)
+        : undefined,
     verificationIssues: base?.verificationIssues ?? [],
     agreementNoAgency: biodata?.agreement_no_agency ?? base?.agreementNoAgency,
     agencyName: biodata?.agency_name ?? base?.agencyName,
@@ -286,6 +302,7 @@ export default function ParticipantDashboardPage() {
   const statusValue = participant?.status ?? "Pending";
   const statusInfo = statusConfig[statusValue];
   const showAuditionNumber = shouldShowAuditionNumber(statusValue);
+  const showParticipantCode = shouldShowParticipantCode(statusValue);
   const effectiveParticipantCode = normalizeParticipantCode(
     participant?.participantCode
   );
@@ -341,67 +358,94 @@ export default function ParticipantDashboardPage() {
       : null
     : null;
 
-  useEffect(() => {
+  const syncParticipantFromBackend = React.useCallback(async () => {
     const token = getParticipantAuthSession()?.token;
     if (!token) return;
 
+    try {
+      const [response, biodataResponse] = await Promise.all([
+        fetchAuthenticatedParticipant(token),
+        fetchParticipantBiodata(token).catch(() => null),
+      ]);
+
+      const backendUser = response.user;
+      if ((backendUser.role ?? "").toLowerCase() !== "participant") return;
+      const biodata = biodataResponse?.data ?? null;
+
+      const backendEmail = (backendUser.email ?? "").trim().toLowerCase();
+      let mergedSnapshot: Participant | null = null;
+
+      setCurrentParticipant((prev) => {
+        const merged = mergeParticipantWithBackend(prev, backendUser, biodata);
+        mergedSnapshot = merged;
+        return merged;
+      });
+
+      setParticipantList((prev) => {
+        const fallbackBase =
+          prev.find((item) => item.email.trim().toLowerCase() === backendEmail) ?? null;
+        const merged =
+          mergedSnapshot ?? mergeParticipantWithBackend(fallbackBase, backendUser, biodata);
+
+        const index = prev.findIndex(
+          (item) =>
+            item.id === merged.id ||
+            item.email.trim().toLowerCase() === merged.email.trim().toLowerCase()
+        );
+
+        if (index === -1) {
+          return [merged, ...prev];
+        }
+
+        const next = [...prev];
+        next[index] = merged;
+        return next;
+      });
+
+      setSyncError("");
+    } catch (error) {
+      setSyncError(getReadableApiError(error));
+    }
+  }, [setCurrentParticipant, setParticipantList]);
+
+  useEffect(() => {
     let cancelled = false;
 
-    const syncParticipantFromBackend = async () => {
+    const runSyncSafely = async () => {
+      if (cancelled) return;
       try {
-        const [response, biodataResponse] = await Promise.all([
-          fetchAuthenticatedParticipant(token),
-          fetchParticipantBiodata(token).catch(() => null),
-        ]);
-        if (cancelled) return;
-
-        const backendUser = response.user;
-        if ((backendUser.role ?? "").toLowerCase() !== "participant") return;
-        const biodata = biodataResponse?.data ?? null;
-
-        const backendEmail = (backendUser.email ?? "").trim().toLowerCase();
-        let mergedSnapshot: Participant | null = null;
-
-        setCurrentParticipant((prev) => {
-          const merged = mergeParticipantWithBackend(prev, backendUser, biodata);
-          mergedSnapshot = merged;
-          return merged;
-        });
-
-        setParticipantList((prev) => {
-          const fallbackBase =
-            prev.find((item) => item.email.trim().toLowerCase() === backendEmail) ?? null;
-          const merged =
-            mergedSnapshot ?? mergeParticipantWithBackend(fallbackBase, backendUser, biodata);
-
-          const index = prev.findIndex(
-            (item) =>
-              item.id === merged.id ||
-              item.email.trim().toLowerCase() === merged.email.trim().toLowerCase()
-          );
-
-          if (index === -1) {
-            return [merged, ...prev];
-          }
-
-          const next = [...prev];
-          next[index] = merged;
-          return next;
-        });
-
-        setSyncError("");
-      } catch (error) {
-        if (cancelled) return;
-        setSyncError(getReadableApiError(error));
+        await syncParticipantFromBackend();
+      } catch {
+        // Error sudah ditangani di helper sync.
       }
     };
 
-    void syncParticipantFromBackend();
+    void runSyncSafely();
+
+    const intervalId = window.setInterval(() => {
+      void runSyncSafely();
+    }, 30000);
+
+    const onWindowFocus = () => {
+      void runSyncSafely();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void runSyncSafely();
+      }
+    };
+
+    window.addEventListener("focus", onWindowFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onWindowFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [setCurrentParticipant, setParticipantList]);
+  }, [syncParticipantFromBackend]);
 
   useEffect(() => {
     if (!revisionStorageKey || typeof window === "undefined") return;
@@ -574,18 +618,18 @@ export default function ParticipantDashboardPage() {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                {showAuditionNumber ? "No. Audisi" : "Nomor Seleksi"}
+                {showAuditionNumber || showParticipantCode ? "No. Audisi" : "Nomor Seleksi"}
               </p>
               <p
                 className="text-sm font-bold"
                 style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
               >
-                {showAuditionNumber
-                  ? (participant.auditionNumber ?? participant.number)
+                {showAuditionNumber || showParticipantCode
+                  ? getSelectionNumberForDisplay(participant)
                   : "Menunggu verifikasi admin"}
               </p>
             </div>
-            {showAuditionNumber ? (
+            {showParticipantCode ? (
               <div className="text-right">
                 <p className="text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                   Kode Peserta

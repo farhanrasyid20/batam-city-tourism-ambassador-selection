@@ -128,6 +128,8 @@ function RankingColumn({
   officialLikesMap,
   lastSyncedAt,
   showJuryScore = false,
+  isPublished = true,
+  unpublishedMessage = "Belum dipublikasikan oleh admin.",
 }: {
   title: string;
   entries: RankedParticipant[];
@@ -135,6 +137,8 @@ function RankingColumn({
   officialLikesMap?: Record<string, number>;
   lastSyncedAt?: string;
   showJuryScore?: boolean;
+  isPublished?: boolean;
+  unpublishedMessage?: string;
 }) {
   return (
     <div
@@ -181,7 +185,19 @@ function RankingColumn({
       </div>
 
       <div className="grid gap-3">
-        {entries.length > 0 ? (
+        {!isPublished ? (
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: "#1A1A1A",
+              border: "1px dashed rgba(200,162,77,0.22)",
+            }}
+          >
+            <p style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+              {unpublishedMessage}
+            </p>
+          </div>
+        ) : entries.length > 0 ? (
           entries.map((entry, index) => {
             const winner = entry.participant;
             const voteCount = officialLikesMap?.[winner.id] ?? winner.likes ?? 0;
@@ -339,9 +355,15 @@ function PairParticipantCard({
 
 function JuryPairTable({
   pairRows,
+  isPublished,
 }: {
   pairRows: Array<{ rank: number; encik?: RankedParticipant; puan?: RankedParticipant }>;
+  isPublished: boolean;
 }) {
+  const rowsToRender = isPublished
+    ? pairRows
+    : ([1, 2, 3] as const).map((rank) => ({ rank, encik: undefined, puan: undefined }));
+
   return (
     <div
       className="rounded-[28px] p-5 sm:p-6"
@@ -378,8 +400,22 @@ function JuryPairTable({
         </div>
       </div>
 
+      {!isPublished ? (
+        <div
+          className="rounded-2xl p-4 mb-4"
+          style={{
+            background: "#1A1A1A",
+            border: "1px dashed rgba(200,162,77,0.22)",
+          }}
+        >
+          <p style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+            Peringkat pasangan juri belum dipublikasikan oleh admin.
+          </p>
+        </div>
+      ) : null}
+
       <div className="grid gap-3">
-        {pairRows.map((row) => (
+        {rowsToRender.map((row) => (
           <div
             key={row.rank}
             className="rounded-[24px] p-3 sm:p-4"
@@ -482,7 +518,7 @@ export default function VoteHighlightSection() {
   const ranking = finalists;
   const hasVoteData = ranking.length > 0;
   const showVoteSection = voteTopPublished && hasVoteData;
-  const showVoteRankingSection = voteRankingPublished && hasVoteData;
+  const showVoteRankingSection = voteRankingPublished;
   const hasStoredEncikWinners = judgeEncikWinnerList.length > 0;
   const hasStoredPuanWinners = judgePuanWinnerList.length > 0;
   const hasStoredPairWinners = judgePairRankingList.some(
@@ -505,9 +541,6 @@ export default function VoteHighlightSection() {
   const showJuryPuanSection =
     hasStoredPuanWinners && (judgePuanPublished || showLegacyJurySection || showFallbackFromPairPublish);
   const showJuryPairSection = hasStoredPairWinners && (judgePairPublished || showLegacyJurySection);
-  const showJurySection =
-    showJuryEncikSection || showJuryPuanSection || showJuryPairSection || showLegacyJurySection;
-  const hasAnyPublishedSection = showVoteSection || showVoteRankingSection || showJurySection;
   const safeActive = modulo(activeIndex, ranking.length);
   const totalThumbPages = Math.max(1, Math.ceil(ranking.length / thumbsPerPage));
   const safeThumbPage = Math.floor(safeActive / thumbsPerPage);
@@ -724,17 +757,9 @@ export default function VoteHighlightSection() {
           </h2>
         </div>
 
-        {!hasAnyPublishedSection ? (
-          <div className="text-center py-14 rounded-2xl" style={showcaseCardStyle}>
-            <Crown size={42} style={{ color: "#C8A24D", margin: "0 auto 12px", opacity: 0.7 }} />
-            <p style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-              Section vote dan juara versi juri belum dipublikasikan.
-            </p>
-          </div>
-        ) : (
-          <>
-            {showVoteSection ? (
-              <>
+        <>
+          {showVoteSection ? (
+            <>
                 <div className="max-w-4xl mx-auto mb-8 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-start gap-4"
                   style={{
                     background: "rgba(200,162,77,0.08)",
@@ -918,80 +943,81 @@ export default function VoteHighlightSection() {
                     Slide {safeThumbPage + 1} dari {totalThumbPages}
                   </p>
                 </div>
-              </>
-            ) : null}
+            </>
+          ) : (
+            <div className="text-center py-14 rounded-2xl mb-8" style={showcaseCardStyle}>
+              <Crown size={42} style={{ color: "#C8A24D", margin: "0 auto 12px", opacity: 0.7 }} />
+              <p style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
+                Vote favorit belum dipublikasikan oleh admin.
+              </p>
+            </div>
+          )}
 
-            {showJurySection ? (
-              <>
-                {showJuryEncikSection || showJuryPuanSection || showLegacyJurySection ? (
-                  <div className="grid xl:grid-cols-2 gap-5 mb-5">
-                    {showJuryEncikSection || showLegacyJurySection ? (
-                      <RankingColumn
-                        title="Juara Encik Versi Juri"
-                        entries={juryEncikRanking}
-                        mode="jury"
-                        showJuryScore={
-                          showLegacyJurySection
-                            ? judgeWinnerDisplayMode === "name_with_score"
-                            : judgeEncikDisplayMode === "name_with_score"
-                        }
-                      />
-                    ) : null}
-                    {showJuryPuanSection || showLegacyJurySection ? (
-                      <RankingColumn
-                        title="Juara Puan Versi Juri"
-                        entries={juryPuanRanking}
-                        mode="jury"
-                        showJuryScore={
-                          showLegacyJurySection
-                            ? judgeWinnerDisplayMode === "name_with_score"
-                            : judgePuanDisplayMode === "name_with_score"
-                        }
-                      />
-                    ) : null}
-                  </div>
-                ) : null}
+          <div className="grid xl:grid-cols-2 gap-5 mb-5">
+            <RankingColumn
+              title="Juara Encik Versi Juri"
+              entries={showJuryEncikSection || showLegacyJurySection ? juryEncikRanking : []}
+              mode="jury"
+              isPublished={showJuryEncikSection || showLegacyJurySection || showFallbackFromPairPublish}
+              unpublishedMessage="Juara Encik versi juri belum dipublikasikan oleh admin."
+              showJuryScore={
+                showLegacyJurySection
+                  ? judgeWinnerDisplayMode === "name_with_score"
+                  : judgeEncikDisplayMode === "name_with_score"
+              }
+            />
+            <RankingColumn
+              title="Juara Puan Versi Juri"
+              entries={showJuryPuanSection || showLegacyJurySection ? juryPuanRanking : []}
+              mode="jury"
+              isPublished={showJuryPuanSection || showLegacyJurySection || showFallbackFromPairPublish}
+              unpublishedMessage="Juara Puan versi juri belum dipublikasikan oleh admin."
+              showJuryScore={
+                showLegacyJurySection
+                  ? judgeWinnerDisplayMode === "name_with_score"
+                  : judgePuanDisplayMode === "name_with_score"
+              }
+            />
+          </div>
 
-                {showJuryPairSection || showLegacyJurySection ? (
-                  <div className="mb-5">
-                    <JuryPairTable pairRows={juryPairRows} />
-                  </div>
-                ) : null}
-              </>
-            ) : null}
+          <div className="mb-5">
+            <JuryPairTable
+              pairRows={juryPairRows}
+              isPublished={showJuryPairSection || showLegacyJurySection || showFallbackFromPairPublish}
+            />
+          </div>
 
-            {showVoteRankingSection ? (
-              <div className="grid xl:grid-cols-2 gap-5">
-                <RankingColumn
-                  title="Juara Vote Terbanyak Encik"
-                  entries={voteEncikRanking}
-                  mode="vote"
-                  officialLikesMap={officialLikesMap}
-                  lastSyncedAt={lastSyncedAt}
-                />
-                <RankingColumn
-                  title="Juara Vote Terbanyak Puan"
-                  entries={votePuanRanking}
-                  mode="vote"
-                  officialLikesMap={officialLikesMap}
-                  lastSyncedAt={lastSyncedAt}
-                />
-              </div>
-            ) : null}
+          <div className="grid xl:grid-cols-2 gap-5">
+            <RankingColumn
+              title="Juara Vote Terbanyak Encik"
+              entries={showVoteRankingSection && hasVoteData ? voteEncikRanking : []}
+              mode="vote"
+              isPublished={showVoteRankingSection}
+              unpublishedMessage="Ranking vote Encik belum dipublikasikan oleh admin."
+              officialLikesMap={officialLikesMap}
+              lastSyncedAt={lastSyncedAt}
+            />
+            <RankingColumn
+              title="Juara Vote Terbanyak Puan"
+              entries={showVoteRankingSection && hasVoteData ? votePuanRanking : []}
+              mode="vote"
+              isPublished={showVoteRankingSection}
+              unpublishedMessage="Ranking vote Puan belum dipublikasikan oleh admin."
+              officialLikesMap={officialLikesMap}
+              lastSyncedAt={lastSyncedAt}
+            />
+          </div>
 
-            {showVoteSection || showVoteRankingSection ? (
-              <div className="mt-5 text-center xl:text-left">
-                <Link
-                  href="/vote"
-                  className="text-sm"
-                  style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
-                >
-                  Lihat semua finalis di halaman Vote
-                </Link>
-              </div>
-            ) : null}
-          </>
-        )}
+          <div className="mt-5 text-center xl:text-left">
+            <Link
+              href="/vote"
+              className="text-sm"
+              style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
+            >
+              Lihat semua finalis di halaman Vote
+            </Link>
+          </div>
+        </>
       </div>
     </section>
   );

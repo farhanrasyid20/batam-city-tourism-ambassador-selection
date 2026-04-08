@@ -174,7 +174,7 @@ export default function JudgeScoringPage() {
         }
 
         if (activeStage === "Audition") {
-          return ["Audition", "Pre Camp", "Camp", "Grand Final", "Final Result"].includes(
+          return ["Technical Meeting", "Audition", "Pre Camp", "Camp", "Grand Final", "Final Result"].includes(
             selectionStage,
           );
         }

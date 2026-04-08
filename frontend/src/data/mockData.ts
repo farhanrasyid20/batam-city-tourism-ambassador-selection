@@ -129,9 +129,11 @@ export interface Participant {
   name: string;
   nickname?: string;
   fullName?: string;
+  religion?: string;
   gender: Gender;
 
   nationalId: string; // NIK
+  currentStatus?: "Pelajar" | "Mahasiswa" | "Lainnya";
   birthPlace: string;
   birthDate: string; // yyyy-mm-dd
   domicileAddress?: string;
@@ -149,6 +151,8 @@ export interface Participant {
   instagram: string;
   tiktok?: string;
   parentPhone?: string;
+  fatherName?: string;
+  motherName?: string;
   phone: string;
   email: string;
   occupation?: string;
@@ -393,6 +397,7 @@ export function isParticipantEligibleForScoreStage(participant: Participant, sta
 
   if (stageName === "Audition") {
     return (
+      selectionStage === "Technical Meeting" ||
       selectionStage === "Audition" ||
       selectionStage === "Pre Camp" ||
       selectionStage === "Camp" ||

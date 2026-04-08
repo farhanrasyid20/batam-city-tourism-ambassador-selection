@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable jsx-a11y/alt-text */
 
 import React from "react";
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
@@ -15,14 +16,44 @@ type ParticipantPdfData = {
   participantCode?: string;
   showAuditionNumber?: boolean;
   name?: string;
+  nickname?: string;
+  religion?: string;
   gender?: string;
+  currentStatus?: string;
   nationalId?: string;
   birthPlace?: string;
   birthDate?: string;
   heightCm?: number;
+  weightKg?: string;
+  shirtSize?: string;
+  chestCircumferenceCm?: string;
+  waistCircumferenceCm?: string;
+  hipCircumferenceCm?: string;
+  pantsSize?: string;
+  shoeSize?: string;
+  domicileAddress?: string;
+  ktpAddress?: string;
   education?: string;
   instagram?: string;
+  tiktok?: string;
   phone?: string;
+  parentPhone?: string;
+  fatherName?: string;
+  motherName?: string;
+  occupation?: string;
+  skills?: string;
+  hobbies?: string;
+  languages?: string;
+  vision?: string;
+  mission?: string;
+  experience?: string;
+  achievement?: string;
+  agreementNoAgency?: string;
+  agreementParentPermission?: string;
+  agreementAllStages?: string;
+  motivationStatement?: string;
+  contributionIdea?: string;
+  publicSpeakingExperience?: string;
   email?: string;
   photo?: string;
   status: StageStatus;
@@ -126,7 +157,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   infoLabel: {
-    width: 90,
+    width: 126,
     fontWeight: 700,
   },
   infoSep: {
@@ -191,6 +222,19 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: "#666",
   },
+  detailSection: {
+    border: "1 solid #d6c089",
+    borderRadius: 8,
+    backgroundColor: "#fffdf7",
+    padding: 10,
+    marginBottom: 10,
+  },
+  sectionSubtitle: {
+    fontSize: 10,
+    color: "#a98835",
+    fontWeight: 700,
+    marginBottom: 6,
+  },
 });
 
 export default function ParticipantPdfDocument({
@@ -203,6 +247,12 @@ export default function ParticipantPdfDocument({
   logoSrc,
 }: ParticipantPdfDocumentProps) {
   const genderLabel = participant.gender === "Encik" ? "ENCIK (Putra)" : "PUAN (Putri)";
+  const yesNoLabel = (value?: string) =>
+    value === "yes" ? "Ya" : value === "no" ? "Tidak" : "-";
+  const showValue = (value?: string | number | null) => {
+    const normalized = String(value ?? "").trim();
+    return normalized || "-";
+  };
   const ttl = participant.birthDate
     ? `${participant.birthPlace || "-"}, ${participant.birthDate}`
     : "-";
@@ -248,12 +298,29 @@ export default function ParticipantPdfDocument({
                 <Text style={styles.participantName}>{participant.name || "Nama Peserta"}</Text>
 
                 {[
+                  ["Nama Panggilan", showValue(participant.nickname)],
+                  ["Agama", showValue(participant.religion)],
                   ["Kategori", genderLabel],
+                  ["Status Saat Ini", showValue(participant.currentStatus)],
                   ["NIK", participant.nationalId || "-"],
                   ["TTL", ttl],
                   ["Tinggi Badan", participant.heightCm ? `${participant.heightCm} cm` : "-"],
+                  ["Berat Badan", participant.weightKg ? `${participant.weightKg} kg` : "-"],
+                  ["Ukuran Baju", showValue(participant.shirtSize)],
+                  ["Lingkar Dada", participant.chestCircumferenceCm ? `${participant.chestCircumferenceCm} cm` : "-"],
+                  ["Lingkar Pinggang", participant.waistCircumferenceCm ? `${participant.waistCircumferenceCm} cm` : "-"],
+                  ["Lingkar Pinggul", participant.hipCircumferenceCm ? `${participant.hipCircumferenceCm} cm` : "-"],
+                  ["Ukuran Celana", showValue(participant.pantsSize)],
+                  ["Ukuran Sepatu", showValue(participant.shoeSize)],
                   ["Pendidikan", educationDisplay],
+                  ["Alamat Domisili", showValue(participant.domicileAddress)],
+                  ["Alamat sesuai KTP", showValue(participant.ktpAddress)],
                   ["Instagram", participant.instagram || "-"],
+                  ["TikTok", showValue(participant.tiktok)],
+                  ["No. HP / WA", showValue(participant.phone)],
+                  ["No. HP Orang Tua", showValue(participant.parentPhone)],
+                  ["Nama Ayah Kandung", showValue(participant.fatherName)],
+                  ["Nama Ibu Kandung", showValue(participant.motherName)],
                   ["Email", participant.email || "-"],
                 ].map(([label, value]) => (
                   <View key={label} style={styles.infoRow}>
@@ -291,8 +358,82 @@ export default function ParticipantPdfDocument({
             </View>
           </View>
 
+          <View style={styles.footer}>
+            <Text>
+              Dokumen ini digenerate secara otomatis oleh Sistem Pemilihan Duta Wisata Kota Batam 2026
+            </Text>
+          </View>
+        </View>
+      </Page>
+
+      <Page size="A4" style={styles.page}>
+        <View style={styles.card}>
+          <View style={styles.header}>
+            <Image src={logoSrc} style={styles.logo} />
+            <View style={styles.titleWrap}>
+              <Text style={styles.title}>LAMPIRAN BIODATA PESERTA</Text>
+              <Text style={styles.subtitle}>Data Tambahan Form S-01</Text>
+              <Text style={styles.dept}>Pemilihan Duta Wisata Kota Batam 2026</Text>
+            </View>
+            <View style={styles.participantNumberWrap}>
+              <Text style={styles.participantNumberLabel}>Nama Peserta</Text>
+              <Text style={[styles.participantNumber, { fontSize: 12 }]}>
+                {participant.name || "-"}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.content}>
+            <View style={styles.detailSection}>
+              <Text style={styles.sectionSubtitle}>Data Tambahan</Text>
+              {[
+                ["Pekerjaan", showValue(participant.occupation)],
+                ["Keahlian / Bakat", showValue(participant.skills)],
+                ["Hobi", showValue(participant.hobbies)],
+                ["Bahasa yang Dikuasai", showValue(participant.languages)],
+                ["Visi", showValue(participant.vision)],
+                ["Misi", showValue(participant.mission)],
+                ["Pengalaman Organisasi/Kepemudaan", showValue(participant.experience)],
+                ["Prestasi & Penghargaan", showValue(participant.achievement)],
+              ].map(([label, value]) => (
+                <View key={label} style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>{label}</Text>
+                  <Text style={styles.infoSep}>:</Text>
+                  <Text style={styles.infoValue}>{value}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.detailSection}>
+              <Text style={styles.sectionSubtitle}>Pertanyaan Tambahan</Text>
+              {[
+                [
+                  "Terikat kontrak/perjanjian agensi model",
+                  yesNoLabel(participant.agreementNoAgency),
+                ],
+                [
+                  "Bersedia & diizinkan ikut Pra-karantina s/d Grand Final",
+                  yesNoLabel(participant.agreementParentPermission),
+                ],
+                [
+                  "Bersedia ikut kegiatan lokal/nasional/internasional",
+                  yesNoLabel(participant.agreementAllStages),
+                ],
+                ["Motivasi mengikuti pemilihan", showValue(participant.motivationStatement)],
+                ["Rencana kontribusi pariwisata Batam", showValue(participant.contributionIdea)],
+                ["Pengalaman public speaking/duta/modelling", showValue(participant.publicSpeakingExperience)],
+              ].map(([label, value]) => (
+                <View key={label} style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>{label}</Text>
+                  <Text style={styles.infoSep}>:</Text>
+                  <Text style={styles.infoValue}>{value}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
           <Text style={styles.footer}>
-            Dokumen ini digenerate secara otomatis oleh Sistem Pemilihan Duta Wisata Kota Batam 2026
+            Lampiran biodata ini menampilkan ringkasan seluruh data form peserta.
           </Text>
         </View>
       </Page>

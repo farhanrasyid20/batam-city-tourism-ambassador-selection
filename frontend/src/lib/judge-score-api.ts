@@ -33,6 +33,7 @@ export type SubmitJudgeScorePayload = {
   participant_name?: string;
   stage: BackendJudgeScoreStage;
   score_type?: BackendJudgeScoreType;
+  judge_user_id?: number;
   score: Score;
   note?: string;
 };
@@ -44,11 +45,18 @@ export type SubmitJudgeScoreResponse = {
 
 export function fetchJudgeScores(
   token: string,
-  params?: { stage?: BackendJudgeScoreStage; participant_id?: string }
+  params?: {
+    stage?: BackendJudgeScoreStage;
+    participant_id?: string;
+    judge_user_id?: number;
+  }
 ) {
   const query = new URLSearchParams();
   if (params?.stage) query.set("stage", params.stage);
   if (params?.participant_id) query.set("participant_id", params.participant_id);
+  if (typeof params?.judge_user_id === "number") {
+    query.set("judge_user_id", String(params.judge_user_id));
+  }
 
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
 
@@ -65,4 +73,3 @@ export function submitJudgeScore(token: string, payload: SubmitJudgeScorePayload
     body: payload,
   });
 }
-

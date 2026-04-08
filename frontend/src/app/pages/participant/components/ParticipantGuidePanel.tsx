@@ -28,6 +28,16 @@ function resolveDocumentHref(fileDataUrl: string, linkUrl: string, fallbackHref:
 
 export default function ParticipantGuidePanel() {
   const { participantResources } = useApp();
+  const twibbonFallback = "/participant-resources/twibbon-duwis-2026.png";
+  const whatsappFallback = "/participant-resources/qr-grup-wa-dutawisata-2026.jpg";
+
+  const pickGuideImage = (source: string | undefined, fallback: string) => {
+    const value = (source ?? "").trim();
+    if (!value) return fallback;
+    const lower = value.toLowerCase();
+    if (lower.includes("default-avatar")) return fallback;
+    return value;
+  };
 
   const resourceItems = [
     {
@@ -78,8 +88,8 @@ export default function ParticipantGuidePanel() {
     {
       title: "Berkas Online",
       href: resolveDocumentHref(
-        participantResources.submissionDocument.fileDataUrl,
         participantResources.submissionDocument.linkUrl,
+        participantResources.submissionDocument.fileDataUrl,
         officialLinks.forms
       ),
       note: "Akses berkas online resmi dari panitia.",
@@ -106,10 +116,17 @@ export default function ParticipantGuidePanel() {
           }))
       : fallbackFullBodyExamples;
 
-  const twibbonThumbnail =
-    participantResources.twibbonThumbnail.imageUrl || "/participant-resources/twibbon-duwis-2026.png";
-  const whatsappThumbnail =
-    participantResources.whatsappThumbnail.imageUrl || "/participant-resources/qr-grup-wa-dutawisata-2026.jpg";
+  const [twibbonThumbnail, setTwibbonThumbnail] = React.useState(() =>
+    pickGuideImage(participantResources.twibbonThumbnail.imageUrl, twibbonFallback)
+  );
+  const [whatsappThumbnail, setWhatsappThumbnail] = React.useState(() =>
+    pickGuideImage(participantResources.whatsappThumbnail.imageUrl, whatsappFallback)
+  );
+
+  React.useEffect(() => {
+    setTwibbonThumbnail(pickGuideImage(participantResources.twibbonThumbnail.imageUrl, twibbonFallback));
+    setWhatsappThumbnail(pickGuideImage(participantResources.whatsappThumbnail.imageUrl, whatsappFallback));
+  }, [participantResources.twibbonThumbnail.imageUrl, participantResources.whatsappThumbnail.imageUrl]);
   const twibbonOpenLink = participantResources.twibbonOpenLink || officialLinks.forms;
   const twibbonDownloadLink = resolveDocumentHref(
     participantResources.twibbonDocument.fileDataUrl,
@@ -259,6 +276,7 @@ export default function ParticipantGuidePanel() {
               className="w-full h-auto rounded-xl border"
               style={{ borderColor: "rgba(200,162,77,0.3)" }}
               unoptimized
+              onError={() => setTwibbonThumbnail(twibbonFallback)}
             />
             <NextImage
               src={whatsappThumbnail}
@@ -268,6 +286,7 @@ export default function ParticipantGuidePanel() {
               className="w-full h-auto rounded-xl border"
               style={{ borderColor: "rgba(200,162,77,0.3)" }}
               unoptimized
+              onError={() => setWhatsappThumbnail(whatsappFallback)}
             />
           </div>
           <div className="flex flex-wrap gap-2 mb-3">

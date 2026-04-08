@@ -20,6 +20,8 @@ type ProgressChecklistSectionProps = {
   isProgressStage: boolean;
   participants: Participant[];
   progressDraftsCount: number;
+  canSaveProgress: boolean;
+  isSavingProgress: boolean;
   selectedParticipantId: string | null;
   onSaveProgress: () => void;
   onSelectParticipant: (participantId: string | null) => void;
@@ -27,7 +29,28 @@ type ProgressChecklistSectionProps = {
     participantId: string,
     stage: ParticipantProgressStageKey,
   ) => void;
+  onToggleAuditionElimination: (participantId: string) => void;
+  isParticipantEliminated: (participant: Participant) => boolean;
   getDraftProgress: (participant: Participant) => ParticipantStageProgress;
+};
+
+const toTitleCase = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+const getDisplayParticipantName = (participant: Participant) => {
+  const cleanedNickname = (participant.nickname ?? "")
+    .trim()
+    .replace(/^(encik|puan)\s+/i, "");
+  const cleanedName = participant.name
+    .trim()
+    .replace(/^(encik|puan)\s+/i, "");
+  const baseRaw = cleanedNickname || cleanedName.split(/\s+/)[0] || "Peserta";
+  const baseName = toTitleCase(baseRaw);
+  return `${participant.gender} ${baseName}`.trim();
 };
 
 export default function ProgressChecklistSection({
@@ -35,12 +58,29 @@ export default function ProgressChecklistSection({
   isProgressStage,
   participants,
   progressDraftsCount,
+  canSaveProgress,
+  isSavingProgress,
   selectedParticipantId,
   onSaveProgress,
   onSelectParticipant,
   onToggleProgress,
+  onToggleAuditionElimination,
+  isParticipantEliminated,
   getDraftProgress,
 }: ProgressChecklistSectionProps) {
+  const getCurrentStageLabel = (participant: Participant, progress: ParticipantStageProgress) => {
+    if (isParticipantEliminated(participant)) {
+      return "Tereliminasi Audisi";
+    }
+
+    return selectionStageLabels[
+      getSelectionStageFromStageProgress(
+        progress,
+        getParticipantVerificationStatus(participant),
+      )
+    ];
+  };
+
   return (
     <GoldCard>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
@@ -64,22 +104,27 @@ export default function ProgressChecklistSection({
         <button
           type="button"
           onClick={onSaveProgress}
-          disabled={!progressDraftsCount}
+          disabled={!canSaveProgress || isSavingProgress}
           className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+          title={
+            progressDraftsCount > 0
+              ? `${progressDraftsCount} perubahan belum disimpan`
+              : "Sinkronkan progres tahap ke backend"
+          }
           style={{
-            background: progressDraftsCount
+            background: canSaveProgress && !isSavingProgress
               ? "linear-gradient(135deg, #F5D06F, #D4AF37)"
               : "rgba(255,255,255,0.06)",
-            color: progressDraftsCount ? "#0F0F0F" : "#777",
+            color: canSaveProgress && !isSavingProgress ? "#0F0F0F" : "#777",
             border: `1px solid ${
-              progressDraftsCount
+              canSaveProgress && !isSavingProgress
                 ? "transparent"
                 : "rgba(255,255,255,0.08)"
             }`,
             fontFamily: "var(--font-poppins)",
           }}
         >
-          Simpan Progress Tahap
+          {isSavingProgress ? "Menyimpan..." : "Simpan Progress Tahap"}
         </button>
       </div>
 
@@ -126,8 +171,9 @@ export default function ProgressChecklistSection({
                   style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
                 >
                   <td className="py-3 pr-3">
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() =>
                         onSelectParticipant(
                           selectedParticipantId === participant.id
@@ -135,7 +181,17 @@ export default function ProgressChecklistSection({
                             : participant.id,
                         )
                       }
-                      className="flex items-center gap-3 text-left w-full"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onSelectParticipant(
+                            selectedParticipantId === participant.id
+                              ? null
+                              : participant.id,
+                          );
+                        }
+                      }}
+                      className="flex items-center gap-3 text-left w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 rounded-lg"
                     >
                       <Image
                         src={participant.photo}
@@ -157,7 +213,7 @@ export default function ProgressChecklistSection({
                             fontFamily: "var(--font-poppins)",
                           }}
                         >
-                          {participant.name}
+                          {getDisplayParticipantName(participant)}
                         </p>
                         <p
                           className="text-xs"
@@ -168,8 +224,32 @@ export default function ProgressChecklistSection({
                         >
                           {participant.number} - {participant.gender}
                         </p>
+                        {activeStage === "Audition" && isProgressStage ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onToggleAuditionElimination(participant.id);
+                            }}
+                            className="mt-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all"
+                            style={{
+                              fontFamily: "var(--font-poppins)",
+                              background: isParticipantEliminated(participant)
+                                ? "rgba(34,197,94,0.15)"
+                                : "rgba(239,68,68,0.18)",
+                              border: `1px solid ${
+                                isParticipantEliminated(participant)
+                                  ? "rgba(34,197,94,0.35)"
+                                  : "rgba(239,68,68,0.35)"
+                              }`,
+                              color: isParticipantEliminated(participant) ? "#22c55e" : "#ef4444",
+                            }}
+                          >
+                            {isParticipantEliminated(participant) ? "Batal X" : "X Eliminasi"}
+                          </button>
+                        ) : null}
                       </div>
-                    </button>
+                    </div>
                   </td>
 
                   {participantProgressStages.map((stage) => {
@@ -218,20 +298,17 @@ export default function ProgressChecklistSection({
                     <span
                       className="px-3 py-1 rounded-full text-xs"
                       style={{
-                        background: "rgba(212,175,55,0.12)",
-                        border: "1px solid rgba(212,175,55,0.2)",
-                        color: "#D4AF37",
+                        background: isParticipantEliminated(participant)
+                          ? "rgba(239,68,68,0.12)"
+                          : "rgba(212,175,55,0.12)",
+                        border: isParticipantEliminated(participant)
+                          ? "1px solid rgba(239,68,68,0.28)"
+                          : "1px solid rgba(212,175,55,0.2)",
+                        color: isParticipantEliminated(participant) ? "#ef4444" : "#D4AF37",
                         fontFamily: "var(--font-poppins)",
                       }}
                     >
-                      {
-                        selectionStageLabels[
-                          getSelectionStageFromStageProgress(
-                            progress,
-                            getParticipantVerificationStatus(participant),
-                          )
-                        ]
-                      }
+                      {getCurrentStageLabel(participant, progress)}
                     </span>
                   </td>
                 </tr>

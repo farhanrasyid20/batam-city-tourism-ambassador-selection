@@ -496,12 +496,29 @@ export default function AdminExportPage() {
   }, [rows, selectedStage]);
 
   const completion = useMemo(() => {
-    const total = rows.length;
+    const stageScopeRows = rows.filter((row) => {
+      if (selectedStage === "Audition") {
+        // Audition menghitung semua kandidat audisi yang ada di rekap.
+        return true;
+      }
+      if (selectedStage === "Camp") {
+        // Scope karantina: peserta yang sudah punya nilai karantina/final.
+        return row.camp_average > 0 || row.grand_final_average > 0 || row.final_score > 0;
+      }
+      if (selectedStage === "Grand Final") {
+        // Scope grand final: peserta yang sudah masuk grand final/final result.
+        return row.grand_final_average > 0 || row.final_score > 0;
+      }
+      // Final result hanya menghitung finalis yang punya basis nilai final.
+      return row.grand_final_average > 0 || row.camp_average > 0 || row.final_score > 0;
+    });
+
+    const total = stageScopeRows.length;
     if (total === 0) {
       return { total: 0, scored: 0, isComplete: false };
     }
 
-    const scored = rows.filter((row) => {
+    const scored = stageScopeRows.filter((row) => {
       if (selectedStage === "Audition") return row.audition_average > 0;
       if (selectedStage === "Camp") return row.camp_average > 0;
       if (selectedStage === "Grand Final") return row.grand_final_average > 0;
@@ -514,6 +531,9 @@ export default function AdminExportPage() {
       isComplete: scored === total,
     };
   }, [rows, selectedStage]);
+
+  const isFinalStage = selectedStage === "Final Result";
+  const canExportPdf = !isFinalStage || completion.isComplete;
 
   const headers = useMemo(() => {
     const maxJudges = recap?.meta.max_judges;
@@ -826,8 +846,10 @@ export default function AdminExportPage() {
               {completion.scored}/{completion.total} peserta
             </span>
             .{" "}
-            {completion.isComplete
-              ? "Penilaian lengkap, PDF final bisa diexport."
+            {canExportPdf
+              ? isFinalStage
+                ? "Penilaian lengkap, PDF final bisa diexport."
+                : "PDF tahap ini tetap bisa diexport meski progres belum 100%."
               : "Penilaian belum lengkap, PDF final masih dikunci."}
           </p>
         </div>
@@ -1004,7 +1026,7 @@ export default function AdminExportPage() {
                 Boolean(error) ||
                 exportingPdf ||
                 tableData.length === 0 ||
-                !completion.isComplete
+                !canExportPdf
               }
             >
               {exportingPdf ? <CheckCircle size={16} /> : <FileText size={16} />}

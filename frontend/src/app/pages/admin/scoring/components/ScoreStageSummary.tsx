@@ -8,6 +8,7 @@ import GoldCard from "../../../../../components/dashboard/GoldCard";
 type RankedParticipant = {
   id: string;
   name: string;
+  nickname?: string;
   number: string;
   gender: string;
   photo: string;
@@ -22,6 +23,25 @@ type ScoreStageSummaryProps = {
   averageStageScore: number;
   selectedParticipantId: string | null;
   onSelectParticipant: (participantId: string) => void;
+};
+
+const toTitleCase = (value: string) =>
+  value
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+const getDisplayParticipantName = (participant: RankedParticipant) => {
+  const cleanedNickname = (participant.nickname ?? "")
+    .trim()
+    .replace(/^(encik|puan)\s+/i, "");
+  const cleanedName = participant.name
+    .trim()
+    .replace(/^(encik|puan)\s+/i, "");
+  const baseRaw = cleanedNickname || cleanedName.split(/\s+/)[0] || "Peserta";
+  const baseName = toTitleCase(baseRaw);
+  return `${participant.gender} ${baseName}`.trim();
 };
 
 export default function ScoreStageSummary({
@@ -93,7 +113,7 @@ export default function ScoreStageSummary({
                 className="text-sm font-semibold truncate"
                 style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
               >
-                {topPerformer?.name ?? "-"}
+                {topPerformer ? getDisplayParticipantName(topPerformer) : "-"}
               </p>
               <p
                 className="text-lg mt-2 font-bold"
@@ -193,7 +213,7 @@ export default function ScoreStageSummary({
                     className="text-sm font-semibold truncate"
                     style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
                   >
-                    {participant.name}
+                    {getDisplayParticipantName(participant)}
                   </p>
                   <p
                     className="text-xs"

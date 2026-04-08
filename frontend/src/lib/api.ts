@@ -1,5 +1,7 @@
 "use client";
 
+import { clearParticipantAuthSession } from "./auth-storage";
+
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000/api";
 
 export const API_BASE_URL =
@@ -86,6 +88,18 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     : await response.text();
 
   if (!response.ok) {
+    if (
+      typeof window !== "undefined" &&
+      (response.status === 401 || response.status === 419)
+    ) {
+      clearParticipantAuthSession();
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith("/auth/login")) {
+        const next = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+        window.location.replace(`/auth/login?next=${next}`);
+      }
+    }
+
     const message =
       typeof payload === "object" && payload !== null && "message" in payload
         ? String(payload.message)

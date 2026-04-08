@@ -21,6 +21,7 @@ export default function AdminParticipantResourcesPage() {
   const {
     form,
     saveMessage,
+    isSaving,
     updateTextField,
     updateDocumentLink,
     updateDocumentFile,
@@ -90,9 +91,9 @@ export default function AdminParticipantResourcesPage() {
         ))}
 
         <div className="flex items-center gap-3">
-          <GoldButton variant="primary" size="sm" onClick={handleSave}>
+          <GoldButton variant="primary" size="sm" onClick={() => void handleSave()} disabled={isSaving}>
             <Save size={14} />
-            Simpan Perubahan
+            {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
           </GoldButton>
           {saveMessage ? (
             <p className="text-xs" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>

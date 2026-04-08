@@ -11,6 +11,7 @@ class JudgeNote extends Model
         'participant_id',
         'participant_name',
         'author_user_id',
+        'author_name_override',
         'stage',
         'author_role',
         'content',
@@ -26,4 +27,3 @@ class JudgeNote extends Model
         return $this->belongsTo(User::class, 'author_user_id');
     }
 }
-

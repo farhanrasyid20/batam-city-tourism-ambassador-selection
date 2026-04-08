@@ -25,7 +25,7 @@ class JudgeNoteController extends Controller
             'participant_name' => $note->participant_name,
             'stage' => $note->stage,
             'author_user_id' => $note->author_user_id,
-            'author_name' => $note->author?->name,
+            'author_name' => $note->author_name_override ?: $note->author?->name,
             'author_avatar' => $note->author?->judge_avatar,
             'author_role' => $note->author_role,
             'content' => $note->content,
@@ -81,15 +81,16 @@ class JudgeNoteController extends Controller
     {
         /** @var User|null $authUser */
         $authUser = $request->attributes->get('auth_user');
-        if (! $authUser || $authUser->role !== 'judge') {
+        if (! $authUser || ! in_array($authUser->role, ['judge', 'admin', 'super_admin'], true)) {
             return response()->json([
-                'message' => 'Hanya akun juri yang dapat menyimpan catatan.',
+                'message' => 'Akun ini tidak memiliki akses untuk menyimpan catatan.',
             ], 403);
         }
 
         $validator = Validator::make($request->all(), [
             'participant_id' => ['required', 'string', 'max:100'],
             'participant_name' => ['nullable', 'string', 'max:255'],
+            'author_name' => ['nullable', 'string', 'max:255'],
             'stage' => ['required', Rule::in(self::ALLOWED_STAGES)],
             'content' => ['required', 'string', 'max:5000'],
             'author_role' => ['nullable', Rule::in(self::ALLOWED_AUTHOR_ROLES)],
@@ -104,14 +105,23 @@ class JudgeNoteController extends Controller
 
         $payload = $validator->validated();
 
+        $defaultAuthorRole = match ($authUser->role) {
+            'judge' => 'judge',
+            'admin', 'super_admin' => 'admin',
+            default => 'committee',
+        };
+
         $note = JudgeNote::query()->create([
             'participant_id' => trim((string) $payload['participant_id']),
             'participant_name' => isset($payload['participant_name'])
                 ? trim((string) $payload['participant_name'])
                 : null,
             'author_user_id' => (int) $authUser->id,
+            'author_name_override' => isset($payload['author_name']) && trim((string) $payload['author_name']) !== ''
+                ? trim((string) $payload['author_name'])
+                : null,
             'stage' => (string) $payload['stage'],
-            'author_role' => (string) ($payload['author_role'] ?? 'judge'),
+            'author_role' => (string) ($payload['author_role'] ?? $defaultAuthorRole),
             'content' => trim((string) $payload['content']),
             'created_at_note' => Carbon::now(),
         ]);

@@ -123,6 +123,8 @@ export default function AdminPagesLayout({
             .join(" - ");
 
           const status = (item.selection_status ?? "Pending") as Participant["status"];
+          const eliminatedInAudition = Boolean(item.eliminated_in_audition) || status === "Rejected";
+          const normalizedStatus: Participant["status"] = eliminatedInAudition ? "Rejected" : status;
           const generatedCode = normalizeParticipantCode(
             item.participant_code,
             item.audition_number,
@@ -140,8 +142,10 @@ export default function AdminPagesLayout({
             name: item.name ?? "Peserta",
             fullName: item.name ?? "Peserta",
             nickname: item.nickname?.trim() || undefined,
+            religion: item.religion?.trim() || undefined,
             gender: item.gender ?? "Encik",
             nationalId: item.national_id?.trim() ?? "",
+            currentStatus: item.current_status ?? undefined,
             birthPlace: item.birth_place?.trim() ?? "",
             birthDate: item.birth_date?.trim() ?? "",
             domicileAddress: item.domicile_address?.trim() ?? undefined,
@@ -158,6 +162,8 @@ export default function AdminPagesLayout({
             instagram: item.instagram ?? "",
             tiktok: item.tiktok ?? undefined,
             parentPhone: item.parent_phone ?? undefined,
+            fatherName: item.father_name ?? undefined,
+            motherName: item.mother_name ?? undefined,
             phone: item.phone ?? "",
             email: (item.email ?? "").trim().toLowerCase(),
             occupation: item.occupation ?? undefined,
@@ -169,8 +175,8 @@ export default function AdminPagesLayout({
             experience: item.experience ?? undefined,
             achievement: item.achievement ?? undefined,
             photo: resolveApiAssetUrl(item.photo) ?? "/default-avatar.svg",
-            status,
-            selectionStage: item.selection_stage ?? undefined,
+            status: normalizedStatus,
+            selectionStage: eliminatedInAudition ? "Audition" : item.selection_stage ?? undefined,
             registeredAt: item.registered_at ?? new Date().toISOString().slice(0, 10),
             documents:
               item.documents?.map((doc) => ({
@@ -183,6 +189,8 @@ export default function AdminPagesLayout({
                 originalName: doc.original_name ?? undefined,
               })) ?? [],
             submittedToAdmin: item.submitted_to_admin ?? false,
+            eliminatedInAudition,
+            rejectionReason: eliminatedInAudition ? (item.selection_status_note ?? undefined) : undefined,
             scores: [],
           };
         });

@@ -150,6 +150,10 @@ function shouldShowAuditionNumber(status: StageStatus): boolean {
   return ["Verified", "TechnicalMeeting", "Audition", "Rejected"].includes(status);
 }
 
+function shouldShowParticipantCode(status: StageStatus): boolean {
+  return ["PreCamp", "Camp", "GrandFinal", "Winner"].includes(status);
+}
+
 function normalizeParticipantCode(
   participantCode?: string | null
 ): string {
@@ -177,6 +181,7 @@ export default function ParticipantStatusPage() {
   const participant = currentParticipant;
   const currentStatus: StageStatus = participant?.status ?? "Pending";
   const showAuditionNumber = shouldShowAuditionNumber(currentStatus);
+  const showParticipantCode = shouldShowParticipantCode(currentStatus);
   const effectiveParticipantCode = normalizeParticipantCode(
     participant?.participantCode
   );
@@ -320,6 +325,7 @@ export default function ParticipantStatusPage() {
             auditionNumber,
             participantCode,
             eliminatedInAudition: data.eliminated_in_audition ?? prev?.eliminatedInAudition ?? false,
+            rejectionReason: mappedStatus === "Rejected" ? (data.selection_status_note ?? prev?.rejectionReason) : undefined,
             photo: data.photo ?? prev?.photo ?? "",
           };
         });
@@ -334,6 +340,10 @@ export default function ParticipantStatusPage() {
                   auditionNumber: data.audition_number ?? data.participant_number ?? item.auditionNumber ?? item.number,
                   participantCode: data.participant_code ?? item.participantCode,
                   eliminatedInAudition: data.eliminated_in_audition ?? item.eliminatedInAudition ?? false,
+                  rejectionReason:
+                    mappedStatus === "Rejected"
+                      ? (data.selection_status_note ?? item.rejectionReason)
+                      : undefined,
                   photo: data.photo ?? item.photo,
                 }
               : item
@@ -437,8 +447,9 @@ export default function ParticipantStatusPage() {
             <div className="flex-1">
               <p className="text-xs mb-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                 {showAuditionNumber
-                  ? `No. Audisi: ${participant.auditionNumber ?? participant.number} | Kode Peserta: ${effectiveParticipantCode}`
+                  ? `No. Audisi: ${participant.auditionNumber ?? participant.number}`
                   : "Nomor seleksi: Menunggu verifikasi admin"}
+                {showParticipantCode ? ` | Kode Peserta: ${effectiveParticipantCode}` : ""}
               </p>
               <h2 className="text-base font-bold" style={{ color: "#F5E6C8", fontFamily: "var(--font-cinzel)" }}>
                 {participant.name}

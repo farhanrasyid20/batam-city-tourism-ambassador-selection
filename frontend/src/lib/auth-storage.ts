@@ -36,7 +36,22 @@ export function getParticipantAuthSession(): ParticipantAuthSession | null {
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as ParticipantAuthSession;
+    const parsed = JSON.parse(raw) as ParticipantAuthSession;
+    const savedAt = new Date(parsed.savedAt).getTime();
+    const ttlMinutes = Number(parsed.expiresInMinutes ?? 0);
+
+    if (!Number.isFinite(savedAt) || !Number.isFinite(ttlMinutes) || ttlMinutes <= 0) {
+      window.localStorage.removeItem(PARTICIPANT_AUTH_STORAGE_KEY);
+      return null;
+    }
+
+    const expiresAt = savedAt + ttlMinutes * 60 * 1000;
+    if (Date.now() >= expiresAt) {
+      clearParticipantAuthSession();
+      return null;
+    }
+
+    return parsed;
   } catch {
     window.localStorage.removeItem(PARTICIPANT_AUTH_STORAGE_KEY);
     return null;

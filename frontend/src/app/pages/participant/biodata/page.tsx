@@ -20,8 +20,10 @@ import type { Participant, StageStatus } from "../../../../data/mockData";
 type FormState = {
   fullName: string;
   nickName: string;
+  religion: string;
   gender: "Encik" | "Puan";
   nationalId: string;
+  currentStatus: "Pelajar" | "Mahasiswa" | "Lainnya" | "";
   birthPlace: string;
   birthDate: string;
   domicileAddress: string;
@@ -39,6 +41,8 @@ type FormState = {
   email: string;
   phone: string;
   parentPhone: string;
+  fatherName: string;
+  motherName: string;
   instagram: string;
   tiktok: string;
   occupation: string;
@@ -282,7 +286,9 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
     participantCode: data.participant_code ?? base?.participantCode,
     name: data.name ?? base?.name ?? "Peserta",
     gender: data.gender ?? base?.gender ?? "Encik",
+    religion: data.religion ?? base?.religion ?? undefined,
     nationalId: data.national_id ?? base?.nationalId ?? "",
+    currentStatus: data.current_status ?? base?.currentStatus ?? undefined,
     birthPlace: data.birth_place ?? base?.birthPlace ?? "",
     birthDate: data.birth_date ?? base?.birthDate ?? "",
     heightCm: data.height_cm ?? base?.heightCm ?? 0,
@@ -291,6 +297,8 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
     tiktok: normalizeSocialHandle(data.tiktok ?? base?.tiktok ?? ""),
     phone: data.phone ?? base?.phone ?? "",
     email: data.email ?? base?.email ?? "",
+    fatherName: data.father_name ?? base?.fatherName ?? undefined,
+    motherName: data.mother_name ?? base?.motherName ?? undefined,
     photo: resolveParticipantPhotoUrl(data.photo) ?? base?.photo ?? "",
     status: mapSelectionStatus(data.selection_status, data.account_status, base?.status),
     verificationStatus: base?.verificationStatus,
@@ -468,8 +476,10 @@ export default function BiodataPage() {
   const [form, setForm] = useState<FormState>({
     fullName: participant?.name ?? "",
     nickName: "",
+    religion: "",
     gender: participant?.gender ?? "Encik",
     nationalId: participant?.nationalId ?? "",
+    currentStatus: "",
     birthPlace: participant?.birthPlace ?? "",
     birthDate: participant?.birthDate ?? "",
     domicileAddress: "",
@@ -489,6 +499,8 @@ export default function BiodataPage() {
     email: participant?.email ?? user?.email ?? "",
     phone: participant?.phone ?? "",
     parentPhone: "",
+    fatherName: "",
+    motherName: "",
     instagram: normalizeSocialHandle(participant?.instagram ?? ""),
     tiktok: normalizeSocialHandle(participant?.tiktok ?? ""),
     occupation: "",
@@ -535,8 +547,10 @@ export default function BiodataPage() {
           ...prev,
           fullName: data.name ?? prev.fullName,
           nickName: data.nickname ?? prev.nickName,
+          religion: data.religion ?? prev.religion,
           gender: data.gender ?? prev.gender,
           nationalId: data.national_id ?? prev.nationalId,
+          currentStatus: data.current_status ?? prev.currentStatus,
           birthPlace: data.birth_place ?? prev.birthPlace,
           birthDate: data.birth_date ?? prev.birthDate,
           domicileAddress: data.domicile_address ?? prev.domicileAddress,
@@ -559,6 +573,8 @@ export default function BiodataPage() {
           email: data.email ?? prev.email,
           phone: data.phone ?? prev.phone,
           parentPhone: data.parent_phone ?? prev.parentPhone,
+          fatherName: data.father_name ?? prev.fatherName,
+          motherName: data.mother_name ?? prev.motherName,
           instagram: normalizeSocialHandle(data.instagram ?? prev.instagram),
           tiktok: normalizeSocialHandle(data.tiktok ?? prev.tiktok),
           occupation: data.occupation ?? prev.occupation,
@@ -651,7 +667,9 @@ export default function BiodataPage() {
     const requiredFields = [
       form.fullName,
       form.nickName,
+      form.religion,
       form.nationalId,
+      form.currentStatus,
       form.birthPlace,
       form.birthDate,
       form.domicileAddress,
@@ -668,6 +686,8 @@ export default function BiodataPage() {
       form.email,
       form.phone,
       form.parentPhone,
+      form.fatherName,
+      form.motherName,
       form.instagram,
       form.tiktok,
       form.occupation,
@@ -803,7 +823,9 @@ export default function BiodataPage() {
           phone: form.phone,
           gender: form.gender,
           nickname: form.nickName.trim() || undefined,
+          religion: form.religion.trim() || undefined,
           national_id: form.nationalId,
+          current_status: form.currentStatus || undefined,
           birth_place: form.birthPlace,
           birth_date: form.birthDate,
           domicile_address: form.domicileAddress.trim() || undefined,
@@ -819,6 +841,8 @@ export default function BiodataPage() {
           instagram: normalizedInstagram,
           tiktok: normalizedTiktok || undefined,
           parent_phone: form.parentPhone.trim() || undefined,
+          father_name: form.fatherName.trim() || undefined,
+          mother_name: form.motherName.trim() || undefined,
           photo: form.profilePhoto || undefined,
           education_category: form.educationCategory,
           education_institution: form.educationInstitution,
@@ -861,6 +885,8 @@ export default function BiodataPage() {
           name: form.fullName,
           gender: form.gender,
           nationalId: form.nationalId,
+          religion: form.religion.trim() || undefined,
+          currentStatus: form.currentStatus || undefined,
           birthPlace: form.birthPlace,
           birthDate: form.birthDate,
           heightCm: normalizedHeight ?? participant.heightCm,
@@ -869,6 +895,8 @@ export default function BiodataPage() {
           phone: form.phone,
           instagram: normalizedInstagram,
           tiktok: normalizedTiktok || undefined,
+          fatherName: form.fatherName.trim() || undefined,
+          motherName: form.motherName.trim() || undefined,
           photo: form.profilePhoto || participant.photo,
           agreementNoAgency: form.agreementNoAgency || undefined,
           agencyName: form.agencyName.trim() || undefined,
@@ -1773,6 +1801,12 @@ export default function BiodataPage() {
               placeholder: "Contoh: Ara",
               required: true,
             })}
+            {renderInputField({
+              label: "Agama",
+              name: "religion",
+              placeholder: "Contoh: Islam / Kristen / Hindu / Buddha",
+              required: true,
+            })}
             <div>
               <label
                 className="block text-xs mb-1.5"
@@ -1792,6 +1826,30 @@ export default function BiodataPage() {
               </select>
               <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
                 Kategori ditentukan saat register dan tidak dapat diubah di biodata.
+              </p>
+            </div>
+            <div>
+              <label
+                className="block text-xs mb-1.5"
+                style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)", fontWeight: 600 }}
+              >
+                Status Saat Ini <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <select
+                value={form.currentStatus}
+                onChange={(e) =>
+                  updateFormField("currentStatus", e.target.value as FormState["currentStatus"])
+                }
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none"
+                style={inputStyle}
+              >
+                <option value="">Pilih status</option>
+                <option value="Pelajar">Pelajar</option>
+                <option value="Mahasiswa">Mahasiswa</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+              <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                Menyesuaikan format Form S-01 (Pelajar / Mahasiswa / Lainnya).
               </p>
             </div>
             {renderInputField({ label: "NIK", name: "nationalId", placeholder: "16 digit NIK", required: true })}
@@ -2084,6 +2142,18 @@ export default function BiodataPage() {
               label: "No. HP Orang Tua / Wali",
               name: "parentPhone",
               placeholder: "08xxxxxxxxxx",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Nama Ayah Kandung",
+              name: "fatherName",
+              placeholder: "Nama ayah kandung",
+              required: true,
+            })}
+            {renderInputField({
+              label: "Nama Ibu Kandung",
+              name: "motherName",
+              placeholder: "Nama ibu kandung",
               required: true,
             })}
             {renderInputField({
