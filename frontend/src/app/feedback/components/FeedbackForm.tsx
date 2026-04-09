@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { GoldButton } from "../../../components/ui/GoldButton";
 import { useApp, type FeedbackCategory } from "../../../context/AppContext";
+import { getReadableApiError } from "../../../lib/api";
 
 type FormState = {
   name: string;
@@ -22,6 +23,8 @@ export default function FeedbackForm() {
   const { addFeedbackEntry } = useApp();
   const [form, setForm] = useState<FormState>(initialState);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
 
   const onChange =
     (key: keyof FormState) =>
@@ -31,11 +34,21 @@ export default function FeedbackForm() {
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
     };
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    addFeedbackEntry(form);
-    setSubmitted(true);
-    setForm(initialState);
+
+    try {
+      setSubmitting(true);
+      setSubmitMessage("");
+      await addFeedbackEntry(form);
+      setSubmitted(true);
+      setForm(initialState);
+    } catch (error) {
+      setSubmitted(false);
+      setSubmitMessage(getReadableApiError(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -143,13 +156,16 @@ export default function FeedbackForm() {
       <div className="mt-6 flex items-center justify-between gap-4">
         <p
           className="text-xs"
-          style={{ color: submitted ? "#C8A24D" : "#8F8F8F", fontFamily: "var(--font-poppins)" }}
+          style={{
+            color: submitMessage ? "#F59E0B" : submitted ? "#C8A24D" : "#8F8F8F",
+            fontFamily: "var(--font-poppins)",
+          }}
         >
-          {submitted ? "Terima kasih, feedback Anda sudah diterima." : "Feedback akan ditinjau oleh panitia."}
+          {submitMessage || (submitted ? "Terima kasih, feedback Anda sudah diterima." : "Feedback akan ditinjau oleh panitia.")}
         </p>
 
-        <GoldButton type="submit" variant="primary" size="sm">
-          Kirim Feedback
+        <GoldButton type="submit" variant="primary" size="sm" disabled={submitting}>
+          {submitting ? "Mengirim..." : "Kirim Feedback"}
         </GoldButton>
       </div>
     </form>

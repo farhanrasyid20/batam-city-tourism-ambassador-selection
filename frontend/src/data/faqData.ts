@@ -1,9 +1,6 @@
-export type FAQItem = {
-  id: string;
-  question: string;
-  answer: string;
-  category: "Pendaftaran" | "Berkas" | "Tahapan" | "Akun" | "Penilaian";
-};
+import type { FaqItem as BackendFaqItem } from "../lib/auth-api";
+
+export type FAQItem = BackendFaqItem;
 
 export const faqItems: FAQItem[] = [
   {

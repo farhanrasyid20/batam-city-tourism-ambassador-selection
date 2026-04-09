@@ -4,7 +4,8 @@ import Image from "next/image";
 import { useLandingPageContent } from "../../lib/landing-page-content";
 
 export default function SponsorSection() {
-  const partnerLogos = useLandingPageContent().partnership.partners;
+  const partnershipContent = useLandingPageContent().partnership;
+  const partnerLogos = partnershipContent.partners;
   const loopedLogos = [...partnerLogos, ...partnerLogos];
 
   return (
@@ -15,7 +16,7 @@ export default function SponsorSection() {
             className="text-sm tracking-widest uppercase mb-3"
             style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
           >
-            Partnership
+            {partnershipContent.sectionLabel}
           </p>
           <h2
             style={{
@@ -28,7 +29,7 @@ export default function SponsorSection() {
               fontWeight: 700,
             }}
           >
-            SPONSOR & MITRA RESMI
+            {partnershipContent.sectionTitle}
           </h2>
           <div
             className="w-24 h-0.5 mx-auto mt-4"

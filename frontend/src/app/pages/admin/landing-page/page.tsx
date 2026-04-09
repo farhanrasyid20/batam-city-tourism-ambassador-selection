@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
+import { getReadableApiError } from "../../../../lib/api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 import PartnershipEditor from "./components/PartnershipEditor";
 import {
   defaultLandingPageContent,
@@ -36,6 +38,7 @@ type StringListEditorProps = {
   placeholder: string;
   onChange: (items: string[]) => void;
   addLabel: string;
+  compact?: boolean;
 };
 
 function StringListEditor({ title, items, placeholder, onChange, addLabel }: StringListEditorProps) {
@@ -107,6 +110,14 @@ export default function AdminLandingPageContentPage() {
   const landingPageContent = useLandingPageContent();
   const [form, setForm] = useState<LandingPageContent>(defaultLandingPageContent);
   const [saveMessage, setSaveMessage] = useState("");
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    hero: true,
+    about: true,
+    registration: true,
+    winners: true,
+    requirements: true,
+    partnership: true,
+  });
 
   useEffect(() => {
     setForm(landingPageContent);
@@ -161,27 +172,67 @@ export default function AdminLandingPageContentPage() {
     );
   };
 
-  const handleSave = () => {
-    saveLandingPageContent({
-      ...form,
-      about: {
-        ...form.about,
-        missionItems: form.about.missionItems.map((item) => item.trim()).filter(Boolean),
-      },
-      registration: {
-        ...form.registration,
-        steps: form.registration.steps.map((item) => item.trim()).filter(Boolean),
-        scheduleItems: form.registration.scheduleItems
-          .map((item, index) => ({
-            ...item,
-            id: item.id || `schedule-${index + 1}`,
-            activity: item.activity.trim(),
-            date: item.date.trim(),
-          }))
-          .filter((item) => item.activity || item.date),
-      },
-    });
-    setSaveMessage("Konten landing page berhasil diperbarui.");
+  const handleSave = async () => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setSaveMessage("Sesi login tidak ditemukan.");
+      return;
+    }
+
+    try {
+      await saveLandingPageContent(
+        {
+          ...form,
+          about: {
+            ...form.about,
+            missionItems: form.about.missionItems.map((item) => item.trim()).filter(Boolean),
+          },
+          registration: {
+            ...form.registration,
+            steps: form.registration.steps.map((item) => item.trim()).filter(Boolean),
+            scheduleItems: form.registration.scheduleItems
+              .map((item, index) => ({
+                ...item,
+                id: item.id || `schedule-${index + 1}`,
+                activity: item.activity.trim(),
+                date: item.date.trim(),
+              }))
+              .filter((item) => item.activity || item.date),
+          },
+        },
+        token
+      );
+      setSaveMessage("Konten landing page berhasil diperbarui.");
+    } catch (error) {
+      setSaveMessage(getReadableApiError(error));
+    }
+  };
+
+  const toggleSection = (key: keyof typeof openSections) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const renderSectionHeader = (key: keyof typeof openSections, title: string) => {
+    const isOpen = openSections[key];
+
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSection(key)}
+        className="w-full flex items-center justify-between gap-3 text-left"
+        style={{ cursor: "pointer" }}
+      >
+        <h3
+          className="text-sm font-bold"
+          style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}
+        >
+          {title}
+        </h3>
+        <span style={{ color: "#D4AF37" }}>
+          {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+        </span>
+      </button>
+    );
   };
 
   return (
@@ -197,10 +248,10 @@ export default function AdminLandingPageContentPage() {
 
       <div className="space-y-6">
         <GoldCard glow>
-          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
-            Hero Section
-          </h3>
-          <div className="grid lg:grid-cols-2 gap-4">
+          {renderSectionHeader("hero", "Hero Section")}
+          {openSections.hero ? (
+            <>
+          <div className="grid lg:grid-cols-2 gap-4 mt-4">
             <div className="lg:col-span-2">
               <FieldLabel>Label Instansi</FieldLabel>
               <input
@@ -248,13 +299,15 @@ export default function AdminLandingPageContentPage() {
               style={inputStyle}
             />
           </div>
+            </>
+          ) : null}
         </GoldCard>
 
         <GoldCard>
-          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
-            Tentang, Visi, dan Misi
-          </h3>
-          <div>
+          {renderSectionHeader("about", "Tentang, Visi, dan Misi")}
+          {openSections.about ? (
+            <>
+          <div className="mt-4">
             <FieldLabel>Tentang Program</FieldLabel>
             <textarea
               value={form.about.aboutCardDescription}
@@ -283,12 +336,15 @@ export default function AdminLandingPageContentPage() {
               addLabel="Tambah Misi"
             />
           </div>
+            </>
+          ) : null}
         </GoldCard>
 
         <GoldCard>
-          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
-            Tata Cara & Jadwal
-          </h3>          <div className="mt-4">
+          {renderSectionHeader("registration", "Tata Cara & Jadwal")}
+          {openSections.registration ? (
+            <>
+          <div className="mt-4">
             <StringListEditor
               title="Langkah Pendaftaran"
               items={form.registration.steps}
@@ -353,14 +409,14 @@ export default function AdminLandingPageContentPage() {
               ))}
             </div>
           </div>
+            </>
+          ) : null}
         </GoldCard>
 
         <GoldCard>
-          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
-            Kategori Pemenang
-          </h3>
-
-          <div className="space-y-5">
+          {renderSectionHeader("winners", "Kategori Pemenang")}
+          {openSections.winners ? (
+            <div className="space-y-5 mt-4">
             <div>
               <p className="text-[11px] uppercase tracking-[0.35em] mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
                 Kategori Utama
@@ -468,13 +524,14 @@ export default function AdminLandingPageContentPage() {
               </div>
             </div>
           </div>
+          ) : null}
         </GoldCard>
 
         <GoldCard>
-          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
-            Syarat Pendaftaran
-          </h3>
-          <div>
+          {renderSectionHeader("requirements", "Syarat Pendaftaran")}
+          {openSections.requirements ? (
+            <>
+          <div className="mt-4">
             <FieldLabel>Teks Pengantar</FieldLabel>
             <textarea
               value={form.requirements.introText}
@@ -504,12 +561,14 @@ export default function AdminLandingPageContentPage() {
               />
             </div>
           </div>
+            </>
+          ) : null}
         </GoldCard>
 
         <GoldCard>
-          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
-            Partnership
-          </h3>
+          {renderSectionHeader("partnership", "Partnership")}
+          {openSections.partnership ? (
+            <div className="mt-4">
           <PartnershipEditor
             partners={form.partnership.partners}
             onChange={(partners) =>
@@ -522,6 +581,8 @@ export default function AdminLandingPageContentPage() {
               }))
             }
           />
+            </div>
+          ) : null}
         </GoldCard>
 
         <div className="flex items-center gap-3">
@@ -539,3 +600,4 @@ export default function AdminLandingPageContentPage() {
     </div>
   );
 }
+

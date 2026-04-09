@@ -7,9 +7,51 @@ use App\Models\PublicVoteCandidateSetting;
 use App\Models\PublicVoteSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PublicFinalistController extends Controller
 {
+    private function resolveVotePhoto(User $user, ?string $publicationPhoto): ?string
+    {
+        $profile = $user->participantProfile;
+
+        foreach ([$publicationPhoto, $profile?->photo] as $candidate) {
+            $value = trim((string) $candidate);
+            if ($value === '') {
+                continue;
+            }
+
+            if (! Str::startsWith($value, '/storage/')) {
+                return $value;
+            }
+
+            $storagePath = ltrim(Str::after($value, '/storage/'), '/');
+            if ($storagePath !== '' && Storage::disk('public')->exists($storagePath)) {
+                return $value;
+            }
+        }
+
+        $document = $user->participantDocuments->firstWhere('document_key', 'closeUpPhoto')
+            ?? $user->participantDocuments->firstWhere('document_key', 'fullBodyPhoto');
+
+        if (! $document) {
+            return null;
+        }
+
+        $url = trim((string) $document->url);
+        if ($url !== '') {
+            return $url;
+        }
+
+        $path = trim((string) $document->path);
+        if ($path !== '') {
+            return '/storage/'.ltrim($path, '/');
+        }
+
+        return null;
+    }
+
     public function index(): JsonResponse
     {
         $participants = User::query()
@@ -27,6 +69,7 @@ class PublicFinalistController extends Controller
             })
             ->with([
                 'participantProfile:user_id,participant_number,audition_number,participant_code,gender,photo,instagram,education_category,education_institution,education_degree,education_major,selection_status,eliminated_in_audition',
+                'participantDocuments:user_id,document_key,path,url',
             ])
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -41,7 +84,7 @@ class PublicFinalistController extends Controller
         $data = $participants->map(function (User $user) use ($settingsByParticipant): array {
             $profile = $user->participantProfile;
             $setting = $settingsByParticipant->get($user->id);
-            $photo = $setting?->publication_photo ?: $profile?->photo;
+            $photo = $this->resolveVotePhoto($user, $setting?->publication_photo);
 
             return [
                 'id' => $user->id,

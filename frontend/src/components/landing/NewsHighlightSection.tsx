@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Calendar } from "lucide-react";
 import { useApp } from "../../context/AppContext";
+import { resolveApiAssetUrl } from "../../lib/api";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("id-ID", {
@@ -61,7 +62,7 @@ export default function NewsHighlightSection() {
             >
               <div className="relative h-[180px] overflow-hidden">
                 <img
-                  src={news.image}
+                  src={resolveApiAssetUrl(news.image) ?? "/news-placeholder.jpg"}
                   alt={news.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />

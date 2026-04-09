@@ -620,6 +620,113 @@ export type UpdateParticipantResourcesFiles = Partial<{
   fullBodyExample3File: File;
 }>;
 
+export type FeedbackCategory = "Saran" | "Kritik" | "Pertanyaan" | "Lainnya";
+
+export type FeedbackEntry = {
+  id: string;
+  name: string;
+  email: string;
+  category: FeedbackCategory;
+  message: string;
+  createdAt: string;
+  status: "baru" | "ditinjau" | "selesai";
+};
+
+export type FeedbackListResponse = {
+  message: string;
+  data: FeedbackEntry[];
+};
+
+export type SubmitFeedbackPayload = {
+  name: string;
+  email: string;
+  category: FeedbackCategory;
+  message: string;
+};
+
+export type SubmitFeedbackResponse = {
+  message: string;
+  data: FeedbackEntry;
+};
+
+export type UpdateFeedbackStatusPayload = {
+  status: "baru" | "ditinjau" | "selesai";
+};
+
+export type UpdateFeedbackStatusResponse = {
+  message: string;
+  data: FeedbackEntry;
+};
+
+export type FaqCategory = "Pendaftaran" | "Berkas" | "Tahapan" | "Akun" | "Penilaian";
+
+export type FaqItem = {
+  id: string;
+  question: string;
+  answer: string;
+  category: FaqCategory;
+};
+
+export type FaqListResponse = {
+  message: string;
+  data: FaqItem[];
+};
+
+export type SaveFaqPayload = {
+  question: string;
+  answer: string;
+  category: FaqCategory;
+};
+
+export type SaveFaqResponse = {
+  message: string;
+  data: FaqItem;
+};
+
+export type DeleteFaqResponse = {
+  message: string;
+};
+
+export type NewsItem = {
+  id: string;
+  title: string;
+  image: string;
+  date: string;
+  category: string;
+  excerpt: string;
+  contentHtml?: string;
+  body: Array<
+    | { type: "paragraph"; text: string }
+    | { type: "heading"; text: string }
+    | { type: "quote"; text: string; author?: string }
+    | { type: "list"; items: string[] }
+    | { type: "image"; src: string; alt?: string; caption?: string }
+  >;
+};
+
+export type NewsListResponse = {
+  message: string;
+  data: NewsItem[];
+};
+
+export type SaveNewsPayload = {
+  title: string;
+  image: string;
+  date: string;
+  category: string;
+  excerpt: string;
+  contentHtml: string;
+};
+
+export type SaveNewsResponse = {
+  message: string;
+  data: NewsItem;
+};
+
+export type DeleteNewsResponse = {
+  message: string;
+};
+
 type CacheEnvelope<T> = {
   ts: number;
   data: T;
@@ -774,6 +881,104 @@ export function fetchPublicFinalists(options?: { force?: boolean; maxAgeMs?: num
 export function fetchPublicParticipantResources() {
   return apiRequest<PublicParticipantResourcesResponse>("/public/participant-resources", {
     method: "GET",
+  });
+}
+
+export function submitFeedback(payload: SubmitFeedbackPayload) {
+  return apiRequest<SubmitFeedbackResponse>("/feedback", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function fetchFeedbackList(token: string) {
+  return apiRequest<FeedbackListResponse>("/super-admin/feedback", {
+    method: "GET",
+    token,
+  });
+}
+
+export function updateFeedbackStatus(
+  token: string,
+  feedbackId: string,
+  payload: UpdateFeedbackStatusPayload
+) {
+  return apiRequest<UpdateFeedbackStatusResponse>(`/super-admin/feedback/${feedbackId}/status`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export function fetchPublicFaqs() {
+  return apiRequest<FaqListResponse>("/public/faqs", {
+    method: "GET",
+  });
+}
+
+export function fetchAdminFaqs(token: string) {
+  return apiRequest<FaqListResponse>("/super-admin/faqs", {
+    method: "GET",
+    token,
+  });
+}
+
+export function createFaq(token: string, payload: SaveFaqPayload) {
+  return apiRequest<SaveFaqResponse>("/super-admin/faqs", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function updateFaq(token: string, id: string, payload: SaveFaqPayload) {
+  return apiRequest<SaveFaqResponse>(`/super-admin/faqs/${id}`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export function deleteFaq(token: string, id: string) {
+  return apiRequest<DeleteFaqResponse>(`/super-admin/faqs/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function fetchPublicNews() {
+  return apiRequest<NewsListResponse>("/public/news", {
+    method: "GET",
+  });
+}
+
+export function fetchAdminNews(token: string) {
+  return apiRequest<NewsListResponse>("/super-admin/news", {
+    method: "GET",
+    token,
+  });
+}
+
+export function createNews(token: string, payload: SaveNewsPayload) {
+  return apiRequest<SaveNewsResponse>("/super-admin/news", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function updateNews(token: string, id: string, payload: SaveNewsPayload) {
+  return apiRequest<SaveNewsResponse>(`/super-admin/news/${id}`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export function deleteNews(token: string, id: string) {
+  return apiRequest<DeleteNewsResponse>(`/super-admin/news/${id}`, {
+    method: "DELETE",
+    token,
   });
 }
 

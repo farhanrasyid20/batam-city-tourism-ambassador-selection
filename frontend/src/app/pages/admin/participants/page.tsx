@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore, ImagePlus, X, ExternalLink } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { useApp } from "../../../../context/AppContext";
+import { resolveApiAssetUrl } from "../../../../lib/api";
 import {
   getParticipantSelectionStage,
   getParticipantVerificationStatus,
@@ -83,6 +84,14 @@ function firstFilled(...values: Array<string | number | null | undefined>) {
     if (normalized) return normalized;
   }
   return "-";
+}
+
+function resolveParticipantPhoto(photo?: string | null) {
+  const value = (photo ?? "").trim();
+  if (!value) return "/default-avatar.svg";
+  if (value.startsWith("data:image")) return value;
+  if (value.includes("/default-avatar.svg")) return "/default-avatar.svg";
+  return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
 }
 
 const stageFilterOptions: Array<{ value: StageFilterValue; label: string }> = [
@@ -324,7 +333,7 @@ export default function AdminParticipantsPage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <Image
-                              src={participant.photo}
+                              src={resolveParticipantPhoto(participant.photo)}
                               alt={participant.name}
                               width={32}
                               height={32}
@@ -423,7 +432,7 @@ export default function AdminParticipantsPage() {
                     style={{ border: "2px solid rgba(212,175,55,0.5)", cursor: "pointer" }}
                   >
                     <Image
-                      src={selectedParticipant.photo}
+                      src={resolveParticipantPhoto(selectedParticipant.photo)}
                       alt={selectedParticipant.name}
                       width={80}
                       height={80}
@@ -446,7 +455,10 @@ export default function AdminParticipantsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setPreviewPhoto({ src: selectedParticipant.photo, name: selectedParticipant.name });
+                          setPreviewPhoto({
+                            src: resolveParticipantPhoto(selectedParticipant.photo),
+                            name: selectedParticipant.name,
+                          });
                           setParticipantPhotoMenuOpen(false);
                         }}
                         className="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2"
@@ -754,7 +766,7 @@ export default function AdminParticipantsPage() {
             </p>
             <div className="overflow-hidden rounded-2xl" style={{ border: "1px solid rgba(212,175,55,0.2)" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewPhoto.src} alt={previewPhoto.name} className="w-full h-auto object-cover" />
+              <img src={resolveParticipantPhoto(previewPhoto.src)} alt={previewPhoto.name} className="w-full h-auto object-cover" />
             </div>
           </div>
         </div>

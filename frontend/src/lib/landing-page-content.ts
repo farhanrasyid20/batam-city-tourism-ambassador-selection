@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { apiRequest } from "./api";
 
 export type LandingScheduleItem = {
   id: string;
@@ -26,32 +27,68 @@ export type LandingPageContent = {
     titleLine2: string;
     titleLine3: string;
     description: string;
+    primaryButtonLabel: string;
+    secondaryButtonLabel: string;
   };
   about: {
+    sectionLabel: string;
+    sectionTitle: string;
+    aboutCardTitle: string;
+    visionMissionTitle: string;
     aboutCardDescription: string;
     visionText: string;
     missionItems: string[];
+    guideSectionLabel: string;
+    guideTitle: string;
+    guideDescription: string;
+    guideOpenLabel: string;
+    guideCloseLabel: string;
+    guideOpenPdfLabel: string;
+    guideDownloadPdfLabel: string;
   };
   registration: {
+    sectionLabel: string;
+    sectionTitle: string;
+    stepsTitle: string;
+    scheduleTitle: string;
+    registerButtonLabel: string;
     steps: string[];
     scheduleItems: LandingScheduleItem[];
   };
   winnerCategories: {
+    sectionTitle: string;
+    soloSectionLabel: string;
+    soloSectionDescription: string;
     soloItems: LandingWinnerCategoryItem[];
+    pairSectionLabel: string;
+    pairSectionDescription: string;
     pairItem: LandingWinnerCategoryItem;
+    favoriteSectionLabel: string;
+    favoriteSectionDescription: string;
     favoriteItems: LandingWinnerCategoryItem[];
   };
   requirements: {
+    sectionLabel: string;
+    sectionTitle: string;
     introText: string;
+    generalTitle: string;
     generalItems: string[];
+    specialTitle: string;
     specialItems: string[];
   };
   partnership: {
+    sectionLabel: string;
+    sectionTitle: string;
     partners: LandingPartnerItem[];
   };
 };
 
-const STORAGE_KEY = "duta-wisata-landing-page-content-v2";
+type LandingPageResponse = {
+  message: string;
+  data: LandingPageContent;
+  updated_at?: string | null;
+};
+
 const UPDATE_EVENT = "landing-page-content-updated";
 
 export const defaultLandingPageContent: LandingPageContent = {
@@ -62,8 +99,14 @@ export const defaultLandingPageContent: LandingPageContent = {
     titleLine3: "KOTA BATAM 2026",
     description:
       "Platform digital resmi pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Daftarkan diri Anda dan jadilah representasi terbaik Kota Batam!",
+    primaryButtonLabel: "✦ Daftar Sekarang",
+    secondaryButtonLabel: "Login Peserta",
   },
   about: {
+    sectionLabel: "Tentang Program",
+    sectionTitle: "ENCIK & PUAN DUTA WISATA BATAM",
+    aboutCardTitle: "Tentang Program",
+    visionMissionTitle: "Visi & Misi",
     aboutCardDescription:
       "Encik & Puan Duta Wisata Kota Batam adalah program tahunan yang diselenggarakan oleh Dinas Kebudayaan dan Pariwisata Kota Batam untuk menjaring generasi muda terbaik sebagai representasi dan promotor pariwisata Batam.",
     visionText:
@@ -72,8 +115,21 @@ export const defaultLandingPageContent: LandingPageContent = {
       "Mempromosikan destinasi wisata Batam ke tingkat nasional dan internasional.",
       "Menumbuhkan generasi muda yang aktif, inspiratif, dan peduli terhadap potensi daerah.",
     ],
+    guideSectionLabel: "Buku Panduan Resmi",
+    guideTitle: "Buku Panduan Pemilihan Duta Wisata Batam 2026",
+    guideDescription:
+      "Tekan tombol lihat panduan untuk membuka isi buku langsung di bawah section ini. Jika browser tertentu bermasalah saat menampilkan PDF, file asli tetap bisa dibuka atau diunduh.",
+    guideOpenLabel: "Lihat Panduan",
+    guideCloseLabel: "Tutup Panduan",
+    guideOpenPdfLabel: "Buka PDF",
+    guideDownloadPdfLabel: "Unduh PDF",
   },
   registration: {
+    sectionLabel: "Pendaftaran",
+    sectionTitle: "TATA CARA PENDAFTARAN",
+    stepsTitle: "Langkah Pendaftaran",
+    scheduleTitle: "Jadwal Penting",
+    registerButtonLabel: "Daftar Sekarang",
     steps: ["Buat akun peserta", "Lengkapi biodata", "Unggah berkas", "Submit pendaftaran"],
     scheduleItems: [
       { id: "schedule-1", activity: "Pendaftaran Online", date: "1 Mei - 31 Mei 2026" },
@@ -83,14 +139,19 @@ export const defaultLandingPageContent: LandingPageContent = {
     ],
   },
   winnerCategories: {
+    sectionTitle: "KATEGORI PEMENANG",
+    soloSectionLabel: "Kategori Individu",
+    soloSectionDescription: "Penghargaan utama untuk kategori solo Encik dan Puan.",
     soloItems: [
       {
         title: "Encik Duta Wisata Kota Batam 2026",
-        description: "Gelar utama untuk finalis putra terbaik yang unggul dalam pengetahuan, karakter, dan representasi pariwisata Batam.",
+        description:
+          "Gelar utama untuk finalis putra terbaik yang unggul dalam pengetahuan, karakter, dan representasi pariwisata Batam.",
       },
       {
         title: "Puan Duta Wisata Kota Batam 2026",
-        description: "Gelar utama untuk finalis putri terbaik yang unggul dalam kepribadian, wawasan, dan promosi pariwisata Batam.",
+        description:
+          "Gelar utama untuk finalis putri terbaik yang unggul dalam kepribadian, wawasan, dan promosi pariwisata Batam.",
       },
       {
         title: "1st Runner Up Encik",
@@ -101,24 +162,35 @@ export const defaultLandingPageContent: LandingPageContent = {
         description: "Penghargaan untuk finalis putri dengan capaian terbaik setelah pemenang utama.",
       },
     ],
+    pairSectionLabel: "Kategori Pasangan",
+    pairSectionDescription: "Penghargaan resmi untuk pasangan utama Duta Wisata Kota Batam.",
     pairItem: {
       title: "Encik & Puan Duta Wisata Kota Batam 2026",
-      description: "Penghargaan resmi untuk pasangan utama yang mewakili Duta Wisata Kota Batam selama masa tugas.",
+      description:
+        "Penghargaan resmi untuk pasangan utama yang mewakili Duta Wisata Kota Batam selama masa tugas.",
     },
+    favoriteSectionLabel: "Kategori Favorit",
+    favoriteSectionDescription:
+      "Penghargaan berdasarkan dukungan publik dan antusiasme masyarakat.",
     favoriteItems: [
       {
         title: "Duta Favorit Encik",
-        description: "Penghargaan berdasarkan dukungan publik dan antusiasme masyarakat untuk finalis putra.",
+        description:
+          "Penghargaan berdasarkan dukungan publik dan antusiasme masyarakat untuk finalis putra.",
       },
       {
         title: "Duta Favorit Puan",
-        description: "Penghargaan berdasarkan dukungan publik dan antusiasme masyarakat untuk finalis putri.",
+        description:
+          "Penghargaan berdasarkan dukungan publik dan antusiasme masyarakat untuk finalis putri.",
       },
     ],
   },
   requirements: {
+    sectionLabel: "Syarat Pendaftaran",
+    sectionTitle: "PERSYARATAN PESERTA DUTA WISATA KOTA BATAM 2026",
     introText:
       "Pastikan seluruh syarat umum dan syarat khusus di bawah ini dipenuhi sebelum melakukan pendaftaran dan pengumpulan berkas.",
+    generalTitle: "PERSYARATAN UMUM",
     generalItems: [
       "Warga Negara Indonesia dan berdomisili di Kota Batam",
       "Berusia 18 - 25 tahun pada saat pendaftaran",
@@ -127,6 +199,7 @@ export const defaultLandingPageContent: LandingPageContent = {
       "Tinggi badan minimal: Pria 175 cm, Wanita 165 cm",
       "Sehat jasmani dan rohani",
     ],
+    specialTitle: "PERSYARATAN KHUSUS",
     specialItems: [
       "Memiliki akun Instagram aktif dan tidak di-private",
       "Bersedia mengikuti seluruh tahapan seleksi",
@@ -137,6 +210,8 @@ export const defaultLandingPageContent: LandingPageContent = {
     ],
   },
   partnership: {
+    sectionLabel: "Partnership",
+    sectionTitle: "SPONSOR & MITRA RESMI",
     partners: [
       { id: "logo-site", src: "/logo1.png", alt: "Duta Wisata Batam" },
       { id: "batam", src: "/partners/dinas_kebudayaan.png", alt: "Dinas Pariwisata Kota Batam" },
@@ -205,42 +280,67 @@ function mergeContent(value: Partial<LandingPageContent> | null | undefined): La
   };
 }
 
-export function readLandingPageContent() {
-  if (typeof window === "undefined") return defaultLandingPageContent;
+let cachedContent: LandingPageContent = defaultLandingPageContent;
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return defaultLandingPageContent;
+export async function fetchLandingPageContent() {
+  const response = await apiRequest<LandingPageResponse>("/public/landing-page", {
+    method: "GET",
+  });
 
-  try {
-    return mergeContent(JSON.parse(raw) as Partial<LandingPageContent>);
-  } catch {
-    window.localStorage.removeItem(STORAGE_KEY);
-    return defaultLandingPageContent;
-  }
+  cachedContent = mergeContent(response.data);
+  return cachedContent;
 }
 
-export function saveLandingPageContent(value: LandingPageContent) {
-  if (typeof window === "undefined") return;
+export async function saveLandingPageContent(value: LandingPageContent, token: string) {
+  const response = await apiRequest<LandingPageResponse>("/super-admin/landing-page", {
+    method: "POST",
+    token,
+    body: value,
+  });
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
-  window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
+  cachedContent = mergeContent(response.data);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
+  }
+
+  return cachedContent;
 }
 
 export function useLandingPageContent() {
-  const [content, setContent] = useState<LandingPageContent>(defaultLandingPageContent);
+  const [content, setContent] = useState<LandingPageContent>(cachedContent);
 
   useEffect(() => {
-    const sync = () => setContent(readLandingPageContent());
+    let cancelled = false;
 
-    sync();
-    window.addEventListener(UPDATE_EVENT, sync);
-    window.addEventListener("storage", sync);
+    const sync = async () => {
+      try {
+        const next = await fetchLandingPageContent();
+        if (!cancelled) {
+          setContent(next);
+        }
+      } catch {
+        if (!cancelled) {
+          setContent(cachedContent);
+        }
+      }
+    };
+
+    const syncFromEvent = () => {
+      if (!cancelled) {
+        setContent(cachedContent);
+      }
+      void sync();
+    };
+
+    void sync();
+    window.addEventListener(UPDATE_EVENT, syncFromEvent);
 
     return () => {
-      window.removeEventListener(UPDATE_EVENT, sync);
-      window.removeEventListener("storage", sync);
+      cancelled = true;
+      window.removeEventListener(UPDATE_EVENT, syncFromEvent);
     };
   }, []);
 
-  return content;
+  return useMemo(() => mergeContent(content), [content]);
 }

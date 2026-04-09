@@ -7,6 +7,7 @@ import { Calendar, ArrowLeft } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import type { NewsBlock } from "../../../data/mockData";
 import NewsArticleClient from "../components/NewsArticleClient";
+import { resolveApiAssetUrl } from "../../../lib/api";
 
 function formatDateId(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("id-ID", {
@@ -40,7 +41,7 @@ export default function NewsDetailPage() {
   return (
     <article className="pb-20">
       <div className="relative w-full overflow-hidden" style={{ height: 420 }}>
-        <Image src={news.image} alt={news.title} fill unoptimized className="object-cover" />
+        <Image src={resolveApiAssetUrl(news.image) ?? "/news-placeholder.jpg"} alt={news.title} fill unoptimized className="object-cover" />
 
         <div
           className="absolute inset-0"

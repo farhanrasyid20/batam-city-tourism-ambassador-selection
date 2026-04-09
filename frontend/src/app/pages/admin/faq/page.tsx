@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { Plus, Save, Trash2, Edit, Search } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Plus, Save, Trash2, Edit, Search, ChevronDown, ChevronRight } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 import { useApp } from "../../../../context/AppContext";
 import type { FAQItem } from "../../../../data/faqData";
+import { createFaq, deleteFaq, fetchAdminFaqs, updateFaq } from "../../../../lib/auth-api";
+import { getReadableApiError } from "../../../../lib/api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 
 const categories = ["Pendaftaran", "Berkas", "Tahapan", "Akun", "Penilaian"] as const;
 type FaqCategory = (typeof categories)[number];
@@ -30,6 +33,33 @@ export default function AdminFaqPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FaqFormState>(initialForm);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [openFaqIds, setOpenFaqIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) return;
+
+    let cancelled = false;
+
+    const loadFaqs = async () => {
+      try {
+        setErrorMessage("");
+        const response = await fetchAdminFaqs(token);
+        if (cancelled) return;
+        setFaqList(response.data);
+      } catch (error) {
+        if (cancelled) return;
+        setErrorMessage(getReadableApiError(error));
+      }
+    };
+
+    void loadFaqs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setFaqList]);
 
   const filteredFaq = useMemo(() => {
     return faqList.filter((item) => {
@@ -45,33 +75,40 @@ export default function AdminFaqPage() {
     setShowForm(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.question.trim() || !form.answer.trim()) return;
 
-    if (editingId) {
-      setFaqList((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                question: form.question.trim(),
-                answer: form.answer.trim(),
-                category: form.category,
-              }
-            : item
-        )
-      );
-    } else {
-      const newItem: FAQItem = {
-        id: `faq-${Date.now()}`,
-        question: form.question.trim(),
-        answer: form.answer.trim(),
-        category: form.category,
-      };
-      setFaqList((prev) => [newItem, ...prev]);
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setErrorMessage("Sesi login tidak ditemukan.");
+      return;
     }
 
-    resetForm();
+    try {
+      setErrorMessage("");
+
+      if (editingId) {
+        const response = await updateFaq(token, editingId, {
+          question: form.question.trim(),
+          answer: form.answer.trim(),
+          category: form.category,
+        });
+
+        setFaqList((prev) => prev.map((item) => (item.id === editingId ? response.data : item)));
+      } else {
+        const response = await createFaq(token, {
+          question: form.question.trim(),
+          answer: form.answer.trim(),
+          category: form.category,
+        });
+
+        setFaqList((prev) => [response.data, ...prev]);
+      }
+
+      resetForm();
+    } catch (error) {
+      setErrorMessage(getReadableApiError(error));
+    }
   };
 
   const handleEdit = (item: FAQItem) => {
@@ -84,8 +121,27 @@ export default function AdminFaqPage() {
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
-    setFaqList((prev) => prev.filter((item) => item.id !== id));
+  const handleDelete = async (id: string) => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setErrorMessage("Sesi login tidak ditemukan.");
+      return;
+    }
+
+    try {
+      setErrorMessage("");
+      await deleteFaq(token, id);
+      setFaqList((prev) => prev.filter((item) => item.id !== id));
+      if (editingId === id) {
+        resetForm();
+      }
+    } catch (error) {
+      setErrorMessage(getReadableApiError(error));
+    }
+  };
+
+  const toggleFaqOpen = (id: string) => {
+    setOpenFaqIds((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
   };
 
   return (
@@ -157,11 +213,16 @@ export default function AdminFaqPage() {
             ))}
           </div>
         </div>
+        {errorMessage ? (
+          <p className="text-xs mt-3" style={{ color: "#F59E0B", fontFamily: "var(--font-poppins)" }}>
+            {errorMessage}
+          </p>
+        ) : null}
       </GoldCard>
 
       {showForm ? (
-        <GoldCard glow className="mb-6">
-          <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+        <GoldCard glow className="mb-4">
+          <h3 className="text-sm font-bold mb-2" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
             {editingId ? "Edit FAQ" : "FAQ Baru"}
           </h3>
           <div className="space-y-4">
@@ -208,7 +269,7 @@ export default function AdminFaqPage() {
               <select
                 value={form.category}
                 onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value as FaqCategory }))}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
                 style={{
                   background: "#111",
                   border: "1px solid rgba(212,175,55,0.25)",
@@ -239,47 +300,80 @@ export default function AdminFaqPage() {
       <div className="grid gap-3">
         {filteredFaq.map((item) => (
           <GoldCard key={item.id}>
-            <p style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700, fontSize: "0.95rem" }}>
-              {item.question}
-            </p>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: "#E5E7EB", fontFamily: "var(--font-poppins)" }}>
-              {item.answer}
-            </p>
-            <p className="mt-3 text-xs" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
-              Kategori: <span style={{ color: "#D4AF37" }}>{item.category}</span>
-            </p>
-            <div className="mt-4 pt-3 flex gap-2" style={{ borderTop: "1px solid rgba(212,175,55,0.12)" }}>
+            <div className="flex items-start justify-between gap-3">
               <button
                 type="button"
-                onClick={() => handleEdit(item)}
-                className="px-3 py-2 rounded-xl text-xs flex items-center gap-1"
+                onClick={() => toggleFaqOpen(item.id)}
+                className="flex-1 min-w-0 flex items-center gap-3 text-left"
                 style={{
-                  background: "rgba(212,175,55,0.1)",
-                  border: "1px solid rgba(212,175,55,0.2)",
-                  color: "#D4AF37",
-                  fontFamily: "var(--font-poppins)",
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
                   cursor: "pointer",
                 }}
               >
-                <Edit size={12} />
-                Edit
+                {openFaqIds.includes(item.id) ? (
+                  <ChevronDown size={16} style={{ color: "#D4AF37", marginTop: 2, flexShrink: 0 }} />
+                ) : (
+                  <ChevronRight size={16} style={{ color: "#D4AF37", marginTop: 2, flexShrink: 0 }} />
+                )}
+                <p
+                  style={{
+                    color: "#F5D06F",
+                    fontFamily: "var(--font-cinzel)",
+                    fontWeight: 700,
+                    fontSize: "0.95rem",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {item.question}
+                </p>
               </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(item.id)}
-                className="px-3 py-2 rounded-xl text-xs flex items-center gap-1"
-                style={{
-                  background: "rgba(239,68,68,0.1)",
-                  border: "1px solid rgba(239,68,68,0.2)",
-                  color: "#ef4444",
-                  fontFamily: "var(--font-poppins)",
-                  cursor: "pointer",
-                }}
-              >
-                <Trash2 size={12} />
-                Hapus
-              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleEdit(item)}
+                  className="px-3 py-2 rounded-xl text-xs flex items-center gap-1"
+                  style={{
+                    background: "rgba(212,175,55,0.1)",
+                    border: "1px solid rgba(212,175,55,0.2)",
+                    color: "#D4AF37",
+                    fontFamily: "var(--font-poppins)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Edit size={12} />
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(item.id)}
+                  className="px-3 py-2 rounded-xl text-xs flex items-center gap-1"
+                  style={{
+                    background: "rgba(239,68,68,0.1)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    color: "#ef4444",
+                    fontFamily: "var(--font-poppins)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Trash2 size={12} />
+                  Hapus
+                </button>
+              </div>
             </div>
+
+            {openFaqIds.includes(item.id) ? (
+              <>
+                <p className="mt-4 text-sm leading-relaxed" style={{ color: "#E5E7EB", fontFamily: "var(--font-poppins)" }}>
+                  {item.answer}
+                </p>
+                <p className="mt-3 text-xs" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                  Kategori: <span style={{ color: "#D4AF37" }}>{item.category}</span>
+                </p>
+              </>
+            ) : null}
           </GoldCard>
         ))}
 

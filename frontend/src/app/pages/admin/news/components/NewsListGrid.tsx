@@ -1,6 +1,7 @@
 import React from "react";
 import { Calendar, Edit, Trash2 } from "lucide-react";
 import type { NewsItem } from "../../../../../data/mockData";
+import { resolveApiAssetUrl } from "../../../../../lib/api";
 
 type NewsListGridProps = {
   newsList: NewsItem[];
@@ -18,7 +19,7 @@ export default function NewsListGrid({ newsList, handleEdit, handleDelete }: New
           style={{ background: "#1A1A1A", border: "1px solid rgba(212,175,55,0.2)" }}
         >
           <div className="relative overflow-hidden" style={{ height: 140 }}>
-            <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+            <img src={resolveApiAssetUrl(item.image) ?? "/news-placeholder.jpg"} alt={item.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(26,26,26,0.8) 0%, transparent 60%)" }} />
             <span
               className="absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full"

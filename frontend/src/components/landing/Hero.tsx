@@ -250,10 +250,10 @@ export default function Hero() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <GoldButton variant="primary" size="md" onClick={() => router.push("/auth/register")}>
-            ✦ Daftar Sekarang
+            {heroContent.primaryButtonLabel}
           </GoldButton>
           <GoldButton variant="outline" size="md" onClick={() => router.push("/auth/login")}>
-            Login Peserta
+            {heroContent.secondaryButtonLabel}
           </GoldButton>
         </div>
 

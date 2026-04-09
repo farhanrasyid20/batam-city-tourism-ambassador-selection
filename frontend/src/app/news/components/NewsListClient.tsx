@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import Link from "next/link";
 import { Calendar, ArrowRight } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
+import { resolveApiAssetUrl } from "../../../lib/api";
 
 export default function NewsListClient() {
   const { newsList } = useApp();
@@ -79,7 +80,7 @@ export default function NewsListClient() {
               {/* Image (pakai img biar ga error host) */}
               <div className="relative overflow-hidden" style={{ height: 180 }}>
                 <img
-                  src={news.image}
+                  src={resolveApiAssetUrl(news.image) ?? "/news-placeholder.jpg"}
                   alt={news.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />

@@ -15,6 +15,43 @@ use Illuminate\Validation\ValidationException;
 
 class ParticipantBiodataController extends Controller
 {
+    private function resolveProfilePhoto(?ParticipantProfile $profile, User $user): ?string
+    {
+        $photo = is_string($profile?->photo) ? trim($profile->photo) : '';
+        if ($photo !== '') {
+            if (! str_starts_with($photo, '/storage/')) {
+                return $photo;
+            }
+
+            $storagePath = Str::after($photo, '/storage/');
+            if (Storage::disk('public')->exists($storagePath)) {
+                return $photo;
+            }
+        }
+
+        $fallbackDocument = $user->participantDocuments()
+            ->whereIn('document_key', ['closeUpPhoto', 'fullBodyPhoto'])
+            ->orderByRaw("CASE document_key WHEN 'closeUpPhoto' THEN 0 ELSE 1 END")
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $fallbackDocument) {
+            return $photo !== '' ? $photo : null;
+        }
+
+        $rawUrl = is_string($fallbackDocument->url) ? trim($fallbackDocument->url) : '';
+        if ($rawUrl !== '') {
+            return $rawUrl;
+        }
+
+        $rawPath = is_string($fallbackDocument->path) ? trim($fallbackDocument->path) : '';
+        if ($rawPath !== '') {
+            return '/storage/'.ltrim($rawPath, '/');
+        }
+
+        return $photo !== '' ? $photo : null;
+    }
+
     private function ensureProfile(User $user): ParticipantProfile
     {
         return $user->participantProfile()->firstOrCreate([
@@ -127,7 +164,7 @@ class ParticipantBiodataController extends Controller
             'parent_phone' => $profile->parent_phone,
             'father_name' => $profile->father_name,
             'mother_name' => $profile->mother_name,
-            'photo' => $profile->photo,
+            'photo' => $this->resolveProfilePhoto($profile, $user),
             'education_category' => $profile->education_category,
             'education_institution' => $profile->education_institution,
             'education_major' => $profile->education_major,

@@ -17,12 +17,16 @@ import {
   type NewsItem,
   type ScoreRecord, // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ INI YANG BENAR (bukan Score)
   mockParticipants,
-  mockNews,
 } from "../data/mockData";
 import { faqItems, type FAQItem } from "../data/faqData";
 import {
+  fetchPublicFaqs,
+  fetchPublicNews,
   fetchPublicFinalists,
   fetchPublicParticipantResources,
+  submitFeedback,
+  type FeedbackCategory as BackendFeedbackCategory,
+  type FeedbackEntry as BackendFeedbackEntry,
   type ParticipantResourcesPayload,
   type PublicFinalistListItem,
 } from "../lib/auth-api";
@@ -94,17 +98,9 @@ export type JudgePairRankingItem = {
 
 export type JudgeWinnerDisplayMode = "name_only" | "name_with_score";
 
-export type FeedbackCategory = "Saran" | "Kritik" | "Pertanyaan" | "Lainnya";
+export type FeedbackCategory = BackendFeedbackCategory;
 
-export type FeedbackEntry = {
-  id: string;
-  name: string;
-  email: string;
-  category: FeedbackCategory;
-  message: string;
-  createdAt: string;
-  status: "baru" | "ditinjau" | "selesai";
-};
+export type FeedbackEntry = BackendFeedbackEntry;
 
 export type ResourceDocument = {
   linkUrl: string;
@@ -250,7 +246,7 @@ type AppContextType = {
     email: string;
     category: FeedbackCategory;
     message: string;
-  }) => void;
+  }) => Promise<void>;
 
   participantResources: ParticipantResources;
   setParticipantResources: React.Dispatch<React.SetStateAction<ParticipantResources>>;
@@ -339,7 +335,6 @@ const defaultLandingPageContent: LandingPageContent = {
   },
 };
 
-const NEWS_STORAGE_KEY = "duta-wisata-news-list";
 const FAQ_STORAGE_KEY = "duta-wisata-faq-list";
 const PARTICIPANT_LIST_STORAGE_KEY = "duta-wisata-participant-list";
 const PARTICIPANT_RESOURCES_STORAGE_KEY = "duta-wisata-participant-resources";
@@ -749,7 +744,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [judgeList, setJudgeList] = useState<Judge[]>([]);
 
-  const [newsList, setNewsList] = useState<NewsItem[]>(mockNews);
+  const [newsList, setNewsList] = useState<NewsItem[]>([]);
 
   // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ mockScores itu array ScoreRecord, bukan Score
   const [scoreList, setScoreList] = useState<ScoreRecord[]>([]);
@@ -789,7 +784,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(bootstrap.user);
       setCurrentParticipant(bootstrap.participant);
 
-      const storedNews = readStoredJson<NewsItem[]>(NEWS_STORAGE_KEY);
       const storedFaq = readStoredJson<FAQItem[]>(FAQ_STORAGE_KEY);
       const storedParticipantResources = readStoredJson<ParticipantResources>(PARTICIPANT_RESOURCES_STORAGE_KEY);
       const storedLandingPageContent = readStoredJson<LandingPageContent>(LANDING_PAGE_CONTENT_STORAGE_KEY);
@@ -807,7 +801,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const storedJudgeWinnersDisplayMode =
         readStoredJson<JudgeWinnerDisplayMode>(JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY);
 
-      if (storedNews) setNewsList(storedNews);
       if (storedFaq) setFaqList(storedFaq);
       if (storedParticipantResources) setParticipantResources(storedParticipantResources);
       if (typeof storedVoteTopPublished === "boolean") setVoteTopPublished(storedVoteTopPublished);
@@ -894,6 +887,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     return () => window.cancelAnimationFrame(frameId);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPublicNews = async () => {
+      try {
+        const response = await fetchPublicNews();
+        if (cancelled) return;
+        setNewsList(response.data);
+      } catch {
+        setNewsList([]);
+      }
+    };
+
+    const loadPublicFaqs = async () => {
+      try {
+        const response = await fetchPublicFaqs();
+        if (cancelled) return;
+        setFaqList(response.data);
+      } catch {
+        // keep fallback FAQ from local data when backend is unavailable
+      }
+    };
+
+    void loadPublicNews();
+    void loadPublicFaqs();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -1100,11 +1124,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(NEWS_STORAGE_KEY, newsList);
-  }, [authInitialized, newsList]);
 
   useEffect(() => {
     if (!authInitialized || typeof window === "undefined") return;
@@ -1433,17 +1452,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addFeedbackEntry = useCallback(
-    (payload: { name: string; email: string; category: FeedbackCategory; message: string }) => {
-      const newItem: FeedbackEntry = {
-        id: `fb-${Date.now()}`,
+    async (payload: { name: string; email: string; category: FeedbackCategory; message: string }) => {
+      const response = await submitFeedback({
         name: payload.name.trim(),
         email: payload.email.trim().toLowerCase(),
         category: payload.category,
         message: payload.message.trim(),
-        createdAt: new Date().toISOString(),
-        status: "baru",
-      };
-      setFeedbackList((prev) => [newItem, ...prev]);
+      });
+
+      setFeedbackList((prev) => [response.data, ...prev.filter((item) => item.id !== response.data.id)]);
     },
     []
   );

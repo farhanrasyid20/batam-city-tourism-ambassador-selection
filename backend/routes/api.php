@@ -3,10 +3,14 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AuditionPromotionController;
 use App\Http\Controllers\Api\ExportReportController;
+use App\Http\Controllers\Api\FaqController;
+use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\JudgeNoteController;
 use App\Http\Controllers\Api\JudgeParticipantController;
 use App\Http\Controllers\Api\JudgeScoreController;
 use App\Http\Controllers\Api\JudgeScoreRecapController;
+use App\Http\Controllers\Api\LandingPageController;
+use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\ParticipantBiodataController;
 use App\Http\Controllers\Api\ParticipantDocumentController;
 use App\Http\Controllers\Api\ParticipantResourceController;
@@ -27,6 +31,10 @@ Route::prefix('auth')->group(function (): void {
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordDirect']);
+Route::post('/feedback', [FeedbackController::class, 'store']);
+Route::get('/public/faqs', [FaqController::class, 'index']);
+Route::get('/public/landing-page', [LandingPageController::class, 'showPublic']);
+Route::get('/public/news', [NewsController::class, 'index']);
 Route::get('/public/finalists', [PublicFinalistController::class, 'index']);
 Route::get('/public/participant-resources', [ParticipantResourceController::class, 'showPublic']);
 
@@ -39,6 +47,18 @@ Route::prefix('participant')->middleware(['jwt.auth', 'role:participant'])->grou
 });
 
 Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])->group(function (): void {
+    Route::get('/news', [NewsController::class, 'index']);
+    Route::post('/news', [NewsController::class, 'store']);
+    Route::patch('/news/{id}', [NewsController::class, 'update']);
+    Route::delete('/news/{id}', [NewsController::class, 'destroy']);
+    Route::get('/faqs', [FaqController::class, 'index']);
+    Route::post('/faqs', [FaqController::class, 'store']);
+    Route::patch('/faqs/{id}', [FaqController::class, 'update']);
+    Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
+    Route::get('/feedback', [FeedbackController::class, 'index']);
+    Route::patch('/feedback/{id}/status', [FeedbackController::class, 'updateStatus']);
+    Route::get('/landing-page', [LandingPageController::class, 'showPublic']);
+    Route::post('/landing-page', [LandingPageController::class, 'update']);
     Route::get('/users', [UserManagementController::class, 'index']);
     Route::post('/users', [UserManagementController::class, 'store']);
     Route::patch('/users/{id}', [UserManagementController::class, 'update']);

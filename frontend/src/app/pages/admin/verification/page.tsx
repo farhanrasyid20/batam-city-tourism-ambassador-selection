@@ -75,6 +75,14 @@ const documentIssueTargetMap: Record<string, ParticipantVerificationIssue["targe
   formS04: "formS04",
 };
 
+function hasUploadedDocument(document: NonNullable<Participant["documents"]>[number]) {
+  return Boolean(
+    (document.url ?? "").trim() ||
+      (document.originalName ?? "").trim() ||
+      (document.mimeType ?? "").trim()
+  );
+}
+
 function toSocialHandle(value?: string | null): string {
   const raw = (value ?? "").trim();
   if (!raw) return "-";
@@ -468,24 +476,52 @@ export default function AdminVerificationPage() {
                           return a.label.localeCompare(b.label);
                         })
                         .map((document) => (
+                        (() => {
+                          const isMissing = document.status === "missing" || !hasUploadedDocument(document);
+                          const isRevision = document.status === "revision_required";
+                          const isVerified = document.status === "verified";
+
+                          return (
                         <span
                           key={`${participant.id}-${document.key}`}
                           className="text-xs px-2 py-0.5 rounded-full"
                           style={{
                             background:
-                              document.status === "revision_required"
+                              isMissing
+                                ? "rgba(107,114,128,0.12)"
+                                : isRevision
                                 ? "rgba(249,115,22,0.12)"
+                                : isVerified
+                                ? "rgba(34,197,94,0.1)"
                                 : "rgba(34,197,94,0.1)",
-                            color: document.status === "revision_required" ? "#f97316" : "#22c55e",
+                            color:
+                              isMissing
+                                ? "#9CA3AF"
+                                : isRevision
+                                ? "#f97316"
+                                : isVerified
+                                ? "#22c55e"
+                                : "#22c55e",
                             fontFamily: "var(--font-poppins)",
                             border:
-                              document.status === "revision_required"
+                              isMissing
+                                ? "1px solid rgba(107,114,128,0.24)"
+                                : isRevision
                                 ? "1px solid rgba(249,115,22,0.2)"
                                 : "1px solid rgba(34,197,94,0.2)",
                           }}
                         >
-                          {document.status === "revision_required" ? "Perlu revisi" : "Tersubmit"} - {document.label}
+                          {isMissing
+                            ? "Belum diunggah"
+                            : isRevision
+                            ? "Perlu revisi"
+                            : isVerified
+                            ? "Terverifikasi"
+                            : "Tersubmit"}{" "}
+                          - {document.label}
                         </span>
+                          );
+                        })()
                       ))}
                     </div>
                   </div>
@@ -796,6 +832,9 @@ export default function AdminVerificationPage() {
                             })
                             .map((document) => {
                             const documentMeta = getVerificationDocumentMeta(participant, document, participantResources);
+                            const isMissing = document.status === "missing" || !documentMeta.href;
+                            const isRevision = document.status === "revision_required";
+                            const isVerified = document.status === "verified";
 
                             return (
                             <div
@@ -816,23 +855,29 @@ export default function AdminVerificationPage() {
                                   className="text-[10px] px-2 py-0.5 rounded-full"
                                   style={{
                                     background:
-                                      document.status === "revision_required"
+                                      isMissing
+                                        ? "rgba(107,114,128,0.14)"
+                                        : isRevision
                                         ? "rgba(249,115,22,0.14)"
-                                        : document.status === "verified"
+                                        : isVerified
                                         ? "rgba(34,197,94,0.14)"
                                         : "rgba(245,158,11,0.14)",
                                     color:
-                                      document.status === "revision_required"
+                                      isMissing
+                                        ? "#9CA3AF"
+                                        : isRevision
                                         ? "#f97316"
-                                        : document.status === "verified"
+                                        : isVerified
                                         ? "#22c55e"
                                         : "#f59e0b",
                                     fontFamily: "var(--font-poppins)",
                                   }}
                                 >
-                                  {document.status === "revision_required"
+                                  {isMissing
+                                    ? "Belum diunggah"
+                                    : isRevision
                                     ? "Perlu revisi"
-                                    : document.status === "verified"
+                                    : isVerified
                                     ? "Terverifikasi"
                                     : "Menunggu cek admin"}
                                 </span>
@@ -924,12 +969,24 @@ export default function AdminVerificationPage() {
                                     })
                                   }
                                   className="px-2 py-1 rounded-lg text-[10px]"
+                                  disabled={isMissing}
                                   style={{
-                                    background: document.status === "verified" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.06)",
-                                    border: `1px solid ${document.status === "verified" ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.08)"}`,
-                                    color: document.status === "verified" ? "#22c55e" : "#888",
+                                    background: isMissing
+                                      ? "rgba(107,114,128,0.08)"
+                                      : document.status === "verified"
+                                      ? "rgba(34,197,94,0.18)"
+                                      : "rgba(255,255,255,0.06)",
+                                    border: `1px solid ${
+                                      isMissing
+                                        ? "rgba(107,114,128,0.18)"
+                                        : document.status === "verified"
+                                        ? "rgba(34,197,94,0.35)"
+                                        : "rgba(255,255,255,0.08)"
+                                    }`,
+                                    color: isMissing ? "#6B7280" : document.status === "verified" ? "#22c55e" : "#888",
                                     fontFamily: "var(--font-poppins)",
-                                    cursor: "pointer",
+                                    cursor: isMissing ? "not-allowed" : "pointer",
+                                    opacity: isMissing ? 0.7 : 1,
                                   }}
                                 >
                                   OK
@@ -938,12 +995,24 @@ export default function AdminVerificationPage() {
                                   type="button"
                                   onClick={() => updateDocumentReview(participant.id, document.key, { status: "revision_required" })}
                                   className="px-2 py-1 rounded-lg text-[10px]"
+                                  disabled={isMissing}
                                   style={{
-                                    background: document.status === "revision_required" ? "rgba(249,115,22,0.18)" : "rgba(255,255,255,0.06)",
-                                    border: `1px solid ${document.status === "revision_required" ? "rgba(249,115,22,0.35)" : "rgba(255,255,255,0.08)"}`,
-                                    color: document.status === "revision_required" ? "#f97316" : "#888",
+                                    background: isMissing
+                                      ? "rgba(107,114,128,0.08)"
+                                      : document.status === "revision_required"
+                                      ? "rgba(249,115,22,0.18)"
+                                      : "rgba(255,255,255,0.06)",
+                                    border: `1px solid ${
+                                      isMissing
+                                        ? "rgba(107,114,128,0.18)"
+                                        : document.status === "revision_required"
+                                        ? "rgba(249,115,22,0.35)"
+                                        : "rgba(255,255,255,0.08)"
+                                    }`,
+                                    color: isMissing ? "#6B7280" : document.status === "revision_required" ? "#f97316" : "#888",
                                     fontFamily: "var(--font-poppins)",
-                                    cursor: "pointer",
+                                    cursor: isMissing ? "not-allowed" : "pointer",
+                                    opacity: isMissing ? 0.7 : 1,
                                   }}
                                 >
                                   Revisi

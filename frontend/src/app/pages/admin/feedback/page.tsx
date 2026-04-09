@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Mail, Search, MessageSquareText, CheckCircle2 } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { useApp, type FeedbackEntry } from "../../../../context/AppContext";
+import { fetchFeedbackList, updateFeedbackStatus } from "../../../../lib/auth-api";
+import { getReadableApiError } from "../../../../lib/api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 
 const categories = ["Semua", "Saran", "Kritik", "Pertanyaan", "Lainnya"] as const;
 const statuses = ["Semua", "baru", "ditinjau", "selesai"] as const;
@@ -27,6 +30,33 @@ export default function AdminFeedbackPage() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("Semua");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Semua");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const loadFeedback = useCallback(async (preferredId?: string | null) => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) return;
+
+    try {
+      setErrorMessage("");
+      const response = await fetchFeedbackList(token);
+
+      setFeedbackList(response.data);
+      setSelectedId((current) => {
+        const nextPreferredId = preferredId ?? current;
+        if (nextPreferredId && response.data.some((item) => item.id === nextPreferredId)) {
+          return nextPreferredId;
+        }
+
+        return response.data[0]?.id ?? null;
+      });
+    } catch (error) {
+      setErrorMessage(getReadableApiError(error));
+    }
+  }, [setFeedbackList]);
+
+  useEffect(() => {
+    void loadFeedback();
+  }, [loadFeedback]);
 
   const filtered = useMemo(() => {
     return feedbackList.filter((item) => {
@@ -39,8 +69,20 @@ export default function AdminFeedbackPage() {
 
   const selectedItem = filtered.find((item) => item.id === selectedId) ?? null;
 
-  const updateStatus = (id: string, status: FeedbackEntry["status"]) => {
-    setFeedbackList((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+  const updateStatus = async (id: string, status: FeedbackEntry["status"]) => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setErrorMessage("Sesi login tidak ditemukan.");
+      return;
+    }
+
+    try {
+      setErrorMessage("");
+      await updateFeedbackStatus(token, id, { status });
+      await loadFeedback(id);
+    } catch (error) {
+      setErrorMessage(getReadableApiError(error));
+    }
   };
 
   const summary = useMemo(
@@ -134,6 +176,11 @@ export default function AdminFeedbackPage() {
             ))}
           </select>
         </div>
+        {errorMessage ? (
+          <p className="text-xs mt-3" style={{ color: "#F59E0B", fontFamily: "var(--font-poppins)" }}>
+            {errorMessage}
+          </p>
+        ) : null}
       </GoldCard>
 
       <div className="grid lg:grid-cols-3 gap-6">

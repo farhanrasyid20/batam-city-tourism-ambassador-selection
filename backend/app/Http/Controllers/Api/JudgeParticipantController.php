@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class JudgeParticipantController extends Controller
 {
@@ -34,6 +36,42 @@ class JudgeParticipantController extends Controller
             'Verified', 'TechnicalMeeting' => 'Technical Meeting',
             default => 'Verification',
         };
+    }
+
+    private function resolveProfilePhoto(User $user): ?string
+    {
+        $photo = is_string($user->participantProfile?->photo) ? trim($user->participantProfile->photo) : '';
+        if ($photo !== '') {
+            if (! str_starts_with($photo, '/storage/')) {
+                return $photo;
+            }
+
+            $storagePath = Str::after($photo, '/storage/');
+            if (Storage::disk('public')->exists($storagePath)) {
+                return $photo;
+            }
+        }
+
+        $fallbackDocument = $user->participantDocuments
+            ->sortByDesc('id')
+            ->sortBy(fn ($doc) => $doc->document_key === 'closeUpPhoto' ? 0 : ($doc->document_key === 'fullBodyPhoto' ? 1 : 2))
+            ->first(fn ($doc) => in_array($doc->document_key, ['closeUpPhoto', 'fullBodyPhoto'], true));
+
+        if (! $fallbackDocument) {
+            return $photo !== '' ? $photo : null;
+        }
+
+        $rawUrl = is_string($fallbackDocument->url) ? trim($fallbackDocument->url) : '';
+        if ($rawUrl !== '') {
+            return $rawUrl;
+        }
+
+        $rawPath = is_string($fallbackDocument->path) ? trim($fallbackDocument->path) : '';
+        if ($rawPath !== '') {
+            return '/storage/'.ltrim($rawPath, '/');
+        }
+
+        return $photo !== '' ? $photo : null;
     }
 
     public function index(Request $request): JsonResponse
@@ -130,7 +168,7 @@ class JudgeParticipantController extends Controller
                 'parent_phone' => $profile?->parent_phone,
                 'father_name' => $profile?->father_name,
                 'mother_name' => $profile?->mother_name,
-                'photo' => $profile?->photo,
+                'photo' => $this->resolveProfilePhoto($user),
                 'education_category' => $profile?->education_category,
                 'education_institution' => $profile?->education_institution,
                 'education_degree' => $profile?->education_degree,

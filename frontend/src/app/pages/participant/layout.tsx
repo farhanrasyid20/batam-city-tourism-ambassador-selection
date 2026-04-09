@@ -12,6 +12,7 @@ import DashboardLayout from "../../../components/dashboard/DashboardLayout";
 import { useApp } from "../../../context/AppContext";
 import { type Participant, type StageStatus } from "../../../data/mockData";
 import { fetchParticipantBiodata } from "../../../lib/auth-api";
+import { resolveApiAssetUrl } from "../../../lib/api";
 import { useRouter } from "next/navigation";
 import {
   getParticipantAuthSession,
@@ -126,6 +127,7 @@ export default function ParticipantPagesLayout({
 
         const data = response.data;
         const email = (data.email ?? "").trim().toLowerCase();
+        const resolvedPhoto = resolveApiAssetUrl(data.photo) ?? data.photo ?? "";
         const auditionNumber = data.audition_number ?? data.participant_number ?? "-";
         const participantCode = data.participant_code ?? undefined;
         const nextParticipant: Participant = {
@@ -145,7 +147,7 @@ export default function ParticipantPagesLayout({
           instagram: data.instagram ?? "",
           phone: data.phone ?? "",
           email,
-          photo: data.photo ?? "",
+          photo: resolvedPhoto,
           status: mapSelectionStatusToStage(data.selection_status, data.account_status),
           registeredAt: new Date().toISOString().slice(0, 10),
           scores: [],
@@ -181,7 +183,7 @@ export default function ParticipantPagesLayout({
           number: nextParticipant.number,
           gender: nextParticipant.gender,
           phone: nextParticipant.phone,
-          photo: nextParticipant.photo,
+          photo: resolvedPhoto,
           updatedAt: new Date().toISOString(),
         });
 

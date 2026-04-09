@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import Image from "next/image";
 import type { NewsBlock } from "../../../data/mockData";
+import { resolveApiAssetUrl } from "../../../lib/api";
 
 function Paragraph({ text }: { text: string }) {
   return (
@@ -80,7 +81,7 @@ export default function NewsArticleClient({ body, contentHtml }: NewsArticleClie
                   lineHeight: 1.9,
                 }}
               >
-                â€œ{block.text}â€
+                Ã¢â‚¬Å“{block.text}Ã¢â‚¬Â
               </p>
               {block.author ? (
                 <p
@@ -90,7 +91,7 @@ export default function NewsArticleClient({ body, contentHtml }: NewsArticleClie
                     fontFamily: "var(--font-poppins)",
                   }}
                 >
-                  â€” {block.author}
+                  Ã¢â‚¬â€ {block.author}
                 </p>
               ) : null}
             </blockquote>
@@ -128,7 +129,7 @@ export default function NewsArticleClient({ body, contentHtml }: NewsArticleClie
                 }}
               >
                 <Image
-                  src={block.src}
+                  src={resolveApiAssetUrl(block.src) ?? "/news-placeholder.jpg"}
                   alt={block.alt ?? "Gambar berita"}
                   width={1400}
                   height={900}

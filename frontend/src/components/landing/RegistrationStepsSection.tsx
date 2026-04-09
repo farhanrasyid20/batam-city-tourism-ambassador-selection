@@ -14,7 +14,7 @@ export default function RegistrationStepsSection() {
             className="text-sm tracking-widest uppercase mb-3"
             style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
           >
-            Pendaftaran
+            {registrationContent.sectionLabel}
           </p>
           <h2
             style={{
@@ -27,7 +27,7 @@ export default function RegistrationStepsSection() {
               fontWeight: 700,
             }}
           >
-            TATA CARA PENDAFTARAN
+            {registrationContent.sectionTitle}
           </h2>
           <div
             className="w-24 h-[2px] mx-auto mt-4"
@@ -49,7 +49,7 @@ export default function RegistrationStepsSection() {
               className="mb-5"
               style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
             >
-              Langkah Pendaftaran
+              {registrationContent.stepsTitle}
             </h3>
 
             <div className="space-y-3">
@@ -87,7 +87,7 @@ export default function RegistrationStepsSection() {
                   fontFamily: "var(--font-cinzel)",
                 }}
               >
-                Daftar Sekarang
+                {registrationContent.registerButtonLabel}
               </Link>
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function RegistrationStepsSection() {
               className="mb-5"
               style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
             >
-              Jadwal Penting
+              {registrationContent.scheduleTitle}
             </h3>
             <div className="space-y-3">
               {registrationContent.scheduleItems.map((item, index) => (

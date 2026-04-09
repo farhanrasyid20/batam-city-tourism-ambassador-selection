@@ -25,15 +25,6 @@ const AboutGuideInlineViewer = dynamic(() => import("./AboutGuideInlineViewer"),
 
 const guideBookHref = "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf";
 
-const soloCategoryTitles = [
-  "Encik Duta Wisata Kota Batam 2026",
-  "Puan Duta Wisata Kota Batam 2026",
-  "1st Runner Up Encik",
-  "1st Runner Up Puan",
-];
-
-const favoriteCategoryTitles = ["Duta Favorit Encik", "Duta Favorit Puan"];
-
 export function AboutSection() {
   const [guideOpen, setGuideOpen] = useState(false);
   const landingPageContent = useLandingPageContent();
@@ -43,15 +34,13 @@ export function AboutSection() {
 
   const soloWinnerCategories = useMemo(
     () =>
-      soloCategoryTitles
-        .map((title, index) => {
-          const item = winnerCategories.find((entry) => entry.title === title) ?? null;
-          if (!item) return null;
-          return {
-            ...item,
-            description: winnerContent.soloItems[index]?.description ?? item.description,
-          };
-        })
+      winnerCategories
+        .slice(1, 5)
+        .map((item, index) => ({
+          ...item,
+          title: winnerContent.soloItems[index]?.title ?? item.title,
+          description: winnerContent.soloItems[index]?.description ?? item.description,
+        }))
         .filter((item): item is NonNullable<typeof item> => item !== null),
     [winnerContent.soloItems]
   );
@@ -61,23 +50,22 @@ export function AboutSection() {
       winnerCategories.find((item) => item.title === "Encik & Puan Duta Wisata Kota Batam 2026")
         ? {
             ...(winnerCategories.find((item) => item.title === "Encik & Puan Duta Wisata Kota Batam 2026") as NonNullable<(typeof winnerCategories)[number]>),
+            title: winnerContent.pairItem.title,
             description: winnerContent.pairItem.description,
           }
         : null,
-    [winnerContent.pairItem.description]
+    [winnerContent.pairItem]
   );
 
   const favoriteWinnerCategories = useMemo(
     () =>
-      favoriteCategoryTitles
-        .map((title, index) => {
-          const item = winnerCategories.find((entry) => entry.title === title) ?? null;
-          if (!item) return null;
-          return {
-            ...item,
-            description: winnerContent.favoriteItems[index]?.description ?? item.description,
-          };
-        })
+      winnerCategories
+        .slice(5, 7)
+        .map((item, index) => ({
+          ...item,
+          title: winnerContent.favoriteItems[index]?.title ?? item.title,
+          description: winnerContent.favoriteItems[index]?.description ?? item.description,
+        }))
         .filter((item): item is NonNullable<typeof item> => item !== null),
     [winnerContent.favoriteItems]
   );
@@ -90,7 +78,7 @@ export function AboutSection() {
             className="text-sm tracking-widest uppercase mb-3"
             style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
           >
-            Tentang Program
+            {aboutContent.sectionLabel}
           </p>
 
           <h2
@@ -104,7 +92,7 @@ export function AboutSection() {
               fontWeight: 700,
             }}
           >
-            ENCIK &amp; PUAN DUTA WISATA BATAM
+            {aboutContent.sectionTitle}
           </h2>
 
           <div
@@ -120,7 +108,7 @@ export function AboutSection() {
                 <Users size={18} color="#0F0F0F" />
               </div>
               <h3 className="text-lg font-semibold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-                Tentang Program
+                {aboutContent.aboutCardTitle}
               </h3>
             </div>
 
@@ -133,7 +121,7 @@ export function AboutSection() {
                 <Target size={18} color="#0F0F0F" />
               </div>
               <h3 className="text-lg font-semibold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-                Visi &amp; Misi
+                {aboutContent.visionMissionTitle}
               </h3>
             </div>
 
@@ -165,14 +153,14 @@ export function AboutSection() {
                     <BookOpen size={18} />
                   </div>
                   <p className="text-xs uppercase tracking-[0.3em] text-[#C8A24D]" style={{ fontFamily: "var(--font-poppins)" }}>
-                    Buku Panduan Resmi
+                    {aboutContent.guideSectionLabel}
                   </p>
                 </div>
                 <h3 className="text-xl sm:text-2xl font-bold mb-3" style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}>
-                  Buku Panduan Pemilihan Duta Wisata Batam 2026
+                  {aboutContent.guideTitle}
                 </h3>
                 <p className="text-sm sm:text-base leading-relaxed" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
-                  Tekan tombol lihat panduan untuk membuka isi buku langsung di bawah section ini. Jika browser tertentu bermasalah saat menampilkan PDF, file asli tetap bisa dibuka atau diunduh.
+                  {aboutContent.guideDescription}
                 </p>
               </div>
 
@@ -188,7 +176,7 @@ export function AboutSection() {
                   }}
                 >
                   {guideOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  {guideOpen ? "Tutup Panduan" : "Lihat Panduan"}
+                  {guideOpen ? aboutContent.guideCloseLabel : aboutContent.guideOpenLabel}
                 </button>
 
                 <Link
@@ -203,7 +191,7 @@ export function AboutSection() {
                     background: "rgba(200,162,77,0.08)",
                   }}
                 >
-                  <ExternalLink size={16} /> Buka PDF
+                  <ExternalLink size={16} /> {aboutContent.guideOpenPdfLabel}
                 </Link>
 
                 <a
@@ -217,7 +205,7 @@ export function AboutSection() {
                     background: "rgba(200,162,77,0.08)",
                   }}
                 >
-                  <Download size={16} /> Unduh PDF
+                  <Download size={16} /> {aboutContent.guideDownloadPdfLabel}
                 </a>
               </div>
             </div>
@@ -230,7 +218,7 @@ export function AboutSection() {
           <div className="text-center mb-10 flex justify-center items-center gap-3">
             <Trophy size={20} style={{ color: "#C8A24D" }} />
             <h3 className="text-xl font-bold" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
-              KATEGORI PEMENANG
+              {winnerContent.sectionTitle}
             </h3>
             <Trophy size={20} style={{ color: "#C8A24D" }} />
           </div>
@@ -243,10 +231,10 @@ export function AboutSection() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.28em] text-[#C8A24D]" style={{ fontFamily: "var(--font-poppins)" }}>
-                    Kategori Individu
+                    {winnerContent.soloSectionLabel}
                   </p>
                   <p className="text-sm" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
-                    Penghargaan utama untuk kategori solo Encik dan Puan.
+                    {winnerContent.soloSectionDescription}
                   </p>
                 </div>
               </div>
@@ -276,10 +264,10 @@ export function AboutSection() {
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.28em] text-[#C8A24D]" style={{ fontFamily: "var(--font-poppins)" }}>
-                      Kategori Pasangan
+                      {winnerContent.pairSectionLabel}
                     </p>
                     <p className="text-sm" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
-                      Penghargaan resmi untuk pasangan utama Duta Wisata Kota Batam.
+                      {winnerContent.pairSectionDescription}
                     </p>
                   </div>
                 </div>
@@ -309,10 +297,10 @@ export function AboutSection() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.28em] text-[#C8A24D]" style={{ fontFamily: "var(--font-poppins)" }}>
-                    Kategori Favorit
+                    {winnerContent.favoriteSectionLabel}
                   </p>
                   <p className="text-sm" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
-                    Penghargaan berdasarkan dukungan publik dan antusiasme masyarakat.
+                    {winnerContent.favoriteSectionDescription}
                   </p>
                 </div>
               </div>
@@ -339,10 +327,10 @@ export function AboutSection() {
         <div>
           <div className="text-center mb-10">
             <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
-              Syarat Pendaftaran
+              {requirementsContent.sectionLabel}
             </p>
             <h3 className="text-xl sm:text-2xl font-bold" style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}>
-              PERSYARATAN PESERTA DUTA WISATA KOTA BATAM 2026
+              {requirementsContent.sectionTitle}
             </h3>
             <p className="text-sm sm:text-base mt-3 max-w-3xl mx-auto" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
               {requirementsContent.introText}
@@ -351,8 +339,8 @@ export function AboutSection() {
 
           <div className="grid lg:grid-cols-2 gap-8">
             {[
-              { title: "PERSYARATAN UMUM", items: requirementsContent.generalItems },
-              { title: "PERSYARATAN KHUSUS", items: requirementsContent.specialItems },
+              { title: requirementsContent.generalTitle, items: requirementsContent.generalItems },
+              { title: requirementsContent.specialTitle, items: requirementsContent.specialItems },
             ].map((block) => (
               <div key={block.title} className="rounded-2xl p-8 bg-[#1A1A1A] border border-yellow-700/30">
                 <h3 className="text-lg font-semibold mb-5" style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}>
