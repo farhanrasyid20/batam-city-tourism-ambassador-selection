@@ -20,14 +20,6 @@ import { useApp } from "../../../../context/AppContext";
 import { statusLabelsId, type Participant, type StageStatus } from "../../../../data/mockData";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
-import {
-  fetchAuthenticatedParticipant,
-  fetchParticipantBiodata,
-  type BackendAuthUser,
-  type ParticipantBiodata,
-} from "../../../../lib/auth-api";
-import { getParticipantAuthSession } from "../../../../lib/auth-storage";
-import { API_BASE_URL, getReadableApiError } from "../../../../lib/api";
 
 function toPercent(filled: number, total: number) {
   if (total <= 0) return 0;
@@ -41,44 +33,6 @@ function getStageIndex(status: string): number {
   if (status === "GrandFinal") return 5;
   if (status === "Winner") return 6;
   return order.findIndex((s) => s === status);
-}
-
-function mapBackendAccountStatusToStage(accountStatus?: string, fallback?: StageStatus): StageStatus {
-  const normalized = (accountStatus ?? "").toLowerCase();
-
-  // Jika dashboard lokal sudah bergerak ke tahap lanjut, jangan diturunkan kembali.
-  if (fallback && !["Pending", "Rejected"].includes(fallback)) {
-    return fallback;
-  }
-
-  if (normalized === "suspended") return "Rejected";
-  if (normalized === "active") return fallback ?? "Pending";
-  return "Pending";
-}
-
-function mapSelectionStatusToStage(
-  selectionStatus?: ParticipantBiodata["selection_status"] | null,
-  accountStatus?: string,
-  fallback?: StageStatus
-): StageStatus {
-  const allowed: StageStatus[] = [
-    "Pending",
-    "Verified",
-    "TechnicalMeeting",
-    "Rejected",
-    "Audition",
-    "Top20",
-    "PreCamp",
-    "Camp",
-    "GrandFinal",
-    "Winner",
-  ];
-
-  if (selectionStatus && allowed.includes(selectionStatus as StageStatus)) {
-    return selectionStatus as StageStatus;
-  }
-
-  return mapBackendAccountStatusToStage(accountStatus, fallback);
 }
 
 function shouldShowAuditionNumber(status: StageStatus): boolean {
@@ -106,101 +60,6 @@ function getSelectionNumberForDisplay(participant: Participant | null): string {
   return participant.number?.trim() || "-";
 }
 
-const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
-
-function resolveParticipantPhotoUrl(photo?: string | null): string | undefined {
-  const value = photo?.trim();
-  if (!value) return undefined;
-  if (
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
-    value.startsWith("data:") ||
-    value.startsWith("blob:")
-  ) {
-    return value;
-  }
-  return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
-}
-
-function mergeParticipantWithBackend(
-  base: Participant | null,
-  backendUser: BackendAuthUser,
-  biodata?: ParticipantBiodata | null
-): Participant {
-  const defaultId = `P_API_${backendUser.id}`;
-  const safeEmail = backendUser.email?.trim().toLowerCase() ?? "";
-  const normalizedDocuments =
-    biodata?.documents?.map((doc) => ({
-      key: doc.key,
-      label: doc.label,
-      status:
-        doc.status === "verified" || doc.status === "revision_required" || doc.status === "missing"
-          ? doc.status
-          : ("submitted" as const),
-      note: doc.note ?? undefined,
-      url: resolveParticipantPhotoUrl(doc.url) ?? doc.url ?? undefined,
-      mimeType: doc.mime_type ?? undefined,
-      originalName: doc.original_name ?? undefined,
-    })) ?? base?.documents ?? [];
-
-  const educationFromBiodata = [
-    biodata?.education_category?.trim(),
-    biodata?.education_institution?.trim(),
-    biodata?.education_degree?.trim(),
-    biodata?.education_major?.trim(),
-  ]
-    .filter(Boolean)
-    .join(" - ");
-
-  return {
-    id: base?.id ?? defaultId,
-    number: biodata?.participant_code ?? biodata?.audition_number ?? biodata?.participant_number ?? base?.number ?? "-",
-    auditionNumber: biodata?.audition_number ?? biodata?.participant_number ?? base?.auditionNumber ?? base?.number ?? "-",
-    participantCode: biodata?.participant_code ?? base?.participantCode,
-    name: biodata?.name ?? backendUser.name ?? base?.name ?? "Peserta",
-    gender: biodata?.gender ?? base?.gender ?? "Encik",
-    nationalId: biodata?.national_id ?? base?.nationalId ?? "",
-    birthPlace: biodata?.birth_place ?? base?.birthPlace ?? "",
-    birthDate: biodata?.birth_date ?? base?.birthDate ?? "",
-    heightCm: biodata?.height_cm ?? base?.heightCm ?? 0,
-    education: educationFromBiodata || base?.education || "",
-    instagram: biodata?.instagram ?? base?.instagram ?? "",
-    phone: backendUser.phone ?? base?.phone ?? "",
-    email: biodata?.email?.trim().toLowerCase() || safeEmail || base?.email || "",
-    photo: resolveParticipantPhotoUrl(biodata?.photo) ?? base?.photo ?? "",
-    status: mapSelectionStatusToStage(
-      biodata?.selection_status,
-      biodata?.account_status ?? backendUser.account_status,
-      base?.status
-    ),
-    verificationStatus: base?.verificationStatus,
-    selectionStage: base?.selectionStage,
-    adminVerificationNote: base?.adminVerificationNote,
-    adminRevisionNote: base?.adminRevisionNote,
-    reviewItems: base?.reviewItems ?? [],
-    documents: normalizedDocuments,
-    submittedToAdmin: biodata?.submitted_to_admin ?? base?.submittedToAdmin ?? false,
-    eliminatedInAudition: biodata?.eliminated_in_audition ?? base?.eliminatedInAudition ?? false,
-    rejectionReason:
-      biodata?.selection_status === "Rejected"
-        ? (biodata.selection_status_note ?? base?.rejectionReason)
-        : undefined,
-    verificationIssues: base?.verificationIssues ?? [],
-    agreementNoAgency: biodata?.agreement_no_agency ?? base?.agreementNoAgency,
-    agencyName: biodata?.agency_name ?? base?.agencyName,
-    agreementParentPermission:
-      biodata?.agreement_parent_permission ?? base?.agreementParentPermission,
-    agreementAllStages: biodata?.agreement_all_stages ?? base?.agreementAllStages,
-    motivationStatement: biodata?.motivation_statement ?? base?.motivationStatement,
-    contributionIdea: biodata?.contribution_idea ?? base?.contributionIdea,
-    publicSpeakingExperience:
-      biodata?.public_speaking_experience ?? base?.publicSpeakingExperience,
-    registeredAt: base?.registeredAt ?? new Date().toISOString().slice(0, 10),
-    scores: base?.scores ?? [],
-    likes: base?.likes ?? 0,
-  };
-}
-
 export default function ParticipantDashboardPage() {
   // Router dan context utama peserta.
   const router = useRouter();
@@ -209,7 +68,6 @@ export default function ParticipantDashboardPage() {
   const [submitInfoType, setSubmitInfoType] = useState<"success" | "error">("error");
   const [dismissedAlertId, setDismissedAlertId] = useState("");
   const [resubmittedKeys, setResubmittedKeys] = useState<string[]>([]);
-  const [syncError, setSyncError] = useState("");
 
   // Peserta aktif, fallback ke data pertama untuk mode demo.
   const participant = currentParticipant;
@@ -358,95 +216,6 @@ export default function ParticipantDashboardPage() {
       : null
     : null;
 
-  const syncParticipantFromBackend = React.useCallback(async () => {
-    const token = getParticipantAuthSession()?.token;
-    if (!token) return;
-
-    try {
-      const [response, biodataResponse] = await Promise.all([
-        fetchAuthenticatedParticipant(token),
-        fetchParticipantBiodata(token).catch(() => null),
-      ]);
-
-      const backendUser = response.user;
-      if ((backendUser.role ?? "").toLowerCase() !== "participant") return;
-      const biodata = biodataResponse?.data ?? null;
-
-      const backendEmail = (backendUser.email ?? "").trim().toLowerCase();
-      let mergedSnapshot: Participant | null = null;
-
-      setCurrentParticipant((prev) => {
-        const merged = mergeParticipantWithBackend(prev, backendUser, biodata);
-        mergedSnapshot = merged;
-        return merged;
-      });
-
-      setParticipantList((prev) => {
-        const fallbackBase =
-          prev.find((item) => item.email.trim().toLowerCase() === backendEmail) ?? null;
-        const merged =
-          mergedSnapshot ?? mergeParticipantWithBackend(fallbackBase, backendUser, biodata);
-
-        const index = prev.findIndex(
-          (item) =>
-            item.id === merged.id ||
-            item.email.trim().toLowerCase() === merged.email.trim().toLowerCase()
-        );
-
-        if (index === -1) {
-          return [merged, ...prev];
-        }
-
-        const next = [...prev];
-        next[index] = merged;
-        return next;
-      });
-
-      setSyncError("");
-    } catch (error) {
-      setSyncError(getReadableApiError(error));
-    }
-  }, [setCurrentParticipant, setParticipantList]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const runSyncSafely = async () => {
-      if (cancelled) return;
-      try {
-        await syncParticipantFromBackend();
-      } catch {
-        // Error sudah ditangani di helper sync.
-      }
-    };
-
-    void runSyncSafely();
-
-    const intervalId = window.setInterval(() => {
-      void runSyncSafely();
-    }, 30000);
-
-    const onWindowFocus = () => {
-      void runSyncSafely();
-    };
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void runSyncSafely();
-      }
-    };
-
-    window.addEventListener("focus", onWindowFocus);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", onWindowFocus);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [syncParticipantFromBackend]);
-
   useEffect(() => {
     if (!revisionStorageKey || typeof window === "undefined") return;
 
@@ -589,11 +358,6 @@ export default function ParticipantDashboardPage() {
         <p className="text-sm mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
           Selamat datang, <strong style={{ color: "#F5E6C8" }}>{greetingName}</strong>!
         </p>
-        {syncError ? (
-          <p className="text-xs mt-2" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
-            Sinkronisasi data backend gagal: {syncError}
-          </p>
-        ) : null}
       </div>
 
       {participant && statusInfo ? (

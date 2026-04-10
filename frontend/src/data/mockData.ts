@@ -133,7 +133,7 @@ export interface Participant {
   gender: Gender;
 
   nationalId: string; // NIK
-  currentStatus?: "Pelajar" | "Mahasiswa" | "Lainnya";
+  currentStatus?: string;
   birthPlace: string;
   birthDate: string; // yyyy-mm-dd
   domicileAddress?: string;
@@ -332,16 +332,10 @@ export function getSelectionStageFromStageProgress(
 
 export const stageCriteriaMap: Record<string, CriteriaItem[]> = {
   Audition: [
-    { key: "auditionAppearanceGrooming", label: "Penampilan & kerapian", weight: 10 },
-    { key: "auditionConfidenceBodyLanguage", label: "Kepercayaan diri & bahasa tubuh", weight: 10 },
-    { key: "auditionEthicsPersonality", label: "Etika, sikap & kepribadian", weight: 10 },
-    { key: "auditionBatamTourismKnowledge", label: "Pengetahuan pariwisata Kota Batam", weight: 10 },
-    { key: "auditionMalayCultureWisdom", label: "Budaya lokal & kearifan Melayu", weight: 10 },
-    { key: "auditionCommunicationPublicSpeaking", label: "Kemampuan komunikasi & public speaking", weight: 10 },
-    { key: "auditionIdeaDeliveryAnswering", label: "Cara menyampaikan ide & menjawab pertanyaan", weight: 10 },
-    { key: "auditionForeignLanguage", label: "Penguasaan bahasa asing (jika ada)", weight: 10 },
-    { key: "auditionSupportingTalent", label: "Bakat pendukung (seni, konten, dll.)", weight: 10 },
-    { key: "auditionVisionMotivationCommitment", label: "Visi, motivasi & komitmen sebagai Duta Wisata", weight: 10 },
+    { key: "auditionAppearanceEthicsConfidence", label: "Penampilan, etika dan kepercayaan diri", weight: 25 },
+    { key: "auditionCultureTourismKnowledge", label: "Pengetahuan kebudayaan dan pariwisata", weight: 25 },
+    { key: "auditionCommunicationForeignLanguage", label: "Kemampuan komunikasi dan bahasa asing", weight: 25 },
+    { key: "auditionTalent", label: "Bakat", weight: 25 },
   ],
   Camp: [
     { key: "campDisciplinePunctuality", label: "Disiplin & ketepatan waktu", weight: 20 },

@@ -93,18 +93,26 @@ class JudgeParticipantController extends Controller
                 ->sortBy('document_key')
                 ->map(function ($doc): array {
                     $key = (string) $doc->document_key;
-                    $rawUrl = is_string($doc->url) ? $doc->url : null;
-                    $resolvedUrl = $rawUrl
-                        ? (str_starts_with($rawUrl, 'http://') || str_starts_with($rawUrl, 'https://')
+                    $rawUrl = is_string($doc->url) ? trim($doc->url) : '';
+                    $rawPath = is_string($doc->path) ? trim($doc->path) : '';
+                    $resolvedUrl = null;
+                    if ($rawUrl !== '') {
+                        $resolvedUrl = str_starts_with($rawUrl, 'http://') || str_starts_with($rawUrl, 'https://')
                             ? $rawUrl
-                            : asset(ltrim($rawUrl, '/')))
-                        : null;
+                            : asset(ltrim($rawUrl, '/'));
+                    } elseif ($rawPath !== '') {
+                        $resolvedUrl = asset('storage/'.ltrim($rawPath, '/'));
+                    }
+                    $rawOriginalName = is_string($doc->original_name) ? trim($doc->original_name) : '';
+                    $rawStatus = is_string($doc->status) ? trim($doc->status) : '';
+                    $hasUploadedFile = $resolvedUrl !== null || $rawPath !== '' || $rawOriginalName !== '';
+                    $normalizedStatus = $hasUploadedFile ? ($rawStatus !== '' ? $rawStatus : 'submitted') : 'missing';
 
                     return [
                         'key' => $key,
                         'label' => $doc->label ?: (self::REQUIRED_DOCUMENTS[$key] ?? $key),
                         'required' => (bool) $doc->is_required,
-                        'status' => $doc->status ?: 'missing',
+                        'status' => $normalizedStatus,
                         'original_name' => $doc->original_name,
                         'size_bytes' => $doc->size_bytes,
                         'mime_type' => $doc->mime_type,

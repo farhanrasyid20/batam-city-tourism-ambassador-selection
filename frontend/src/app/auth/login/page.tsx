@@ -20,6 +20,19 @@ import { saveParticipantAuthSession } from "../../../lib/auth-storage";
 
 type LocalRole = "peserta" | "admin" | "juri";
 
+function normalizeBackendRole(rawRole?: string | null): "participant" | "admin" | "super_admin" | "judge" | null {
+  const normalized = (rawRole ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  if (normalized === "participant" || normalized === "peserta") return "participant";
+  if (normalized === "admin") return "admin";
+  if (normalized === "super_admin" || normalized === "superadmin") return "super_admin";
+  if (normalized === "judge" || normalized === "juri") return "judge";
+  return null;
+}
+
 const roles = [
   {
     id: "peserta" as LocalRole,
@@ -119,6 +132,12 @@ export default function LoginPage() {
 
       if (role === "peserta") {
         const response = await loginParticipant({ email, password });
+        const backendRole = normalizeBackendRole(response.user.role);
+
+        if (backendRole !== "participant") {
+          setError("Akun ini bukan role peserta. Silakan login sesuai role akun.");
+          return;
+        }
 
         saveParticipantAuthSession({
           token: response.access_token,
@@ -135,7 +154,6 @@ export default function LoginPage() {
         });
 
         setPasswordForEmail(email, password);
-        login(email, password, "participant");
         redirectByRole("peserta");
         return;
       }
@@ -143,7 +161,7 @@ export default function LoginPage() {
       if (role === "admin") {
         try {
           const response = await loginParticipant({ email, password });
-          const backendRole = (response.user.role ?? "").toLowerCase();
+          const backendRole = normalizeBackendRole(response.user.role);
 
           if (backendRole === "admin" || backendRole === "super_admin") {
             saveParticipantAuthSession({
@@ -158,7 +176,7 @@ export default function LoginPage() {
               id: String(response.user.id),
               name: response.user.name,
               email: response.user.email,
-              role: backendRole === "super_admin" ? "super_admin" : "admin",
+              role: backendRole,
             });
             redirectByRole("admin");
             return;
@@ -174,7 +192,7 @@ export default function LoginPage() {
       if (role === "juri") {
         try {
           const response = await loginParticipant({ email, password });
-          const backendRole = (response.user.role ?? "").toLowerCase();
+          const backendRole = normalizeBackendRole(response.user.role);
 
           if (backendRole === "judge") {
             saveParticipantAuthSession({

@@ -29,7 +29,7 @@ export type ParticipantBiodata = {
   nickname?: string | null;
   religion?: string | null;
   national_id?: string | null;
-  current_status?: "Pelajar" | "Mahasiswa" | "Lainnya" | null;
+  current_status?: string | null;
   birth_place?: string | null;
   birth_date?: string | null;
   domicile_address?: string | null;
@@ -116,7 +116,7 @@ export type UpdateParticipantBiodataPayload = Partial<{
   nickname: string;
   religion: string;
   national_id: string;
-  current_status: "Pelajar" | "Mahasiswa" | "Lainnya";
+  current_status: string;
   birth_place: string;
   birth_date: string;
   domicile_address: string;
@@ -231,7 +231,7 @@ export type JudgeParticipantListItem = {
   email: string;
   phone?: string | null;
   national_id?: string | null;
-  current_status?: "Pelajar" | "Mahasiswa" | "Lainnya" | null;
+  current_status?: string | null;
   birth_place?: string | null;
   birth_date?: string | null;
   domicile_address?: string | null;

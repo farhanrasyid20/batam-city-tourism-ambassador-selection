@@ -278,16 +278,10 @@ const sheetNameMap: Record<ExportStage, string> = {
 const exportStages: ExportStage[] = ["Audition", "Camp", "Grand Final", "Final Result"];
 
 const criteriaLabelMap: Record<string, string> = {
-  auditionAppearanceGrooming: "Penampilan & Kerapian",
-  auditionConfidenceBodyLanguage: "Kepercayaan Diri & Bahasa Tubuh",
-  auditionEthicsPersonality: "Etika, Sikap & Kepribadian",
-  auditionBatamTourismKnowledge: "Pengetahuan Pariwisata Batam",
-  auditionMalayCultureWisdom: "Budaya Lokal & Kearifan Melayu",
-  auditionCommunicationPublicSpeaking: "Komunikasi & Public Speaking",
-  auditionIdeaDeliveryAnswering: "Penyampaian Ide & Jawaban",
-  auditionForeignLanguage: "Penguasaan Bahasa Asing",
-  auditionSupportingTalent: "Bakat Pendukung",
-  auditionVisionMotivationCommitment: "Visi, Motivasi & Komitmen",
+  auditionAppearanceEthicsConfidence: "Penampilan, Etika & Kepercayaan Diri",
+  auditionCultureTourismKnowledge: "Pengetahuan Kebudayaan & Pariwisata",
+  auditionCommunicationForeignLanguage: "Kemampuan Komunikasi & Bahasa Asing",
+  auditionTalent: "Bakat",
   campDisciplinePunctuality: "Disiplin & Ketepatan Waktu",
   campAttitudeEthics: "Sikap & Etika",
   campTeamwork: "Kerja Sama & Teamwork",

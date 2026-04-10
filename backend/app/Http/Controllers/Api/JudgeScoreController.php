@@ -22,16 +22,10 @@ class JudgeScoreController extends Controller
 
     private const STAGE_CRITERIA = [
         'Audition' => [
-            ['key' => 'auditionAppearanceGrooming', 'weight' => 10],
-            ['key' => 'auditionConfidenceBodyLanguage', 'weight' => 10],
-            ['key' => 'auditionEthicsPersonality', 'weight' => 10],
-            ['key' => 'auditionBatamTourismKnowledge', 'weight' => 10],
-            ['key' => 'auditionMalayCultureWisdom', 'weight' => 10],
-            ['key' => 'auditionCommunicationPublicSpeaking', 'weight' => 10],
-            ['key' => 'auditionIdeaDeliveryAnswering', 'weight' => 10],
-            ['key' => 'auditionForeignLanguage', 'weight' => 10],
-            ['key' => 'auditionSupportingTalent', 'weight' => 10],
-            ['key' => 'auditionVisionMotivationCommitment', 'weight' => 10],
+            ['key' => 'auditionAppearanceEthicsConfidence', 'weight' => 25],
+            ['key' => 'auditionCultureTourismKnowledge', 'weight' => 25],
+            ['key' => 'auditionCommunicationForeignLanguage', 'weight' => 25],
+            ['key' => 'auditionTalent', 'weight' => 25],
         ],
         'Camp' => [
             ['key' => 'campDisciplinePunctuality', 'weight' => 20],

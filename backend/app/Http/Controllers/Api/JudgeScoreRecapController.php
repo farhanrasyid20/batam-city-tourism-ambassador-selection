@@ -22,16 +22,10 @@ class JudgeScoreRecapController extends Controller
      */
     private const STAGE_CRITERIA_KEYS = [
         'Audition' => [
-            'auditionAppearanceGrooming',
-            'auditionConfidenceBodyLanguage',
-            'auditionEthicsPersonality',
-            'auditionBatamTourismKnowledge',
-            'auditionMalayCultureWisdom',
-            'auditionCommunicationPublicSpeaking',
-            'auditionIdeaDeliveryAnswering',
-            'auditionForeignLanguage',
-            'auditionSupportingTalent',
-            'auditionVisionMotivationCommitment',
+            'auditionAppearanceEthicsConfidence',
+            'auditionCultureTourismKnowledge',
+            'auditionCommunicationForeignLanguage',
+            'auditionTalent',
         ],
         'Camp' => [
             'campDisciplinePunctuality',

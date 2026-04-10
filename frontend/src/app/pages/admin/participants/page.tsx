@@ -48,6 +48,87 @@ type ParticipantExtended = Participant & {
   }>;
 };
 
+function hasUploadedDocument(document: NonNullable<ParticipantExtended["documents"]>[number]) {
+  const url = (document.url ?? "").trim();
+  const originalName = (document.original_name ?? document.originalName ?? "").trim();
+  return Boolean(url || originalName);
+}
+
+function isMissingFieldValue(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized === "" ||
+    normalized === "-" ||
+    normalized === "- kg" ||
+    normalized === "- cm" ||
+    normalized === "0 cm"
+  );
+}
+
+function getBiodataFieldBadge(isVerifiedByAdmin: boolean, value: string) {
+  const missing = isMissingFieldValue(value);
+
+  if (missing && isVerifiedByAdmin) {
+    return {
+      label: "Belum diisi peserta",
+      bg: "rgba(239,68,68,0.14)",
+      color: "#ef4444",
+    };
+  }
+
+  if (missing) {
+    return {
+      label: "Menunggu data peserta",
+      bg: "rgba(245,158,11,0.16)",
+      color: "#f59e0b",
+    };
+  }
+
+  if (isVerifiedByAdmin) {
+    return {
+      label: "Terverifikasi admin",
+      bg: "rgba(34,197,94,0.14)",
+      color: "#22c55e",
+    };
+  }
+
+  return {
+    label: "Data diisi peserta",
+    bg: "rgba(59,130,246,0.14)",
+    color: "#60a5fa",
+  };
+}
+
+function getDocumentBadgeMeta(document: NonNullable<ParticipantExtended["documents"]>[number]) {
+  const isUploaded = hasUploadedDocument(document);
+  if (!isUploaded || document.status === "missing") {
+    return {
+      label: "Belum ada",
+      bg: "rgba(239,68,68,0.14)",
+      color: "#ef4444",
+    };
+  }
+  if (document.status === "revision_required") {
+    return {
+      label: "Perlu revisi",
+      bg: "rgba(249,115,22,0.14)",
+      color: "#f97316",
+    };
+  }
+  if (document.status === "verified") {
+    return {
+      label: "Terverifikasi Admin",
+      bg: "rgba(34,197,94,0.14)",
+      color: "#22c55e",
+    };
+  }
+  return {
+    label: "Tersubmit Peserta",
+    bg: "rgba(245,158,11,0.16)",
+    color: "#f59e0b",
+  };
+}
+
 function toTitleCase(value: string) {
   return value
     .split(" ")
@@ -169,7 +250,10 @@ export default function AdminParticipantsPage() {
     return {
       total: documents.length,
       revisionCount,
-      readyCount: documents.filter((item) => item.status === "submitted" || item.status === "verified").length,
+      readyCount: documents.filter((item) => {
+        const document = item as ParticipantExtended["documents"][number];
+        return hasUploadedDocument(document) && (item.status === "submitted" || item.status === "verified");
+      }).length,
     };
   };
 
@@ -499,10 +583,13 @@ export default function AdminParticipantsPage() {
               </div>
 
               <div className="space-y-2 text-xs" style={{ fontFamily: "var(--font-poppins)" }}>
-                {[
+                {(() => {
+                  const verificationStatus = getParticipantVerificationStatus(selectedParticipant);
+                  const isVerifiedByAdmin = verificationStatus === "Verified";
+                  const biodataRows = [
                   { label: "Kategori", value: selectedParticipant.gender },
                   { label: "Tahap Seleksi", value: selectionStageLabels[getParticipantSelectionStage(selectedParticipant)] },
-                  { label: "Status Verifikasi", value: verificationStatusLabels[getParticipantVerificationStatus(selectedParticipant)] },
+                  { label: "Status Verifikasi", value: verificationStatusLabels[verificationStatus] },
                   { label: "Tinggi", value: `${selectedParticipant.heightCm} cm` },
                   {
                     label: "Berat",
@@ -557,14 +644,59 @@ export default function AdminParticipantsPage() {
                   { label: "Email", value: selectedParticipant.email },
                   { label: "HP", value: selectedParticipant.phone },
                   { label: "Daftar", value: selectedParticipant.registeredAt },
-                ].map((item) => (
+                  ];
+                  const missingCount = biodataRows.filter((item) => isMissingFieldValue(String(item.value))).length;
+                  return (
+                    <>
+                      <div
+                        className="rounded-xl p-2.5 mb-2 flex items-center justify-between gap-2"
+                        style={{
+                          background: missingCount > 0 ? "rgba(239,68,68,0.08)" : "rgba(34,197,94,0.08)",
+                          border: missingCount > 0 ? "1px solid rgba(239,68,68,0.25)" : "1px solid rgba(34,197,94,0.25)",
+                        }}
+                      >
+                        <span style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
+                          Ringkasan Biodata
+                        </span>
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full"
+                          style={{
+                            background: missingCount > 0 ? "rgba(239,68,68,0.14)" : "rgba(34,197,94,0.14)",
+                            color: missingCount > 0 ? "#ef4444" : "#22c55e",
+                            fontFamily: "var(--font-poppins)",
+                          }}
+                        >
+                          {missingCount > 0
+                            ? `${missingCount} field belum diisi peserta`
+                            : "Data biodata lengkap"}
+                        </span>
+                      </div>
+                      {biodataRows.map((item) => {
+                        const badge = getBiodataFieldBadge(isVerifiedByAdmin, String(item.value));
+                        return (
                   <div key={item.label} className="flex justify-between gap-2">
                     <span style={{ color: "#888" }}>{item.label}</span>
-                    <span style={{ color: "#F5E6C8", textAlign: "right", maxWidth: "160px", wordBreak: "break-word" }}>
-                      {item.value}
-                    </span>
+                    <div className="flex items-center gap-2" style={{ maxWidth: "220px" }}>
+                      <span style={{ color: "#F5E6C8", textAlign: "right", wordBreak: "break-word" }}>
+                        {item.value}
+                      </span>
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap"
+                        style={{
+                          background: badge.bg,
+                          color: badge.color,
+                          fontFamily: "var(--font-poppins)",
+                        }}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
                   </div>
-                ))}
+                        );
+                      })}
+                    </>
+                  );
+                })()}
 
                 <div className="flex justify-between gap-2">
                   <span style={{ color: "#888" }}>Instagram</span>
@@ -688,6 +820,9 @@ export default function AdminParticipantsPage() {
                         className="rounded-xl p-3"
                         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
                       >
+                        {(() => {
+                          const badge = getDocumentBadgeMeta(document as ParticipantExtended["documents"][number]);
+                          return (
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
                             {document.label}
@@ -695,14 +830,16 @@ export default function AdminParticipantsPage() {
                           <span
                             className="text-[10px] px-2 py-0.5 rounded-full"
                             style={{
-                              background: document.status === "revision_required" ? "rgba(249,115,22,0.14)" : "rgba(34,197,94,0.14)",
-                              color: document.status === "revision_required" ? "#f97316" : "#22c55e",
+                              background: badge.bg,
+                              color: badge.color,
                               fontFamily: "var(--font-poppins)",
                             }}
                           >
-                            {document.status === "revision_required" ? "Perlu revisi" : "Tersubmit"}
+                            {badge.label}
                           </span>
                         </div>
+                          );
+                        })()}
                         {document.url ? (
                           <a
                             href={document.url}

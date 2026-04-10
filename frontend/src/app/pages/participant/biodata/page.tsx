@@ -24,6 +24,7 @@ type FormState = {
   gender: "Encik" | "Puan";
   nationalId: string;
   currentStatus: "Pelajar" | "Mahasiswa" | "Lainnya" | "";
+  currentStatusOther: string;
   birthPlace: string;
   birthDate: string;
   domicileAddress: string;
@@ -471,6 +472,15 @@ export default function BiodataPage() {
   };
 
   const parsedEducation = parseEducation(participant?.education);
+  const parseCurrentStatus = (value?: string | null) => {
+    const normalized = (value ?? "").trim();
+    if (!normalized) return { status: "" as FormState["currentStatus"], other: "" };
+    if (normalized === "Pelajar" || normalized === "Mahasiswa" || normalized === "Lainnya") {
+      return { status: normalized as FormState["currentStatus"], other: "" };
+    }
+    return { status: "Lainnya" as FormState["currentStatus"], other: normalized };
+  };
+  const parsedCurrentStatus = parseCurrentStatus(participant?.currentStatus);
 
   // Initial state form biodata peserta.
   const [form, setForm] = useState<FormState>({
@@ -479,7 +489,8 @@ export default function BiodataPage() {
     religion: "",
     gender: participant?.gender ?? "Encik",
     nationalId: participant?.nationalId ?? "",
-    currentStatus: "",
+    currentStatus: parsedCurrentStatus.status,
+    currentStatusOther: parsedCurrentStatus.other,
     birthPlace: participant?.birthPlace ?? "",
     birthDate: participant?.birthDate ?? "",
     domicileAddress: "",
@@ -550,7 +561,23 @@ export default function BiodataPage() {
           religion: data.religion ?? prev.religion,
           gender: data.gender ?? prev.gender,
           nationalId: data.national_id ?? prev.nationalId,
-          currentStatus: data.current_status ?? prev.currentStatus,
+          currentStatus:
+            data.current_status === "Pelajar" ||
+            data.current_status === "Mahasiswa" ||
+            data.current_status === "Lainnya"
+              ? data.current_status
+              : data.current_status
+              ? "Lainnya"
+              : prev.currentStatus,
+          currentStatusOther:
+            data.current_status &&
+            data.current_status !== "Pelajar" &&
+            data.current_status !== "Mahasiswa" &&
+            data.current_status !== "Lainnya"
+              ? data.current_status
+              : prev.currentStatus === "Lainnya"
+              ? prev.currentStatusOther
+              : "",
           birthPlace: data.birth_place ?? prev.birthPlace,
           birthDate: data.birth_date ?? prev.birthDate,
           domicileAddress: data.domicile_address ?? prev.domicileAddress,
@@ -664,12 +691,17 @@ export default function BiodataPage() {
 
   // Progress kelengkapan biodata untuk indikator persentase.
   const completionProgress = useMemo(() => {
+    const effectiveCurrentStatus =
+      form.currentStatus === "Lainnya"
+        ? form.currentStatusOther.trim()
+        : form.currentStatus;
+
     const requiredFields = [
       form.fullName,
       form.nickName,
       form.religion,
       form.nationalId,
-      form.currentStatus,
+      effectiveCurrentStatus,
       form.birthPlace,
       form.birthDate,
       form.domicileAddress,
@@ -806,6 +838,10 @@ export default function BiodataPage() {
     const educationValue = buildEducationValue();
     const normalizedInstagram = normalizeSocialHandle(form.instagram);
     const normalizedTiktok = normalizeSocialHandle(form.tiktok);
+    const effectiveCurrentStatus =
+      form.currentStatus === "Lainnya"
+        ? form.currentStatusOther.trim() || "Lainnya"
+        : form.currentStatus;
     const token = getParticipantAuthSession()?.token;
 
     try {
@@ -825,7 +861,7 @@ export default function BiodataPage() {
           nickname: form.nickName.trim() || undefined,
           religion: form.religion.trim() || undefined,
           national_id: form.nationalId,
-          current_status: form.currentStatus || undefined,
+          current_status: effectiveCurrentStatus || undefined,
           birth_place: form.birthPlace,
           birth_date: form.birthDate,
           domicile_address: form.domicileAddress.trim() || undefined,
@@ -886,7 +922,7 @@ export default function BiodataPage() {
           gender: form.gender,
           nationalId: form.nationalId,
           religion: form.religion.trim() || undefined,
-          currentStatus: form.currentStatus || undefined,
+          currentStatus: effectiveCurrentStatus || undefined,
           birthPlace: form.birthPlace,
           birthDate: form.birthDate,
           heightCm: normalizedHeight ?? participant.heightCm,
@@ -959,8 +995,8 @@ export default function BiodataPage() {
         disabled={disabled}
         inputMode={type === "number" ? "numeric" : undefined}
         step={type === "number" ? 1 : undefined}
-        min={name === "heightCm" ? (form.gender === "Encik" ? 175 : 165) : undefined}
-        max={name === "heightCm" ? 250 : undefined}
+        min={name === "heightCm" ? 1 : undefined}
+        max={name === "heightCm" ? 300 : undefined}
         className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
         style={{
           ...inputStyle,
@@ -1837,9 +1873,13 @@ export default function BiodataPage() {
               </label>
               <select
                 value={form.currentStatus}
-                onChange={(e) =>
-                  updateFormField("currentStatus", e.target.value as FormState["currentStatus"])
-                }
+                onChange={(e) => {
+                  const nextValue = e.target.value as FormState["currentStatus"];
+                  updateFormField("currentStatus", nextValue);
+                  if (nextValue !== "Lainnya") {
+                    updateFormField("currentStatusOther", "");
+                  }
+                }}
                 className="w-full rounded-xl px-4 py-3 text-sm outline-none"
                 style={inputStyle}
               >
@@ -1851,6 +1891,21 @@ export default function BiodataPage() {
               <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
                 Menyesuaikan format Form S-01 (Pelajar / Mahasiswa / Lainnya).
               </p>
+              {form.currentStatus === "Lainnya" ? (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    value={form.currentStatusOther}
+                    onChange={(e) => updateFormField("currentStatusOther", e.target.value)}
+                    placeholder="Tulis status saat ini"
+                    className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+                    style={inputStyle}
+                  />
+                  <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
+                    Contoh: Karyawan, Wirausaha, Freelancer.
+                  </p>
+                </div>
+              ) : null}
             </div>
             {renderInputField({ label: "NIK", name: "nationalId", placeholder: "16 digit NIK", required: true })}
             {renderInputField({ label: "Tempat Lahir", name: "birthPlace", placeholder: "Batam", required: true })}
@@ -1893,7 +1948,7 @@ export default function BiodataPage() {
               type: "number",
               placeholder: "Contoh: 170",
               required: true,
-              hint: `Min. Encik: 175 cm | Min. Puan: 165 cm (${form.gender === "Encik" ? "saat ini Encik" : "saat ini Puan"})`,
+              hint: "Isi sesuai data aktual peserta.",
             })}
             {renderInputField({
               label: "Berat Badan (kg)",

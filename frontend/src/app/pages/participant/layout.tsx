@@ -28,6 +28,19 @@ const participantNavItems = [
   { label: "Export PDF", href: "/pages/participant/export", icon: <Download size={16} /> },
 ];
 
+function normalizeSessionRole(rawRole?: string | null): "participant" | "admin" | "super_admin" | "judge" | null {
+  const normalized = (rawRole ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  if (normalized === "participant" || normalized === "peserta") return "participant";
+  if (normalized === "admin") return "admin";
+  if (normalized === "super_admin" || normalized === "superadmin") return "super_admin";
+  if (normalized === "judge" || normalized === "juri") return "judge";
+  return null;
+}
+
 function mapSelectionStatusToStage(
   selectionStatus?: string | null,
   accountStatus?: string | null
@@ -95,14 +108,17 @@ export default function ParticipantPagesLayout({
       return;
     }
 
-    if (user.role === "participant") return;
+    const sessionRole = normalizeSessionRole(getParticipantAuthSession()?.user?.role);
+    const effectiveRole = sessionRole ?? user.role;
 
-    if (user.role === "admin" || user.role === "super_admin") {
+    if (effectiveRole === "participant") return;
+
+    if (effectiveRole === "admin" || effectiveRole === "super_admin") {
       router.replace("/pages/admin/dashboard");
       return;
     }
 
-    if (user.role === "judge") {
+    if (effectiveRole === "judge") {
       router.replace("/pages/judges/dashboard");
       return;
     }

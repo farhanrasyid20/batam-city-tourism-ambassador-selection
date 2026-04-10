@@ -46,6 +46,7 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
+  const [failedProfileImageSrc, setFailedProfileImageSrc] = useState<string | null>(null);
   const [readParticipantNotificationMap, setReadParticipantNotificationMap] = useState<Record<string, string[]>>({});
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -65,6 +66,7 @@ export default function DashboardLayout({
       : role === "judge"
       ? resolveAvatarUrl(activeJudge?.avatar)
       : undefined;
+  const activeProfilePhoto = profilePhoto && failedProfileImageSrc !== profilePhoto ? profilePhoto : undefined;
   const displayName =
     role === "participant"
       ? participant?.name || user?.name || "Peserta"
@@ -377,12 +379,13 @@ export default function DashboardLayout({
         style={{ background: "rgba(200,162,77,0.08)", border: "1px solid rgba(200,162,77,0.15)" }}
       >
         <div className={sidebarCollapsed ? "flex justify-center" : ""}>
-          {profilePhoto ? (
+          {activeProfilePhoto ? (
             <Image
-              src={profilePhoto}
+              src={activeProfilePhoto}
               alt={user?.name ?? "Foto Profil"}
               width={40}
               height={40}
+              onError={() => setFailedProfileImageSrc(activeProfilePhoto)}
               unoptimized
               className={`w-10 h-10 rounded-full object-cover ${sidebarCollapsed ? "" : "mb-2"}`}
               style={{ border: "1px solid rgba(200,162,77,0.45)" }}
@@ -715,12 +718,13 @@ export default function DashboardLayout({
                   color: "#F5E6C8",
                 }}
               >
-                {profilePhoto ? (
+                {activeProfilePhoto ? (
                   <Image
-                    src={profilePhoto}
+                    src={activeProfilePhoto}
                     alt={user?.name ?? "Foto profil"}
                     width={28}
                     height={28}
+                    onError={() => setFailedProfileImageSrc(activeProfilePhoto)}
                     unoptimized
                     className="w-7 h-7 rounded-full object-cover"
                     style={{ border: "1px solid rgba(200,162,77,0.45)" }}

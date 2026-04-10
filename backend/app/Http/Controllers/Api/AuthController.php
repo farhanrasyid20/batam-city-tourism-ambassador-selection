@@ -92,8 +92,27 @@ class AuthController extends Controller
             'judge_type' => $user->judge_type,
             'judge_title' => $user->judge_title,
             'judge_organization' => $user->judge_organization,
-            'judge_avatar' => $user->judge_avatar,
+            'judge_avatar' => $this->resolveJudgeAvatar($user->judge_avatar),
         ];
+    }
+
+    private function resolveJudgeAvatar(?string $avatar): ?string
+    {
+        $value = is_string($avatar) ? trim($avatar) : '';
+        if ($value === '') {
+            return null;
+        }
+
+        if (! str_starts_with($value, '/storage/')) {
+            return $value;
+        }
+
+        $storagePath = Str::after($value, '/storage/');
+        if ($storagePath !== '' && Storage::disk('public')->exists($storagePath)) {
+            return $value;
+        }
+
+        return null;
     }
 
     private function normalizeJudgeAvatar(?string $avatar, ?string $existingAvatar = null): ?string
