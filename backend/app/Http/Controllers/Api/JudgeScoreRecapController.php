@@ -10,6 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+/**
+ * Controller layer entrypoint.
+ * Handles HTTP request/response orchestration for this module.
+ */
 
 class JudgeScoreRecapController extends Controller
 {

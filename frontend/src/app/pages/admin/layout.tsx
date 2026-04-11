@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useEffect } from "react";
 import Image from "next/image";
 import {
@@ -256,3 +262,4 @@ export default function AdminPagesLayout({
     </DashboardLayout>
   );
 }
+

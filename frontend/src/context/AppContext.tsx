@@ -37,6 +37,9 @@ import {
   getParticipantProfileSnapshot,
 } from "../lib/auth-storage";
 
+/**
+ * Role autentikasi yang didukung oleh aplikasi.
+ */
 export type Role = "participant" | "admin" | "judge" | "super_admin";
 
 export type AuthUser = {
@@ -174,6 +177,9 @@ export type LandingPageContent = {
   };
 };
 
+/**
+ * Kontrak data dan aksi yang diekspos melalui React Context aplikasi.
+ */
 type AppContextType = {
   authInitialized: boolean;
   user: AuthUser | null;
@@ -255,8 +261,14 @@ type AppContextType = {
   setLandingPageContent: React.Dispatch<React.SetStateAction<LandingPageContent>>;
 };
 
+/**
+ * Context utama aplikasi untuk state lintas halaman (auth, peserta, konten publik, voting, dan resources).
+ */
 const AppContext = createContext<AppContextType | null>(null);
 
+/**
+ * Template kosong dokumen resources peserta.
+ */
 const emptyResourceDocument: ResourceDocument = {
   linkUrl: "",
   fileName: "",
@@ -264,12 +276,18 @@ const emptyResourceDocument: ResourceDocument = {
   fileMimeType: "",
 };
 
+/**
+ * Template kosong gambar resources peserta.
+ */
 const emptyResourceImage: ResourceImage = {
   imageUrl: "",
   imageName: "",
   caption: "",
 };
 
+/**
+ * Nilai default resources peserta saat belum ada data dari backend/storage.
+ */
 const defaultParticipantResources: ParticipantResources = {
   guideDocument: { ...emptyResourceDocument },
   submissionDocument: { ...emptyResourceDocument },
@@ -294,6 +312,9 @@ const defaultParticipantResources: ParticipantResources = {
   additionalNote: "",
 };
 
+/**
+ * Konten default landing page yang dipakai sebagai fallback awal.
+ */
 const defaultLandingPageContent: LandingPageContent = {
   hero: {
     organizerLabel: "Dinas Kebudayaan & Pariwisata Kota Batam",
@@ -732,6 +753,11 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
   };
 }
 
+/**
+ * Provider global aplikasi.
+ * Bertanggung jawab menginisialisasi state, sinkronisasi storage lokal,
+ * memuat data publik dari backend, serta menyediakan aksi mutasi ke seluruh komponen.
+ */
 export function AppProvider({ children }: { children: ReactNode }) {
   const tabIdRef = useRef("");
   const jurySyncChannelRef = useRef<BroadcastChannel | null>(null);
@@ -1580,6 +1606,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
+/**
+ * Hook helper untuk mengakses AppContext secara aman.
+ */
 export function useApp() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error("useApp must be used within AppProvider");

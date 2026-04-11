@@ -94,6 +94,9 @@ const languagePresetOptions = [
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
 
+/**
+ * Resolver foto peserta untuk preview biodata.
+ */
 function resolveParticipantPhotoUrl(photo?: string | null): string | undefined {
   const value = photo?.trim();
   if (!value) return undefined;
@@ -141,6 +144,9 @@ function mapBiodataStatus(accountStatus?: string, fallback?: StageStatus): Stage
   return fallback ?? "Pending";
 }
 
+/**
+ * Mapping status seleksi backend menjadi status stage frontend.
+ */
 function mapSelectionStatus(
   selectionStatus?: ParticipantBiodata["selection_status"],
   accountStatus?: string,
@@ -265,6 +271,9 @@ function buildEducationTextFromBiodata(data: ParticipantBiodata): string {
   return institution;
 }
 
+/**
+ * Menggabungkan data biodata terbaru ke model Participant frontend.
+ */
 function mergeParticipantFromBiodata(base: Participant | null, data: ParticipantBiodata): Participant {
   const normalizedDocuments =
     data.documents?.map((doc: ParticipantDocumentMeta) => ({
@@ -325,6 +334,10 @@ function mergeParticipantFromBiodata(base: Participant | null, data: Participant
   };
 }
 
+/**
+ * Halaman biodata peserta.
+ * Mengelola form data diri, validasi, upload foto profil, dan sinkronisasi ke backend.
+ */
 export default function BiodataPage() {
   // Ambil data peserta aktif dan state form biodata.
   const router = useRouter();

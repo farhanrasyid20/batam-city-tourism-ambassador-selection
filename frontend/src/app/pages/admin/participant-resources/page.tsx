@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React from "react";
 import { Save } from "lucide-react";
 import { GoldButton } from "../../../../components/ui/GoldButton";
@@ -105,3 +111,4 @@ export default function AdminParticipantResourcesPage() {
     </div>
   );
 }
+

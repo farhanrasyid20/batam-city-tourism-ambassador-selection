@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Save, Trash2, Edit, Search, ChevronDown, ChevronRight } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
@@ -388,3 +394,4 @@ export default function AdminFaqPage() {
     </div>
   );
 }
+

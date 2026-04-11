@@ -11,6 +11,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+/**
+ * Controller layer entrypoint.
+ * Handles HTTP request/response orchestration for this module.
+ */
 
 class JudgeScoreController extends Controller
 {

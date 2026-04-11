@@ -20,6 +20,10 @@ type DashboardLayoutProps = {
   role: "participant" | "admin" | "judge" | "super_admin";
 };
 
+/**
+ * Layout dasar halaman dashboard internal.
+ * Menyediakan struktur header, konten, dan container konsisten antarmodul.
+ */
 export default function DashboardLayout({
   navItems,
   children,

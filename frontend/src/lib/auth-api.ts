@@ -2,6 +2,10 @@
 
 import { apiRequest } from "./api";
 
+/**
+ * Modul kontrak dan helper API autentikasi, profil peserta, konten publik,
+ * serta endpoint admin/super-admin.
+ */
 export type BackendAuthUser = {
   id: number;
   name: string;
@@ -778,6 +782,9 @@ function isFresh(envelope: CacheEnvelope<unknown>, maxAgeMs: number): boolean {
   return Date.now() - envelope.ts <= maxAgeMs;
 }
 
+/**
+ * Helper cache request in-memory untuk menghindari fetch berulang pada interval singkat.
+ */
 async function fetchWithCache<T>(
   key: string,
   fetcher: () => Promise<T>,
@@ -811,6 +818,9 @@ async function fetchWithCache<T>(
   return request;
 }
 
+/**
+ * Endpoint registrasi akun peserta.
+ */
 export function registerParticipant(payload: RegisterParticipantPayload) {
   return apiRequest<RegisterParticipantResponse>("/register", {
     method: "POST",
@@ -818,6 +828,9 @@ export function registerParticipant(payload: RegisterParticipantPayload) {
   });
 }
 
+/**
+ * Endpoint verifikasi OTP setelah registrasi.
+ */
 export function verifyParticipantOtp(payload: VerifyOtpPayload) {
   return apiRequest<VerifyOtpResponse>("/verify-otp", {
     method: "POST",
@@ -825,6 +838,9 @@ export function verifyParticipantOtp(payload: VerifyOtpPayload) {
   });
 }
 
+/**
+ * Endpoint kirim ulang OTP registrasi.
+ */
 export function resendParticipantOtp(payload: ResendOtpPayload) {
   return apiRequest<ResendOtpResponse>("/resend-otp", {
     method: "POST",
@@ -832,6 +848,9 @@ export function resendParticipantOtp(payload: ResendOtpPayload) {
   });
 }
 
+/**
+ * Endpoint login peserta/admin/juri via kredensial email-password.
+ */
 export function loginParticipant(payload: LoginParticipantPayload) {
   return apiRequest<LoginParticipantResponse>("/login", {
     method: "POST",
@@ -839,6 +858,9 @@ export function loginParticipant(payload: LoginParticipantPayload) {
   });
 }
 
+/**
+ * Mengambil profil user login saat ini (`/auth/me`).
+ */
 export function fetchAuthenticatedParticipant(token: string) {
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
@@ -846,6 +868,9 @@ export function fetchAuthenticatedParticipant(token: string) {
   });
 }
 
+/**
+ * Mengambil daftar peserta untuk panel juri dengan cache.
+ */
 export function fetchJudgeParticipants(
   token: string,
   options?: { force?: boolean; maxAgeMs?: number }
@@ -864,6 +889,9 @@ export function fetchJudgeParticipants(
   );
 }
 
+/**
+ * Mengambil daftar finalis publik dengan cache.
+ */
 export function fetchPublicFinalists(options?: { force?: boolean; maxAgeMs?: number }) {
   return fetchWithCache<PublicFinalistsResponse>(
     PUBLIC_FINALISTS_CACHE_KEY,
@@ -878,12 +906,18 @@ export function fetchPublicFinalists(options?: { force?: boolean; maxAgeMs?: num
   );
 }
 
+/**
+ * Mengambil resource publik peserta (dokumen, link, panduan).
+ */
 export function fetchPublicParticipantResources() {
   return apiRequest<PublicParticipantResourcesResponse>("/public/participant-resources", {
     method: "GET",
   });
 }
 
+/**
+ * Mengirim feedback publik dari pengunjung.
+ */
 export function submitFeedback(payload: SubmitFeedbackPayload) {
   return apiRequest<SubmitFeedbackResponse>("/feedback", {
     method: "POST",
@@ -891,6 +925,9 @@ export function submitFeedback(payload: SubmitFeedbackPayload) {
   });
 }
 
+/**
+ * Mengambil daftar feedback untuk panel super admin.
+ */
 export function fetchFeedbackList(token: string) {
   return apiRequest<FeedbackListResponse>("/super-admin/feedback", {
     method: "GET",
@@ -898,6 +935,9 @@ export function fetchFeedbackList(token: string) {
   });
 }
 
+/**
+ * Memperbarui status feedback pada panel super admin.
+ */
 export function updateFeedbackStatus(
   token: string,
   feedbackId: string,
@@ -910,12 +950,18 @@ export function updateFeedbackStatus(
   });
 }
 
+/**
+ * Mengambil FAQ publik.
+ */
 export function fetchPublicFaqs() {
   return apiRequest<FaqListResponse>("/public/faqs", {
     method: "GET",
   });
 }
 
+/**
+ * Mengambil FAQ untuk panel admin/super admin.
+ */
 export function fetchAdminFaqs(token: string) {
   return apiRequest<FaqListResponse>("/super-admin/faqs", {
     method: "GET",
@@ -923,6 +969,9 @@ export function fetchAdminFaqs(token: string) {
   });
 }
 
+/**
+ * Menambahkan item FAQ baru.
+ */
 export function createFaq(token: string, payload: SaveFaqPayload) {
   return apiRequest<SaveFaqResponse>("/super-admin/faqs", {
     method: "POST",
@@ -931,6 +980,9 @@ export function createFaq(token: string, payload: SaveFaqPayload) {
   });
 }
 
+/**
+ * Memperbarui item FAQ berdasarkan id.
+ */
 export function updateFaq(token: string, id: string, payload: SaveFaqPayload) {
   return apiRequest<SaveFaqResponse>(`/super-admin/faqs/${id}`, {
     method: "PATCH",
@@ -939,6 +991,9 @@ export function updateFaq(token: string, id: string, payload: SaveFaqPayload) {
   });
 }
 
+/**
+ * Menghapus item FAQ berdasarkan id.
+ */
 export function deleteFaq(token: string, id: string) {
   return apiRequest<DeleteFaqResponse>(`/super-admin/faqs/${id}`, {
     method: "DELETE",
@@ -946,12 +1001,18 @@ export function deleteFaq(token: string, id: string) {
   });
 }
 
+/**
+ * Mengambil daftar berita publik.
+ */
 export function fetchPublicNews() {
   return apiRequest<NewsListResponse>("/public/news", {
     method: "GET",
   });
 }
 
+/**
+ * Mengambil daftar berita untuk panel admin/super admin.
+ */
 export function fetchAdminNews(token: string) {
   return apiRequest<NewsListResponse>("/super-admin/news", {
     method: "GET",
@@ -959,6 +1020,9 @@ export function fetchAdminNews(token: string) {
   });
 }
 
+/**
+ * Menambahkan berita baru.
+ */
 export function createNews(token: string, payload: SaveNewsPayload) {
   return apiRequest<SaveNewsResponse>("/super-admin/news", {
     method: "POST",
@@ -967,6 +1031,9 @@ export function createNews(token: string, payload: SaveNewsPayload) {
   });
 }
 
+/**
+ * Memperbarui berita berdasarkan id.
+ */
 export function updateNews(token: string, id: string, payload: SaveNewsPayload) {
   return apiRequest<SaveNewsResponse>(`/super-admin/news/${id}`, {
     method: "PATCH",
@@ -975,6 +1042,9 @@ export function updateNews(token: string, id: string, payload: SaveNewsPayload) 
   });
 }
 
+/**
+ * Menghapus berita berdasarkan id.
+ */
 export function deleteNews(token: string, id: string) {
   return apiRequest<DeleteNewsResponse>(`/super-admin/news/${id}`, {
     method: "DELETE",
@@ -982,6 +1052,9 @@ export function deleteNews(token: string, id: string) {
   });
 }
 
+/**
+ * Menyimpan resource peserta beserta upload file pendukung opsional.
+ */
 export function updateParticipantResources(
   token: string,
   payload: ParticipantResourcesPayload,
@@ -1022,6 +1095,9 @@ export function updateParticipantResources(
   });
 }
 
+/**
+ * Mengatur status publikasi halaman vote.
+ */
 export function updateVotePublication(token: string, payload: UpdateVotePublicationPayload) {
   return apiRequest<UpdateVotePublicationResponse>("/super-admin/vote/publication", {
     method: "PATCH",
@@ -1030,6 +1106,9 @@ export function updateVotePublication(token: string, payload: UpdateVotePublicat
   });
 }
 
+/**
+ * Memperbarui data kandidat vote tertentu.
+ */
 export function updateVoteCandidate(
   token: string,
   participantUserId: number,
@@ -1042,6 +1121,9 @@ export function updateVoteCandidate(
   });
 }
 
+/**
+ * Upload foto kandidat vote.
+ */
 export function uploadVoteCandidatePhoto(token: string, participantUserId: number, file: File) {
   const body = new FormData();
   body.append("photo", file);
@@ -1053,6 +1135,9 @@ export function uploadVoteCandidatePhoto(token: string, participantUserId: numbe
   });
 }
 
+/**
+ * Menyimpan konfigurasi pemenang versi penilaian juri.
+ */
 export function updateJuryWinners(token: string, payload: UpdateJuryWinnersPayload) {
   return apiRequest<UpdateJuryWinnersResponse>("/super-admin/vote/jury", {
     method: "PATCH",
@@ -1061,6 +1146,9 @@ export function updateJuryWinners(token: string, payload: UpdateJuryWinnersPaylo
   });
 }
 
+/**
+ * Menyimpan hasil review dokumen peserta oleh admin.
+ */
 export function updateParticipantDocumentReviews(
   token: string,
   participantUserId: number,
@@ -1076,6 +1164,9 @@ export function updateParticipantDocumentReviews(
   );
 }
 
+/**
+ * Memperbarui status seleksi peserta (verified, top20, dst).
+ */
 export function updateParticipantSelectionStatus(
   token: string,
   participantUserId: number,
@@ -1091,6 +1182,9 @@ export function updateParticipantSelectionStatus(
   );
 }
 
+/**
+ * Mengambil preview kandidat Top 20 hasil stage Audition.
+ */
 export function fetchAuditionTop20Preview(token: string) {
   return apiRequest<AuditionTop20PreviewResponse>(
     "/super-admin/scoring/audition/top20-preview",
@@ -1101,6 +1195,9 @@ export function fetchAuditionTop20Preview(token: string) {
   );
 }
 
+/**
+ * Menerapkan hasil Top 20 Audition ke status seleksi peserta.
+ */
 export function applyAuditionTop20(token: string) {
   return apiRequest<AuditionTop20ApplyResponse>(
     "/super-admin/scoring/audition/top20-apply",
@@ -1111,6 +1208,9 @@ export function applyAuditionTop20(token: string) {
   );
 }
 
+/**
+ * Memperbarui profil akun terautentikasi.
+ */
 export function updateAuthenticatedProfile(token: string, payload: UpdateAuthProfilePayload) {
   return apiRequest<UpdateAuthProfileResponse>("/auth/profile", {
     method: "PATCH",
@@ -1119,6 +1219,9 @@ export function updateAuthenticatedProfile(token: string, payload: UpdateAuthPro
   });
 }
 
+/**
+ * Mengambil biodata peserta login dengan dukungan cache.
+ */
 export function fetchParticipantBiodata(
   token: string,
   options?: { force?: boolean; maxAgeMs?: number }
@@ -1134,6 +1237,9 @@ export function fetchParticipantBiodata(
   );
 }
 
+/**
+ * Memperbarui biodata peserta login.
+ */
 export function updateParticipantBiodata(token: string, payload: UpdateParticipantBiodataPayload) {
   return apiRequest<ParticipantBiodataResponse>("/participant/biodata", {
     method: "PUT",
@@ -1145,6 +1251,9 @@ export function updateParticipantBiodata(token: string, payload: UpdateParticipa
   });
 }
 
+/**
+ * Mengambil daftar dokumen peserta login dengan dukungan cache.
+ */
 export function fetchParticipantDocuments(
   token: string,
   options?: { force?: boolean; maxAgeMs?: number }
@@ -1160,6 +1269,9 @@ export function fetchParticipantDocuments(
   );
 }
 
+/**
+ * Mengunggah satu dokumen peserta berdasarkan `document_key`.
+ */
 export function uploadParticipantDocument(token: string, documentKey: string, file: File) {
   const body = new FormData();
   body.append("document_key", documentKey);
@@ -1175,6 +1287,9 @@ export function uploadParticipantDocument(token: string, documentKey: string, fi
   });
 }
 
+/**
+ * Menandai dokumen peserta telah disubmit ke admin untuk verifikasi.
+ */
 export function submitParticipantDocuments(token: string) {
   return apiRequest<ParticipantDocumentsResponse>("/participant/documents/submit", {
     method: "POST",
@@ -1185,6 +1300,9 @@ export function submitParticipantDocuments(token: string) {
   });
 }
 
+/**
+ * Mengubah password akun terautentikasi.
+ */
 export function changeAuthenticatedPassword(token: string, payload: ChangePasswordPayload) {
   return apiRequest<ChangePasswordResponse>("/auth/change-password", {
     method: "POST",
@@ -1193,6 +1311,9 @@ export function changeAuthenticatedPassword(token: string, payload: ChangePasswo
   });
 }
 
+/**
+ * Meminta OTP untuk alur lupa password.
+ */
 export function requestForgotPasswordOtp(payload: ForgotPasswordRequestOtpPayload) {
   return apiRequest<ForgotPasswordRequestOtpResponse>("/forgot-password/request-otp", {
     method: "POST",
@@ -1200,6 +1321,9 @@ export function requestForgotPasswordOtp(payload: ForgotPasswordRequestOtpPayloa
   });
 }
 
+/**
+ * Verifikasi OTP pada alur lupa password.
+ */
 export function verifyForgotPasswordOtp(payload: ForgotPasswordVerifyOtpPayload) {
   return apiRequest<ForgotPasswordVerifyOtpResponse>("/forgot-password/verify-otp", {
     method: "POST",
@@ -1207,6 +1331,9 @@ export function verifyForgotPasswordOtp(payload: ForgotPasswordVerifyOtpPayload)
   });
 }
 
+/**
+ * Menyimpan password baru pada alur lupa password.
+ */
 export function resetForgotPassword(payload: ForgotPasswordResetPayload) {
   return apiRequest<ForgotPasswordResetResponse>("/forgot-password/reset", {
     method: "POST",

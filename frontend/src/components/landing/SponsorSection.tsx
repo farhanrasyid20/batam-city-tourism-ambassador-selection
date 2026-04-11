@@ -3,6 +3,9 @@
 import Image from "next/image";
 import { useLandingPageContent } from "../../lib/landing-page-content";
 
+/**
+ * Section daftar sponsor/mitra pendukung pada landing page.
+ */
 export default function SponsorSection() {
   const partnershipContent = useLandingPageContent().partnership;
   const partnerLogos = partnershipContent.partners;

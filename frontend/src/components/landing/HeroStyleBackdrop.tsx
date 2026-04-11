@@ -1,5 +1,8 @@
 ﻿import React from "react";
 
+/**
+ * Elemen backdrop dekoratif khusus area hero untuk efek glow/ornamen.
+ */
 export default function HeroStyleBackdrop() {
   return (
     <div className="absolute inset-0 pointer-events-none">

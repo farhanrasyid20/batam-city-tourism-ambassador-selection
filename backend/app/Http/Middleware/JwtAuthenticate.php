@@ -11,8 +11,14 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
+/**
+ * Middleware autentikasi JWT untuk API berbasis bearer token.
+ */
 class JwtAuthenticate
 {
+    /**
+     * Memvalidasi token JWT dan menyisipkan user terautentikasi ke atribut request.
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $header = $request->bearerToken();

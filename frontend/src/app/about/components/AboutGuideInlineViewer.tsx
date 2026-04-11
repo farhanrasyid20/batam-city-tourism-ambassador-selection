@@ -15,6 +15,10 @@ type AboutGuideInlineViewerProps = {
   file: string;
 };
 
+/**
+ * Viewer PDF inline untuk section About.
+ * Menyediakan kontrol halaman dan penyesuaian lebar responsif.
+ */
 export default function AboutGuideInlineViewer({ file }: AboutGuideInlineViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
@@ -48,6 +52,9 @@ export default function AboutGuideInlineViewer({ file }: AboutGuideInlineViewerP
     return `Halaman ${pageNumber} / ${numPages}`;
   }, [numPages, pageNumber]);
 
+  /**
+   * Navigasi halaman PDF.
+   */
   const goPrev = () => setPageNumber((prev) => Math.max(prev - 1, 1));
   const goNext = () => setPageNumber((prev) => Math.min(prev + 1, numPages || prev + 1));
 

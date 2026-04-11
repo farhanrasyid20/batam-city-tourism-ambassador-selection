@@ -1,5 +1,9 @@
 import Image from "next/image";
 
+/**
+ * Loading UI global untuk App Router.
+ * Ditampilkan saat halaman/segment sedang melakukan proses render atau fetch data.
+ */
 export default function Loading() {
   return (
     <div
@@ -22,4 +26,3 @@ export default function Loading() {
     </div>
   );
 }
-

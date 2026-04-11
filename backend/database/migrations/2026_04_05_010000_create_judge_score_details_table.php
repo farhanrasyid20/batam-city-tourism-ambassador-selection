@@ -5,6 +5,10 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Migration definition.
+ * Applies and rolls back schema changes for this migration file.
+ */
 return new class extends Migration
 {
     /**

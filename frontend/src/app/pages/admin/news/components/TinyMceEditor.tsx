@@ -1,4 +1,10 @@
-﻿"use client";
+"use client";
+
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
 
 import React, { useEffect, useId, useMemo, useRef } from "react";
 import { readFileAsDataUrl } from "./newsUtils";
@@ -129,6 +135,7 @@ export default function TinyMceEditor({ value, onChange, height = 420 }: TinyMce
 
   return <textarea id={editorId} defaultValue={value} />;
 }
+
 
 
 

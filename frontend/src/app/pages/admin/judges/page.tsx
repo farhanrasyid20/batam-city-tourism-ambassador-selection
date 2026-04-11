@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Edit } from "lucide-react";
@@ -476,3 +482,4 @@ export default function AdminJudgesPage() {
     </div>
   );
 }
+

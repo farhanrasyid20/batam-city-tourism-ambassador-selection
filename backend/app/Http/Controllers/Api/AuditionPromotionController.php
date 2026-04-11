@@ -10,6 +10,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+/**
+ * Controller layer entrypoint.
+ * Handles HTTP request/response orchestration for this module.
+ */
 
 class AuditionPromotionController extends Controller
 {

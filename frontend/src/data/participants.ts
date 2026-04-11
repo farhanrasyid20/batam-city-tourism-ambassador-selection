@@ -1,3 +1,6 @@
+/**
+ * Dataset peserta sederhana untuk kebutuhan contoh/placeholder ringan.
+ */
 export const participants = [
   {
     id: 1,

@@ -8,6 +8,10 @@ import { getReadableApiError } from "../../../../lib/api";
 import { changeAuthenticatedPassword } from "../../../../lib/auth-api";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 
+/**
+ * Halaman ubah password untuk akun juri.
+ * Melakukan validasi dasar di client sebelum mengirim perubahan ke API.
+ */
 export default function JudgeChangePasswordPage() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
@@ -22,6 +26,9 @@ export default function JudgeChangePasswordPage() {
     confirmPassword: "",
   });
 
+  /**
+   * Menangani submit perubahan password juri.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setNotice("");

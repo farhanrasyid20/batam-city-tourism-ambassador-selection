@@ -1,3 +1,7 @@
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
 import React from "react";
 import { ImageIcon, Upload } from "lucide-react";
 import GoldCard from "../../../../../components/dashboard/GoldCard";
@@ -138,3 +142,4 @@ export default function PhotoExamplesCard({
     </GoldCard>
   );
 }
+

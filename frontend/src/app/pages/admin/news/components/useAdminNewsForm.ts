@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useEffect, useState } from "react";
 import { useApp } from "../../../../../context/AppContext";
 import {
@@ -192,4 +198,5 @@ export function useAdminNewsForm() {
     handleCoverImageChange,
   };
 }
+
 

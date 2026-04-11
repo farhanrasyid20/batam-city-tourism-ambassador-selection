@@ -19,6 +19,10 @@ type JudgeProfileForm = {
   avatar: string;
 };
 
+/**
+ * Halaman edit profil juri.
+ * Mengelola perubahan data identitas juri dan sinkronisasi ke context setelah tersimpan.
+ */
 export default function JudgeProfilePage() {
   const { user, judgeList, setJudgeList, setAuthenticatedUser } = useApp();
   const [notice, setNotice] = useState("");
@@ -55,10 +59,16 @@ export default function JudgeProfilePage() {
     });
   }, [activeJudge, user]);
 
+  /**
+   * Helper untuk memperbarui field form profile.
+   */
   const updateField = <K extends keyof JudgeProfileForm>(key: K, value: JudgeProfileForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  /**
+   * Validasi dan preview foto profil yang dipilih user.
+   */
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -82,6 +92,9 @@ export default function JudgeProfilePage() {
     reader.readAsDataURL(file);
   };
 
+  /**
+   * Menyimpan perubahan profil juri ke backend.
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setNotice("");

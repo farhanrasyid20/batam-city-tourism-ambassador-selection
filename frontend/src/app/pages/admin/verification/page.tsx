@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useMemo, useState } from "react";
 import Image from "next/image";
 import { CheckCircle, XCircle, Clock, FileText, Eye, AlertTriangle, MessageSquareMore, ExternalLink, Download } from "lucide-react";
@@ -1208,4 +1214,5 @@ export default function AdminVerificationPage() {
     </div>
   );
 }
+
 

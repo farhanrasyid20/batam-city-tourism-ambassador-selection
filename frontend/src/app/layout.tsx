@@ -1,5 +1,7 @@
 import "./globals.css";
+import type { Metadata } from "next";
 import { Cinzel, Poppins } from "next/font/google";
+import type { ReactNode } from "react";
 import { AppProvider } from "../context/AppContext";
 import AppShell from "../components/layout/AppShell";
 import GlobalPreloader from "../components/layout/GlobalPreloader";
@@ -15,7 +17,10 @@ const poppins = Poppins({
   variable: "--font-poppins",
 });
 
-export const metadata = {
+/**
+ * Metadata global aplikasi untuk judul, deskripsi, dan ikon default.
+ */
+export const metadata: Metadata = {
   title: "Duta Wisata Kota Batam",
   description: "Platform Digital Pemilihan Encik & Puan Kota Batam",
   icons: {
@@ -23,10 +28,14 @@ export const metadata = {
   },
 };
 
+/**
+ * Root layout App Router.
+ * Menginisialisasi font global, context aplikasi, preloader, dan shell layout utama.
+ */
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <html
@@ -42,4 +51,3 @@ export default function RootLayout({
     </html>
   );
 }
-

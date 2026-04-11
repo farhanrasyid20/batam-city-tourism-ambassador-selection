@@ -20,12 +20,18 @@ const fallbackFullBodyExamples = [
   { src: "/participant-resources/photo-examples/fullbody-3.jpg", label: "Full Body Putri Non-Hijab" },
 ];
 
+/**
+ * Menentukan href dokumen yang diprioritaskan dari data URL, link backend, atau fallback lokal.
+ */
 function resolveDocumentHref(fileDataUrl: string, linkUrl: string, fallbackHref: string) {
   if (fileDataUrl) return fileDataUrl;
   if (linkUrl) return linkUrl;
   return fallbackHref;
 }
 
+/**
+ * Panel panduan peserta berisi tombol akses dokumen/form/link penting pendaftaran.
+ */
 export default function ParticipantGuidePanel() {
   const { participantResources } = useApp();
   const twibbonFallback = "/participant-resources/twibbon-duwis-2026.png";

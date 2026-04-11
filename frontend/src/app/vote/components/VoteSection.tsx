@@ -10,11 +10,17 @@ import { resolveApiAssetUrl } from "../../../lib/api";
 const OFFICIAL_ACCOUNT = "@dutawisatakotabatam";
 const OFFICIAL_ACCOUNT_URL = "https://instagram.com/dutawisatakotabatam";
 
+/**
+ * Mengekstrak angka urutan dari kode finalis untuk kebutuhan sorting stabil.
+ */
 function extractCodeOrder(value: string) {
   const match = value.match(/(\d{1,4})$/);
   return match ? Number.parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
 }
 
+/**
+ * Menggabungkan list finalis berdasarkan urutan kode dengan pola selang-seling Encik/Puan.
+ */
 function interleaveByCode<T extends { gender: "Encik" | "Puan"; number: string }>(items: T[]) {
   const encik = items
     .filter((item) => item.gender === "Encik")
@@ -32,6 +38,10 @@ function interleaveByCode<T extends { gender: "Encik" | "Puan"; number: string }
   return result;
 }
 
+/**
+ * Menentukan URL foto finalis yang aman ditampilkan pada UI.
+ * Mendukung aset lokal, storage backend, URL absolut, dan fallback avatar default.
+ */
 function resolveDisplayPhoto(url?: string | null) {
   const value = url?.trim();
   if (!value || value === "/default-avatar.svg") return "/default-avatar.svg";
@@ -45,10 +55,17 @@ function resolveDisplayPhoto(url?: string | null) {
   }
   return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
 }
+
+/**
+ * Memformat angka dukungan (like) ke format numerik Indonesia.
+ */
 function formatLikes(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
 }
 
+/**
+ * Memformat datetime ke format WIB lengkap untuk metadata sinkronisasi.
+ */
 function formatWibDateTime(value: string | null) {
   if (!value) return "-";
   const date = new Date(value);
@@ -66,6 +83,9 @@ function formatWibDateTime(value: string | null) {
   return `${formatted} WIB`;
 }
 
+/**
+ * Memformat datetime ke versi ringkas WIB untuk kartu finalis.
+ */
 function formatWibCompact(value: string | null) {
   if (!value) return "Belum diupdate";
   const date = new Date(value);
@@ -81,6 +101,10 @@ function formatWibCompact(value: string | null) {
   return `${formatted} WIB`;
 }
 
+/**
+ * Komponen utama halaman vote finalis.
+ * Menampilkan daftar finalis, data like postingan resmi, dan CTA ke Instagram.
+ */
 export default function VoteSection() {
   const { voteCandidateList, voteTopPublished } = useApp();
   const finalists = useMemo(

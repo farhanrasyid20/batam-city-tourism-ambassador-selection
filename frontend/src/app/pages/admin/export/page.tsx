@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Download,
@@ -183,7 +189,8 @@ function JuryReportDocument(props: {
       <Page size={paperSize} orientation={orientation} style={juryPdfStyles.page}>
         <View style={juryPdfStyles.topHeader}>
           {logoUrl ? (
-            <Image src={logoUrl} style={juryPdfStyles.logo} alt="" />
+            // eslint-disable-next-line jsx-a11y/alt-text
+            <Image src={logoUrl} style={juryPdfStyles.logo} />
           ) : (
             <View style={juryPdfStyles.logo} />
           )}
@@ -206,7 +213,7 @@ function JuryReportDocument(props: {
                 style={[
                   juryPdfStyles.headerCell,
                   { width: columnWidths[index] ?? 64 },
-                  index === headers.length - 1 ? juryPdfStyles.lastCell : undefined,
+                  ...(index === headers.length - 1 ? [juryPdfStyles.lastCell] : []),
                 ]}
               >
                 {header}
@@ -218,7 +225,7 @@ function JuryReportDocument(props: {
               key={`r-${rowIndex}`}
               style={[
                 juryPdfStyles.tableRow,
-                rowIndex === rows.length - 1 ? { borderBottomWidth: 0 } : undefined,
+                ...(rowIndex === rows.length - 1 ? [{ borderBottomWidth: 0 }] : []),
               ]}
             >
               {row.map((cell, cellIndex) => (
@@ -227,7 +234,7 @@ function JuryReportDocument(props: {
                   style={[
                     juryPdfStyles.bodyCell,
                     { width: columnWidths[cellIndex] ?? 64 },
-                    cellIndex === row.length - 1 ? juryPdfStyles.lastCell : undefined,
+                    ...(cellIndex === row.length - 1 ? [juryPdfStyles.lastCell] : []),
                   ]}
                 >
                   {String(cell)}
@@ -344,7 +351,7 @@ function buildWorkbookXml(sheets: WorkbookSheet[]) {
 }
 
 function padJudgeScores(scores: number[], max: number): Array<number | string> {
-  const values = [...scores];
+  const values: Array<number | string> = [...scores];
   while (values.length < max) {
     values.push("");
   }
@@ -373,7 +380,7 @@ function toDisplayParticipantName(
 function normalizeParticipantCode(value: string) {
   return value
     .trim()
-    .replace(/[‐‑‒–—−]/g, "-")
+    .replace(/[â€â€‘â€’â€“â€”âˆ’]/g, "-")
     .replace(/\s+/g, "");
 }
 
@@ -1226,3 +1233,4 @@ export default function AdminExportPage() {
     </div>
   );
 }
+

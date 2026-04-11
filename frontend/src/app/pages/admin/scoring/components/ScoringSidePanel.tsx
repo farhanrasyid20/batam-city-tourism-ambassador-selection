@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
@@ -649,3 +655,4 @@ export default function ScoringSidePanel({
     </GoldCard>
   );
 }
+

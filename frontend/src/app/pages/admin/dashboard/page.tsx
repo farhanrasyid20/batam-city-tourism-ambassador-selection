@@ -1,4 +1,10 @@
-﻿"use client";
+"use client";
+
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
 
 import React from "react";
 import { useRouter } from "next/navigation";
@@ -282,4 +288,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
 

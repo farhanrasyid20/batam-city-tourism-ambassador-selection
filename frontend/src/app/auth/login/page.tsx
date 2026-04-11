@@ -20,6 +20,9 @@ import { saveParticipantAuthSession } from "../../../lib/auth-storage";
 
 type LocalRole = "peserta" | "admin" | "juri";
 
+/**
+ * Menormalkan nilai role dari backend agar konsisten dengan role internal aplikasi.
+ */
 function normalizeBackendRole(rawRole?: string | null): "participant" | "admin" | "super_admin" | "judge" | null {
   const normalized = (rawRole ?? "")
     .trim()
@@ -54,6 +57,10 @@ const roles = [
   },
 ];
 
+/**
+ * Halaman login multi-role (peserta, admin, juri).
+ * Mengakomodasi login API, fallback demo account, dan pengalihan berdasarkan role.
+ */
 export default function LoginPage() {
   const router = useRouter();
   const { login, setPasswordForEmail, setAuthenticatedUser } = useApp();
@@ -93,6 +100,9 @@ export default function LoginPage() {
     },
   ];
 
+  /**
+   * Mengarahkan pengguna ke dashboard sesuai role yang aktif.
+   */
   const redirectByRole = (targetRole: LocalRole) => {
     if (targetRole === "peserta") {
       router.push("/pages/participant/dashboard");
@@ -105,6 +115,10 @@ export default function LoginPage() {
     router.push("/pages/judges/dashboard");
   };
 
+  /**
+   * Menangani proses autentikasi berdasarkan role terpilih.
+   * Prioritas: akun demo internal -> API backend sesuai role.
+   */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");

@@ -15,6 +15,10 @@ const footerLinks = [
   { label: "Login", href: "/auth/login" },
 ];
 
+/**
+ * Footer publik aplikasi yang menampilkan informasi identitas,
+ * kontak, dan tautan penting penyelenggara.
+ */
 export default function Footer() {
   return (
     <footer

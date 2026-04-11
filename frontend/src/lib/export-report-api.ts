@@ -19,6 +19,9 @@ export type ExportReportUploadResponse = {
   };
 };
 
+/**
+ * Mengunggah file laporan export (excel/pdf) ke endpoint super admin.
+ */
 export async function uploadExportReport(
   token: string,
   payload: {

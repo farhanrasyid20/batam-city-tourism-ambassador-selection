@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "./api";
 
+/**
+ * Kontrak konten landing page yang dikendalikan dari backend.
+ */
 export type LandingScheduleItem = {
   id: string;
   activity: string;
@@ -223,6 +226,9 @@ export const defaultLandingPageContent: LandingPageContent = {
   },
 };
 
+/**
+ * Menggabungkan payload parsial dari backend dengan fallback default agar shape tetap lengkap.
+ */
 function mergeContent(value: Partial<LandingPageContent> | null | undefined): LandingPageContent {
   return {
     hero: {
@@ -291,6 +297,9 @@ export async function fetchLandingPageContent() {
   return cachedContent;
 }
 
+/**
+ * Menyimpan perubahan konten landing page oleh super admin.
+ */
 export async function saveLandingPageContent(value: LandingPageContent, token: string) {
   const response = await apiRequest<LandingPageResponse>("/super-admin/landing-page", {
     method: "POST",
@@ -307,6 +316,9 @@ export async function saveLandingPageContent(value: LandingPageContent, token: s
   return cachedContent;
 }
 
+/**
+ * Hook sinkronisasi konten landing page (fetch awal + update event).
+ */
 export function useLandingPageContent() {
   const [content, setContent] = useState<LandingPageContent>(cachedContent);
 

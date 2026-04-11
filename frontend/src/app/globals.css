@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/*
+ * Global stylesheet aplikasi.
+ * Berisi token warna utama, theme mapping Tailwind, background global,
+ * serta utility class lintas halaman (layout, animasi, dan konten rich text).
+ */
 :root {
   --background: #120f0a;
   --foreground: #f5e6c8;
@@ -26,6 +31,9 @@
   }
 }
 
+/*
+ * Base document styling.
+ */
 body {
   background:
     linear-gradient(var(--champagne-overlay), var(--champagne-overlay)),
@@ -48,6 +56,9 @@ body {
   background: linear-gradient(180deg, #100f0a 0%, #0b0b0b 100%);
 }
 
+/*
+ * Sponsor marquee utilities.
+ */
 .sponsor-track {
   display: flex;
   align-items: center;
@@ -142,6 +153,9 @@ body {
   touch-action: pan-y;
 }
 
+/*
+ * Rich text renderer styling for news/article content.
+ */
 .news-reader-content {
   color: #bdbdbd;
   font-family: var(--font-poppins), Arial, Helvetica, sans-serif;

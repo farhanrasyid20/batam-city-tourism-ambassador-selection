@@ -18,6 +18,10 @@ type DocumentUploadCardProps = {
   onFileChange: (key: string, event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
+/**
+ * Kartu upload dokumen tunggal dengan status, validasi ukuran/format,
+ * serta aksi lihat/unduh file yang telah diunggah.
+ */
 export default function DocumentUploadCard({
   item,
   done,

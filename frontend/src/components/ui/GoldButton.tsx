@@ -13,6 +13,10 @@ interface GoldButtonProps {
   fullWidth?: boolean;
 }
 
+/**
+ * Tombol bertema emas khusus identitas visual aplikasi.
+ * Mendukung mode primary, outline, dan ghost dengan state hover interaktif.
+ */
 export function GoldButton({
   children,
   onClick,

@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React from "react";
 import { useApp } from "../../../../../context/AppContext";
 import type { Participant, ParticipantDocumentItem } from "../../../../../data/mockData";
@@ -95,3 +101,4 @@ export default function VerificationDocumentLink({ participant, document, childr
     </button>
   );
 }
+

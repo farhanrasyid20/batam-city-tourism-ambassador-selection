@@ -111,6 +111,9 @@ const stateLabel: Record<TimelineState, string> = {
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
 
+/**
+ * Resolver URL foto peserta dengan fallback avatar default.
+ */
 function resolveParticipantPhotoUrl(photo?: string | null): string {
   const value = photo?.trim();
   if (!value) return "/default-avatar.svg";
@@ -125,6 +128,9 @@ function resolveParticipantPhotoUrl(photo?: string | null): string {
   return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
 }
 
+/**
+ * Mapping status seleksi/account status backend menjadi stage status frontend.
+ */
 function mapSelectionStatusToStage(selectionStatus?: string | null, accountStatus?: string | null): StageStatus {
   const allowed: StageStatus[] = [
     "Pending",
@@ -162,6 +168,10 @@ function normalizeParticipantCode(
   return "-";
 }
 
+/**
+ * Halaman status seleksi peserta.
+ * Menyajikan ringkasan tahapan, status verifikasi, serta nomor seleksi aktif.
+ */
 export default function ParticipantStatusPage() {
   // Ambil peserta aktif untuk ditampilkan statusnya.
   const {

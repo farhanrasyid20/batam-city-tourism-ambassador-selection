@@ -1,3 +1,7 @@
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
 import type React from "react";
 import type { ParticipantResources } from "../../../../../context/AppContext";
 
@@ -43,3 +47,4 @@ export type TextSectionConfig = {
     type?: "text" | "url" | "textarea";
   }>;
 };
+

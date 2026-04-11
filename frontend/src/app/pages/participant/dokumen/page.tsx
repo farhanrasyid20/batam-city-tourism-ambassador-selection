@@ -32,6 +32,10 @@ const ParticipantGuidePanel = dynamic(() => import("../components/ParticipantGui
   ),
 });
 
+/**
+ * Halaman unggah dokumen peserta.
+ * Menyediakan panel panduan, status dokumen, upload berkas, dan submit final.
+ */
 export default function ParticipantDocumentsPage() {
   // Ambil data peserta aktif (fallback ke data pertama jika belum ada sesi aktif).
   const { currentParticipant, setCurrentParticipant, setParticipantList } = useApp();

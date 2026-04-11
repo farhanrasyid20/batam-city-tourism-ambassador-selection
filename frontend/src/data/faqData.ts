@@ -1,7 +1,14 @@
 import type { FaqItem as BackendFaqItem } from "../lib/auth-api";
 
+/**
+ * Alias tipe FAQ dari kontrak backend agar konsisten dipakai di frontend.
+ */
 export type FAQItem = BackendFaqItem;
 
+/**
+ * Data FAQ fallback lokal.
+ * Digunakan saat data FAQ dari backend belum tersedia/terjadi kegagalan fetch.
+ */
 export const faqItems: FAQItem[] = [
   {
     id: "faq-1",

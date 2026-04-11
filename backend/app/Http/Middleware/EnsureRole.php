@@ -7,8 +7,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Middleware otorisasi role berbasis atribut `auth_user` pada request.
+ */
 class EnsureRole
 {
+    /**
+     * Memastikan role user termasuk dalam daftar role yang diizinkan.
+     */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->attributes->get('auth_user');
@@ -28,4 +34,3 @@ class EnsureRole
         return $next($request);
     }
 }
-

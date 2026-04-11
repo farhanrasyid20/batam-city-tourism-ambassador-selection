@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+/**
+ * Controller layer entrypoint.
+ * Handles HTTP request/response orchestration for this module.
+ */
 
 class ParticipantBiodataController extends Controller
 {

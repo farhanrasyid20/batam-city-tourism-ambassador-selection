@@ -34,6 +34,9 @@ const statusLabel: Record<StageStatus, string> = {
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
 
+/**
+ * Resolver URL aset untuk proses export PDF peserta.
+ */
 function resolveAssetUrl(path?: string | null): string {
   const value = path?.trim();
   if (!value) return "/logo1.png";
@@ -48,6 +51,9 @@ function resolveAssetUrl(path?: string | null): string {
   return value.startsWith("/") ? `${API_ORIGIN}${value}` : `${API_ORIGIN}/${value}`;
 }
 
+/**
+ * Mapping status seleksi backend ke status stage frontend untuk export.
+ */
 function mapSelectionStatusToStage(selectionStatus?: string | null, accountStatus?: string): StageStatus {
   const allowed: StageStatus[] = [
     "Pending",
@@ -156,6 +162,10 @@ async function toDataUrlForPdf(source?: string | null): Promise<string> {
   }
 }
 
+/**
+ * Halaman export PDF data peserta.
+ * Menyusun data biodata terbaru lalu merender dokumen PDF siap unduh/cetak.
+ */
 export default function ExportPDFPage() {
   const { currentParticipant, user } = useApp();
   const [printing, setPrinting] = useState(false);

@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useLandingPageContent } from "../../lib/landing-page-content";
 
+/**
+ * Section tahapan pendaftaran peserta pada landing page.
+ * Menjelaskan alur registrasi dari awal hingga submit berkas.
+ */
 export default function RegistrationStepsSection() {
   const registrationContent = useLandingPageContent().registration;
 

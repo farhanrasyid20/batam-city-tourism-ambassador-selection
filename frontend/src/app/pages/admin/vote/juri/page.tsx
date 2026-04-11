@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useEffect, useMemo, useState } from "react";
 import { Trophy, Medal, CheckCircle, Save } from "lucide-react";
 import GoldCard from "../../../../../components/dashboard/GoldCard";
@@ -766,3 +772,4 @@ export default function AdminVoteJuryPage() {
     </div>
   );
 }
+

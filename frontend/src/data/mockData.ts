@@ -2,6 +2,9 @@
 // TYPES & INTERFACES (ENGLISH KEYS)
 // =============================================
 
+/**
+ * Tipe gender peserta yang dipakai lintas modul data.
+ */
 export type Gender = "Encik" | "Puan";
 
 export type StageStatus =
@@ -250,12 +253,18 @@ const malePhoto =
 const femalePhoto =
   "https://images.unsplash.com/photo-1642629428997-422b3181aedd?w=400&q=80";
 
+/**
+ * Daftar stage yang dapat di-assign ke akun juri.
+ */
 export const stages: JudgeAssignedStageKey[] = [
   "Audition",
   "Pre Camp",
   "Camp",
   "Grand Final",
 ];
+/**
+ * Urutan stage progres peserta untuk pelacakan kelulusan bertahap.
+ */
 export const participantProgressStages: ParticipantProgressStageKey[] = [
   "Technical Meeting",
   "Audition",
@@ -263,6 +272,9 @@ export const participantProgressStages: ParticipantProgressStageKey[] = [
   "Camp",
   "Grand Final",
 ];
+/**
+ * Tahapan seleksi utama dari verifikasi hingga final result.
+ */
 export const selectionStages: SelectionStageKey[] = [
   "Verification",
   "Technical Meeting",
@@ -288,6 +300,9 @@ export const selectionStageLabels: Record<SelectionStageKey, string> = {
   "Final Result": "Nilai Akhir",
 };
 
+/**
+ * Membentuk map progres stage peserta berdasarkan selection stage saat ini.
+ */
 export function buildParticipantStageProgress(selectionStage: SelectionStageKey): ParticipantStageProgress {
   return {
     "Technical Meeting":
@@ -359,6 +374,9 @@ export function normalizeStageName(stageName: string) {
   return stageName.toLowerCase().replace(/[\s-]/g, "");
 }
 
+/**
+ * Mengambil daftar kriteria penilaian berdasarkan nama stage.
+ */
 export function getStageCriteria(stageName: string): CriteriaItem[] {
   const normalizedTarget = normalizeStageName(stageName);
   const matchedKey = Object.keys(stageCriteriaMap).find(
@@ -368,6 +386,9 @@ export function getStageCriteria(stageName: string): CriteriaItem[] {
   return matchedKey ? stageCriteriaMap[matchedKey] : stageCriteriaMap["Grand Final"];
 }
 
+/**
+ * Menghitung total skor berbobot untuk stage tertentu.
+ */
 export function calculateStageTotal(score: Score, stageName: string): number {
   const activeCriteria = getStageCriteria(stageName);
   const total = activeCriteria.reduce((sum, criteria) => {
@@ -947,6 +968,9 @@ export const mockNews: NewsItem[] = [
 // MOCK PARTICIPANTS (NEW FORMAT)
 // =============================================
 
+/**
+ * Dataset mock utama peserta untuk pengembangan dan pengujian UI/logic.
+ */
 export const mockParticipants: Participant[] = ([
   {
     id: "P001",
@@ -1380,6 +1404,9 @@ export const mockParticipants: Participant[] = ([
 // MOCK JUDGES (ENGLISH KEYS)
 // =============================================
 
+/**
+ * Dataset mock akun juri beserta konfigurasi stage penugasan.
+ */
 export const mockJudges: Judge[] = ([
   {
     id: "J001",
@@ -1484,6 +1511,9 @@ export const mockStageScores: Record<
 // MOCK SCORE RECORDS (FLAT LIST FOR CONTEXT)
 // =============================================
 
+/**
+ * Rekaman skor flat (score records) untuk simulasi panel penilaian/admin.
+ */
 export const mockScoreRecords: ScoreRecord[] = [
   {
     id: "sr001",
@@ -1988,6 +2018,9 @@ export const mockScoreRecords: ScoreRecord[] = [
 // alias for AppContext earlier (if you want scoreList as ScoreRecord[])
 export const mockScores = mockScoreRecords;
 
+/**
+ * Catatan perkembangan peserta per stage (mentor/judge/admin/committee).
+ */
 export const mockParticipantStageNotes: ParticipantStageNote[] = [
   {
     id: "note-001",
@@ -2155,10 +2188,16 @@ export const mockParticipantStageNotes: ParticipantStageNote[] = [
 // HELPER FUNCTIONS
 // =============================================
 
+/**
+ * Helper kompatibilitas untuk menghitung total skor (default stage: Grand Final).
+ */
 export function calcTotalScore(score: Score, stageName = "Grand Final"): number {
   return calculateStageTotal(score, stageName);
 }
 
+/**
+ * Menghitung rata-rata skor peserta pada stage tertentu dari data mock.
+ */
 export function getAverageScore(participantId: string, stage: string): number {
   const stageScores = mockStageScores[participantId]?.[stage]?.scores ?? [];
   if (stageScores.length === 0) return Math.floor(Math.random() * 20 + 75);

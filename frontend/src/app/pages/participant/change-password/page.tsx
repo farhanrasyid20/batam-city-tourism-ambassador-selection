@@ -6,6 +6,9 @@ import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 
+/**
+ * Halaman ubah password peserta tanpa OTP.
+ */
 export default function ChangePasswordPage() {
   const { user, changePassword } = useApp();
   const [showCurrent, setShowCurrent] = useState(false);
@@ -158,4 +161,3 @@ export default function ChangePasswordPage() {
     </div>
   );
 }
-

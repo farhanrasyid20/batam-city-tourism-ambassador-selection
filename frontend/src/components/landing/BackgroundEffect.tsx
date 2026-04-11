@@ -2,6 +2,10 @@
 
 import React, { useEffect, useRef } from "react";
 
+/**
+ * Efek latar dekoratif untuk memperkuat atmosfer visual
+ * pada section landing page.
+ */
 export default function BackgroundEffect() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 

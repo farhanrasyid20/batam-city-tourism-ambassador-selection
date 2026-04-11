@@ -9,6 +9,10 @@ type GoldCardProps = {
   onClick?: () => void;
 };
 
+/**
+ * Kartu UI bertema emas untuk menampilkan ringkasan data penting
+ * pada halaman dashboard.
+ */
 export default function GoldCard({
   children,
   className = "",
@@ -31,4 +35,3 @@ export default function GoldCard({
     </div>
   );
 }
-

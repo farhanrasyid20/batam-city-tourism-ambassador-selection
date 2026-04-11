@@ -2,6 +2,9 @@
 // TYPES & INTERFACES (ENGLISH KEYS)
 // =============================================
 
+/**
+ * Tipe gender peserta yang dipakai lintas modul data.
+ */
 export type Gender = "Encik" | "Puan";
 
 export type StageStatus =
@@ -141,8 +144,14 @@ const malePhoto =
 const femalePhoto =
   "https://images.unsplash.com/photo-1642629428997-422b3181aedd?w=400&q=80";
 
+/**
+ * Urutan tahapan seleksi utama.
+ */
 export const stages = ["Audition", "Pre-Camp", "Camp", "Grand Final"];
 
+/**
+ * Daftar kriteria penilaian default beserta bobotnya.
+ */
 export const criteriaList: CriteriaItem[] = [
   {
     key: "tourismKnowledge",
@@ -853,6 +862,9 @@ export const mockScores = mockScoreRecords;
 // HELPER FUNCTIONS
 // =============================================
 
+/**
+ * Menghitung total skor berbobot berdasarkan kriteria aktif.
+ */
 export function calcTotalScore(score: Score): number {
   let total = 0;
 
@@ -864,6 +876,10 @@ export function calcTotalScore(score: Score): number {
   return Math.round(total * 100) / 100;
 }
 
+/**
+ * Menghitung rata-rata skor peserta pada stage tertentu.
+ * Jika belum ada data skor, fungsi mengembalikan nilai fallback simulasi.
+ */
 export function getAverageScore(participantId: string, stage: string): number {
   const stageScores = mockStageScores[participantId]?.[stage]?.scores ?? [];
   if (stageScores.length === 0) return Math.floor(Math.random() * 20 + 75);

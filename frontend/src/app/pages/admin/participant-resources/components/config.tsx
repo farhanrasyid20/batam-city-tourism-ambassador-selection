@@ -1,3 +1,7 @@
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
 import React from "react";
 import { ImageIcon, Megaphone, MessageCircle } from "lucide-react";
 import type { DocumentConfig, TextSectionConfig } from "./types";
@@ -75,3 +79,4 @@ export const textSections: TextSectionConfig[] = [
     ],
   },
 ];
+

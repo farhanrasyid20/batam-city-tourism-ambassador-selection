@@ -22,6 +22,9 @@ export type DocumentItem = {
 };
 
 // Daftar dokumen WAJIB yang harus diupload peserta.
+/**
+ * Konfigurasi daftar dokumen wajib peserta.
+ */
 export const requiredDocuments: DocumentItem[] = [
   {
     key: "identityCard",
@@ -99,6 +102,9 @@ export const requiredDocuments: DocumentItem[] = [
 ];
 
 // Daftar dokumen OPSIONAL (nilai tambah).
+/**
+ * Konfigurasi daftar dokumen opsional peserta.
+ */
 export const optionalDocuments: DocumentItem[] = [
   {
     key: "certificate",
@@ -112,6 +118,9 @@ export const optionalDocuments: DocumentItem[] = [
 ];
 
 // Daftar resource yang bisa diunduh peserta.
+/**
+ * Daftar tautan unduhan resource pendukung pendaftaran.
+ */
 export const resourceDownloads = [
   {
     title: "Buku Panduan Duta Wisata 2026",
@@ -146,6 +155,9 @@ export const resourceDownloads = [
 ];
 
 // Hashtag resmi untuk publikasi twibbon.
+/**
+ * Hashtag resmi publikasi peserta.
+ */
 export const hashtags = [
   "#encikpuanbatam",
   "#dutawisatakotabatam",
@@ -153,6 +165,9 @@ export const hashtags = [
 ];
 
 // Link resmi panitia (panduan, berkas, grup WA).
+/**
+ * Kumpulan tautan kanal resmi penyelenggara.
+ */
 export const officialLinks = {
   guide: "https://bit.ly/BukuPanduanDuwis2026",
   forms: "https://bit.ly/berkas-duwis-2026",

@@ -14,6 +14,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 const guideBookHref = "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf";
 
+/**
+ * Halaman viewer buku panduan versi penuh.
+ * Dirancang responsif untuk desktop, tablet, dan mobile dengan kontrol navigasi PDF.
+ */
 export default function GuideBookViewer() {
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
@@ -41,6 +45,9 @@ export default function GuideBookViewer() {
 
   const totalPagesLabel = useMemo(() => (numPages > 0 ? `${pageNumber} / ${numPages}` : "Memuat..."), [numPages, pageNumber]);
 
+  /**
+   * Navigasi halaman PDF.
+   */
   const goPrev = () => setPageNumber((prev) => Math.max(prev - 1, 1));
   const goNext = () => setPageNumber((prev) => Math.min(prev + 1, numPages || prev + 1));
 

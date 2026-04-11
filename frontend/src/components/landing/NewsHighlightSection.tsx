@@ -13,6 +13,10 @@ function formatDate(dateStr: string) {
   });
 }
 
+/**
+ * Section highlight berita terbaru pada landing page.
+ * Menampilkan cuplikan artikel dan tautan ke halaman detail berita.
+ */
 export default function NewsHighlightSection() {
   const { newsList } = useApp();
   const items = newsList.slice(0, 4);

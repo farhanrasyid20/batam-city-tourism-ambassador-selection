@@ -15,6 +15,10 @@ const judgeNavItems = [
   { label: "Input Penilaian", href: "/pages/judges/scoring", icon: <Star size={16} /> },
 ];
 
+/**
+ * Layout area judges.
+ * Menjaga akses hanya untuk role juri dan melakukan sinkronisasi data juri/peserta dari backend.
+ */
 export default function JudgePagesLayout({
   children,
 }: {

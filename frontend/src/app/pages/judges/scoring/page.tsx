@@ -36,17 +36,26 @@ import {
 
 type ScoreInputState = Record<string, string>;
 
+/**
+ * Type guard untuk memastikan stage termasuk stage dengan skor angka.
+ */
 const isJudgeScoreStage = (
   stage: JudgeAssignedStageKey,
 ): stage is ScoreStageKey =>
   stage === "Audition" || stage === "Camp" || stage === "Grand Final";
 
+/**
+ * Mengambil angka urutan dari ujung string (nomor audisi/kode peserta) untuk sorting.
+ */
 const extractTrailingNumber = (value?: string | null) => {
   const raw = (value ?? "").trim();
   const match = raw.match(/(\d{1,5})$/);
   return match ? Number.parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
 };
 
+/**
+ * Normalisasi teks menjadi title case sederhana.
+ */
 const toTitleCase = (value: string) =>
   value
     .split(" ")
@@ -54,6 +63,9 @@ const toTitleCase = (value: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
 
+/**
+ * Menyusun nama tampilan peserta dengan prefix gender.
+ */
 const getParticipantDisplayName = (name: string, gender: "Encik" | "Puan") => {
   const normalized = name.trim().replace(/^(encik|puan)\s+/i, "");
   const nickname = normalized.split(/\s+/)[0] ?? "";
@@ -61,6 +73,9 @@ const getParticipantDisplayName = (name: string, gender: "Encik" | "Puan") => {
   return `${gender} ${finalName}`.trim();
 };
 
+/**
+ * Menyiapkan metadata tampilan catatan (label role, tanggal, jam).
+ */
 const formatNoteMeta = (createdAt: string, role: "admin" | "judge" | "committee") => {
   const roleLabel = role === "committee" ? "Panitia" : role === "admin" ? "Admin" : "Juri";
   const dayDate = new Intl.DateTimeFormat("id-ID", {
@@ -76,6 +91,9 @@ const formatNoteMeta = (createdAt: string, role: "admin" | "judge" | "committee"
   return { roleLabel, dayDate, time };
 };
 
+/**
+ * Mapping payload skor juri dari backend ke format frontend.
+ */
 function toFrontendScoreRecord(item: BackendJudgeScore): ScoreRecord {
   return {
     id: `db-judge-score-${item.id}`,
@@ -95,6 +113,9 @@ function toFrontendScoreRecord(item: BackendJudgeScore): ScoreRecord {
   };
 }
 
+/**
+ * Mapping payload catatan juri dari backend ke format frontend.
+ */
 function toFrontendNoteRecord(item: BackendJudgeNote): FrontendParticipantStageNote {
   return {
     id: `db-judge-note-${item.id}`,
@@ -115,6 +136,9 @@ type FrontendParticipantStageNote = ParticipantStageNote & {
   authorAvatar?: string;
 };
 
+/**
+ * Merge skor official juri dari backend ke state lokal sambil menghindari duplikasi record.
+ */
 function mergeJudgeOfficialScores(prev: ScoreRecord[], nextDbScores: ScoreRecord[]): ScoreRecord[] {
   const preserved = prev.filter(
     (item) => !(item.judgeRole === "judge" && (item.scoreType ?? "official") === "official")
@@ -137,6 +161,10 @@ function mergeJudgeOfficialScores(prev: ScoreRecord[], nextDbScores: ScoreRecord
   return Array.from(deduped.values());
 }
 
+/**
+ * Halaman input penilaian juri.
+ * Mendukung submit skor official per stage, catatan per peserta, dan sinkronisasi data backend.
+ */
 export default function JudgeScoringPage() {
   const { user, judgeList, participantList, voteCandidateList, scoreList, setScoreList } = useApp();
   const judgeInfo = judgeList.find((judge) => judge.id === user?.judgeId) ?? judgeList[0];

@@ -10,6 +10,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
+/**
+ * Controller layer entrypoint.
+ * Handles HTTP request/response orchestration for this module.
+ */
 
 class PublicVoteAdminController extends Controller
 {

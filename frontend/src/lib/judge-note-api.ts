@@ -2,6 +2,9 @@
 
 import { apiRequest } from "./api";
 
+/**
+ * Kontrak API catatan juri lintas stage seleksi.
+ */
 export type BackendJudgeNoteStage =
   | "Technical Meeting"
   | "Audition"
@@ -42,6 +45,9 @@ export type SubmitJudgeNoteResponse = {
   data: BackendJudgeNote;
 };
 
+/**
+ * Mengambil daftar catatan juri dengan filter opsional peserta dan stage.
+ */
 export function fetchJudgeNotes(token: string, params?: { participant_id?: string; stage?: BackendJudgeNoteStage }) {
   const query = new URLSearchParams();
   if (params?.participant_id) query.set("participant_id", params.participant_id);
@@ -54,6 +60,9 @@ export function fetchJudgeNotes(token: string, params?: { participant_id?: strin
   });
 }
 
+/**
+ * Menambahkan catatan juri baru untuk peserta pada stage tertentu.
+ */
 export function submitJudgeNote(token: string, payload: SubmitJudgeNotePayload) {
   return apiRequest<SubmitJudgeNoteResponse>("/judge/notes", {
     method: "POST",

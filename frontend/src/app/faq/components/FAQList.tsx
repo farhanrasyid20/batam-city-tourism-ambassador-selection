@@ -3,6 +3,10 @@
 import React, { useMemo, useState } from "react";
 import { useApp } from "../../../context/AppContext";
 
+/**
+ * Daftar FAQ dengan fitur pencarian teks, filter kategori, dan pembatasan jumlah item.
+ * Dipakai di halaman FAQ penuh maupun section ringkas (dengan properti `limit`).
+ */
 export default function FAQList({ limit }: { limit?: number }) {
   const { faqList } = useApp();
   const [query, setQuery] = useState("");
@@ -12,6 +16,9 @@ export default function FAQList({ limit }: { limit?: number }) {
 
   const categories = ["Semua", "Pendaftaran", "Berkas", "Tahapan", "Akun", "Penilaian"] as const;
 
+  /**
+   * Menyaring data FAQ berdasarkan kategori aktif dan kata kunci pencarian.
+   */
   const filtered = useMemo(() => {
     return faqList.filter((x) => {
       const matchCategory = activeCategory === "Semua" ? true : x.category === activeCategory;

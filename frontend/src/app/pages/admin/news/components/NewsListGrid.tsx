@@ -1,3 +1,7 @@
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
 import React from "react";
 import { Calendar, Edit, Trash2 } from "lucide-react";
 import type { NewsItem } from "../../../../../data/mockData";
@@ -70,3 +74,4 @@ export default function NewsListGrid({ newsList, handleEdit, handleDelete }: New
     </div>
   );
 }
+

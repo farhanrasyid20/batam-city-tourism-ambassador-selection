@@ -5,6 +5,9 @@ import Image from "next/image";
 import type { NewsBlock } from "../../../data/mockData";
 import { resolveApiAssetUrl } from "../../../lib/api";
 
+/**
+ * Renderer paragraf standar untuk konten artikel berbasis blok.
+ */
 function Paragraph({ text }: { text: string }) {
   return (
     <p
@@ -26,6 +29,10 @@ type NewsArticleClientProps = {
   contentHtml?: string;
 };
 
+/**
+ * Komponen renderer isi artikel berita.
+ * Prioritas menampilkan `contentHtml` (jika tersedia), fallback ke struktur blok `body`.
+ */
 export default function NewsArticleClient({ body, contentHtml }: NewsArticleClientProps) {
   if (contentHtml?.trim()) {
     return (

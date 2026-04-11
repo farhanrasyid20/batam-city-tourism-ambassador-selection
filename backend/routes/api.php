@@ -19,6 +19,10 @@ use App\Http\Controllers\Api\PublicVoteAdminController;
 use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
+/**
+ * Kelompok endpoint autentikasi utama.
+ * Mencakup registrasi, login, profil akun, logout, dan ubah password.
+ */
 Route::prefix('auth')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
@@ -28,6 +32,10 @@ Route::prefix('auth')->group(function (): void {
     Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('jwt.auth');
 });
 
+/**
+ * Endpoint publik dan endpoint kompatibilitas lama.
+ * Digunakan untuk akses tanpa autentikasi seperti feedback, FAQ, berita, dan finalis.
+ */
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordDirect']);
@@ -38,6 +46,10 @@ Route::get('/public/news', [NewsController::class, 'index']);
 Route::get('/public/finalists', [PublicFinalistController::class, 'index']);
 Route::get('/public/participant-resources', [ParticipantResourceController::class, 'showPublic']);
 
+/**
+ * Endpoint khusus peserta terautentikasi.
+ * Mengelola biodata dan dokumen pendaftaran peserta.
+ */
 Route::prefix('participant')->middleware(['jwt.auth', 'role:participant'])->group(function (): void {
     Route::get('/biodata', [ParticipantBiodataController::class, 'show']);
     Route::put('/biodata', [ParticipantBiodataController::class, 'update']);
@@ -46,6 +58,10 @@ Route::prefix('participant')->middleware(['jwt.auth', 'role:participant'])->grou
     Route::post('/documents/submit', [ParticipantDocumentController::class, 'submit']);
 });
 
+/**
+ * Endpoint panel super admin/admin.
+ * Mencakup manajemen konten, user internal, seleksi peserta, vote, scoring, export, dan resource.
+ */
 Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])->group(function (): void {
     Route::get('/news', [NewsController::class, 'index']);
     Route::post('/news', [NewsController::class, 'store']);
@@ -76,6 +92,10 @@ Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])
     Route::post('/participant-resources', [ParticipantResourceController::class, 'update']);
 });
 
+/**
+ * Endpoint baca data untuk juri.
+ * Mencakup daftar peserta, catatan, skor, dan rekap skor.
+ */
 Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])->group(function (): void {
     Route::get('/participants', [JudgeParticipantController::class, 'index']);
     Route::get('/notes', [JudgeNoteController::class, 'index']);
@@ -83,10 +103,16 @@ Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])
     Route::get('/scores/recap', [JudgeScoreRecapController::class, 'index']);
 });
 
+/**
+ * Endpoint tulis catatan juri.
+ */
 Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])->group(function (): void {
     Route::post('/notes', [JudgeNoteController::class, 'store']);
 });
 
+/**
+ * Endpoint input nilai juri.
+ */
 Route::prefix('judge')->middleware(['jwt.auth', 'role:judge,admin,super_admin'])->group(function (): void {
     Route::post('/scores', [JudgeScoreController::class, 'store']);
 });

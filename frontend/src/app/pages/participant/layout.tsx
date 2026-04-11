@@ -28,6 +28,9 @@ const participantNavItems = [
   { label: "Export PDF", href: "/pages/participant/export", icon: <Download size={16} /> },
 ];
 
+/**
+ * Normalisasi role dari sesi backend ke nilai role internal frontend.
+ */
 function normalizeSessionRole(rawRole?: string | null): "participant" | "admin" | "super_admin" | "judge" | null {
   const normalized = (rawRole ?? "")
     .trim()
@@ -41,6 +44,9 @@ function normalizeSessionRole(rawRole?: string | null): "participant" | "admin" 
   return null;
 }
 
+/**
+ * Mapping status seleksi backend ke status stage frontend.
+ */
 function mapSelectionStatusToStage(
   selectionStatus?: string | null,
   accountStatus?: string | null
@@ -75,6 +81,9 @@ const documentIssueTargetMap: Record<string, NonNullable<Participant["verificati
   formS04: "formS04",
 };
 
+/**
+ * Menyusun daftar issue verifikasi dari status dokumen peserta.
+ */
 function buildVerificationIssuesFromDocuments(documents: NonNullable<Participant["documents"]>) {
   return documents
     .filter((doc) => doc.status === "revision_required")
@@ -91,6 +100,10 @@ function buildVerificationIssuesFromDocuments(documents: NonNullable<Participant
     .filter((item): item is NonNullable<Participant["verificationIssues"]>[number] => Boolean(item));
 }
 
+/**
+ * Layout area peserta.
+ * Menjaga autentikasi role peserta dan sinkronisasi profil/biodata ke context.
+ */
 export default function ParticipantPagesLayout({
   children,
 }: {

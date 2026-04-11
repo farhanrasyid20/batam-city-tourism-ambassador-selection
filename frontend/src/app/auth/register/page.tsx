@@ -10,6 +10,10 @@ import { getReadableApiError } from "../../../lib/api";
 import { loginParticipant, registerParticipant } from "../../../lib/auth-api";
 import { saveParticipantAuthSession } from "../../../lib/auth-storage";
 
+/**
+ * Halaman registrasi peserta.
+ * Membuat akun baru, lalu auto-login dan menyimpan sesi autentikasi ke storage lokal.
+ */
 export default function RegisterPage() {
   const router = useRouter();
   const { login, setPasswordForEmail, setAuthenticatedUser } = useApp();
@@ -36,6 +40,10 @@ export default function RegisterPage() {
   const passwordStrengthLabel =
     passwordScore <= 1 ? "Lemah" : passwordScore === 2 ? "Sedang" : "Kuat";
 
+  /**
+   * Menangani submit form registrasi peserta.
+   * Meliputi validasi password, registrasi ke API, dan login otomatis setelah berhasil.
+   */
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");

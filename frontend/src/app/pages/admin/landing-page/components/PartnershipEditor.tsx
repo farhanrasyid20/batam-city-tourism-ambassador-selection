@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useRef, useState } from "react";
 import { Eye, ImagePlus, Plus, Trash2, X } from "lucide-react";
 import type { LandingPartnerItem } from "../../../../../lib/landing-page-content";
@@ -223,3 +229,4 @@ export default function PartnershipEditor({ partners, onChange }: PartnershipEdi
     </div>
   );
 }
+

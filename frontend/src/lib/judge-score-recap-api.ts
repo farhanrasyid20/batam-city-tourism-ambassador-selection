@@ -2,6 +2,9 @@
 
 import { apiRequest } from "./api";
 
+/**
+ * API helper rekap skor juri dengan cache in-memory ringan.
+ */
 type StageSummary = {
   judges_count: number;
   judge_scores: number[];
@@ -72,6 +75,9 @@ function isFresh(ts: number, maxAgeMs: number) {
   return Date.now() - ts <= maxAgeMs;
 }
 
+/**
+ * Mengambil rekap skor juri per peserta dengan dukungan cache dan filter gender.
+ */
 export function fetchJudgeScoreRecap(
   token: string,
   params?: { gender?: "Encik" | "Puan"; force?: boolean; maxAgeMs?: number }

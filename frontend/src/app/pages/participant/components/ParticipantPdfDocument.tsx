@@ -237,6 +237,10 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * Template dokumen PDF biodata peserta.
+ * Digunakan oleh halaman export untuk menghasilkan berkas siap cetak/unduh.
+ */
 export default function ParticipantPdfDocument({
   participant,
   printedDate,

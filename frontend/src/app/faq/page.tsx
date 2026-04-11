@@ -1,6 +1,10 @@
 ﻿import React from "react";
 import FAQList from "./components/FAQList";
 
+/**
+ * Halaman FAQ publik.
+ * Menyediakan judul, konteks bantuan, dan daftar pertanyaan yang dapat difilter.
+ */
 export default function FAQPage() {
   return (
     <div

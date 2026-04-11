@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+/**
+ * Eloquent model representing a domain entity.
+ * Defines persistence rules, casting, and relationships for this resource.
+ */
 
 class User extends Authenticatable
 {

@@ -6,6 +6,10 @@ import VoteHighlightSection from "../components/landing/VoteHighlightSection";
 import SponsorSection from "../components/landing/SponsorSection";
 import FAQList from "./faq/components/FAQList";
 
+/**
+ * Halaman beranda utama.
+ * Menyusun section landing (hero, about, sponsor, tahapan, news, vote, dan FAQ ringkas).
+ */
 export default function HomePage() {
   return (
     <div className="home-page">

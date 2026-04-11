@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
+/**
+ * Preloader global saat inisialisasi awal aplikasi.
+ * Muncul singkat untuk transisi masuk sebelum konten utama siap.
+ */
 export default function GlobalPreloader() {
   const [visible, setVisible] = useState(true);
 
@@ -52,5 +56,4 @@ export default function GlobalPreloader() {
     </div>
   );
 }
-
 

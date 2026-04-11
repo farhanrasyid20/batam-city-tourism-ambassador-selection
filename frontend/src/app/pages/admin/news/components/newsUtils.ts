@@ -1,3 +1,7 @@
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
 import type { NewsBlock } from "../../../../../data/mockData";
 
 export function getTodayDate() {
@@ -44,3 +48,4 @@ export function blocksToHtml(blocks: NewsBlock[]) {
     })
     .join("");
 }
+

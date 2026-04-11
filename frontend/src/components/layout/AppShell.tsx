@@ -18,6 +18,10 @@ function isPublicRoute(pathname: string): boolean {
   });
 }
 
+/**
+ * Shell layout aplikasi untuk mengatur tampil/sembunyi Navbar/Footer
+ * berdasarkan tipe rute (publik, autentikasi, atau area terlindungi).
+ */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const showPublicLayout = isPublicRoute(pathname);

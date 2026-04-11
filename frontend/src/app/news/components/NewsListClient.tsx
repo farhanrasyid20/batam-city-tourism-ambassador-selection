@@ -6,9 +6,16 @@ import { Calendar, ArrowRight } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { resolveApiAssetUrl } from "../../../lib/api";
 
+/**
+ * Komponen daftar berita pada halaman publik.
+ * Menampilkan kartu berita, metadata tanggal, kategori, dan tautan detail.
+ */
 export default function NewsListClient() {
   const { newsList } = useApp();
 
+  /**
+   * Mengubah tanggal ISO menjadi format tanggal Indonesia yang ramah baca.
+   */
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("id-ID", {
       day: "numeric",

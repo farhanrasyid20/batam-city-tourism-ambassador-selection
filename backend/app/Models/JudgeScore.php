@@ -5,6 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+/**
+ * Eloquent model representing a domain entity.
+ * Defines persistence rules, casting, and relationships for this resource.
+ */
 
 class JudgeScore extends Model
 {

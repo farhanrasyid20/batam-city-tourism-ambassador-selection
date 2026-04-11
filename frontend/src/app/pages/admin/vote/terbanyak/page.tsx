@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React from "react";
 import Image from "next/image";
 import { AlertTriangle, Clock3, Heart, Globe, Link as LinkIcon } from "lucide-react";
@@ -861,3 +867,4 @@ export default function AdminVoteTopPage() {
     </div>
   );
 }
+

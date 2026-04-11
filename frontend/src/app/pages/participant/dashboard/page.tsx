@@ -21,11 +21,17 @@ import { statusLabelsId, type Participant, type StageStatus } from "../../../../
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
 
+/**
+ * Mengubah rasio menjadi persentase integer.
+ */
 function toPercent(filled: number, total: number) {
   if (total <= 0) return 0;
   return Math.round((filled / total) * 100);
 }
 
+/**
+ * Menentukan indeks urutan stage berdasarkan status peserta.
+ */
 function getStageIndex(status: string): number {
   if (status === "PreCamp") return 3;
   const order = ["Verified", "TechnicalMeeting", "Audition", "Camp", "GrandFinal", "Winner"];
@@ -60,6 +66,10 @@ function getSelectionNumberForDisplay(participant: Participant | null): string {
   return participant.number?.trim() || "-";
 }
 
+/**
+ * Dashboard utama peserta.
+ * Menampilkan progres pendaftaran, identitas seleksi, dan ringkasan status akun.
+ */
 export default function ParticipantDashboardPage() {
   // Router dan context utama peserta.
   const router = useRouter();

@@ -12,6 +12,9 @@ type FormState = {
   message: string;
 };
 
+/**
+ * Nilai awal form feedback saat halaman pertama kali dibuka atau setelah submit berhasil.
+ */
 const initialState: FormState = {
   name: "",
   email: "",
@@ -19,6 +22,10 @@ const initialState: FormState = {
   message: "",
 };
 
+/**
+ * Komponen form feedback.
+ * Mengelola state input, submit async ke context, dan umpan balik status submit ke pengguna.
+ */
 export default function FeedbackForm() {
   const { addFeedbackEntry } = useApp();
   const [form, setForm] = useState<FormState>(initialState);
@@ -26,6 +33,9 @@ export default function FeedbackForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
 
+  /**
+   * Factory handler untuk memperbarui field form secara dinamis berdasarkan key.
+   */
   const onChange =
     (key: keyof FormState) =>
     (
@@ -34,6 +44,9 @@ export default function FeedbackForm() {
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
     };
 
+  /**
+   * Menangani submit form feedback dan menampilkan pesan sukses/gagal.
+   */
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 

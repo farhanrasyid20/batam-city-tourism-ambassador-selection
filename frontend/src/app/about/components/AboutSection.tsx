@@ -25,6 +25,10 @@ const AboutGuideInlineViewer = dynamic(() => import("./AboutGuideInlineViewer"),
 
 const guideBookHref = "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf";
 
+/**
+ * Section About lengkap untuk landing/public page.
+ * Menampilkan profil program, panduan, kategori pemenang, dan syarat pendaftaran.
+ */
 export function AboutSection() {
   const [guideOpen, setGuideOpen] = useState(false);
   const landingPageContent = useLandingPageContent();

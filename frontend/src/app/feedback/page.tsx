@@ -1,5 +1,9 @@
 ﻿import FeedbackForm from "./components/FeedbackForm";
 
+/**
+ * Halaman feedback publik.
+ * Menampilkan konteks masukan pengguna dan form pengiriman kritik/saran/pertanyaan.
+ */
 export default function FeedbackPage() {
   return (
     <section

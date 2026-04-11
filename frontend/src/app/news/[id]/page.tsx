@@ -9,6 +9,9 @@ import type { NewsBlock } from "../../../data/mockData";
 import NewsArticleClient from "../components/NewsArticleClient";
 import { resolveApiAssetUrl } from "../../../lib/api";
 
+/**
+ * Mengubah tanggal berita ke format Indonesia untuk tampilan detail.
+ */
 function formatDateId(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("id-ID", {
     day: "numeric",
@@ -17,6 +20,10 @@ function formatDateId(dateStr: string) {
   });
 }
 
+/**
+ * Halaman detail berita berbasis parameter `id`.
+ * Mengambil item dari state global dan merender hero, ringkasan, serta isi artikel.
+ */
 export default function NewsDetailPage() {
   const params = useParams<{ id: string }>();
   const { newsList } = useApp();

@@ -16,6 +16,10 @@ const navLinks = [
   { label: "Feedback", href: "/feedback" },
 ];
 
+/**
+ * Navbar utama untuk area publik yang memuat navigasi section
+ * serta aksi cepat ke halaman autentikasi dan pendaftaran.
+ */
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

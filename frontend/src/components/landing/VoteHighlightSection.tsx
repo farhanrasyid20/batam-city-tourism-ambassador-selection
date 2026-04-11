@@ -460,6 +460,10 @@ function JuryPairTable({
   );
 }
 
+/**
+ * Section highlight voting publik di landing page.
+ * Menampilkan kandidat teratas dan ajakan menuju halaman vote utama.
+ */
 export default function VoteHighlightSection() {
   const {
     scoreList,

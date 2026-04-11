@@ -2,6 +2,9 @@
 
 import { apiRequest } from "./api";
 
+/**
+ * API helper untuk pengelolaan akun internal (admin/judge) oleh super admin.
+ */
 export type InternalUserRole = "admin" | "judge";
 export type InternalUserStatus = "active" | "suspended";
 
@@ -45,6 +48,9 @@ export type CreateInternalUserPayload = {
 
 export type UpdateInternalUserPayload = Partial<CreateInternalUserPayload>;
 
+/**
+ * Mengambil daftar user internal, opsional difilter berdasarkan role.
+ */
 export function fetchInternalUsers(token: string, role?: InternalUserRole) {
   const query = role ? `?role=${encodeURIComponent(role)}` : "";
   return apiRequest<InternalUsersResponse>(`/super-admin/users${query}`, {
@@ -53,6 +59,9 @@ export function fetchInternalUsers(token: string, role?: InternalUserRole) {
   });
 }
 
+/**
+ * Membuat akun internal baru.
+ */
 export function createInternalUser(token: string, payload: CreateInternalUserPayload) {
   return apiRequest<{ message: string; user: InternalUser }>("/super-admin/users", {
     method: "POST",
@@ -61,6 +70,9 @@ export function createInternalUser(token: string, payload: CreateInternalUserPay
   });
 }
 
+/**
+ * Memperbarui data akun internal berdasarkan id.
+ */
 export function updateInternalUser(token: string, id: number, payload: UpdateInternalUserPayload) {
   return apiRequest<{ message: string; user: InternalUser }>(`/super-admin/users/${id}`, {
     method: "PATCH",
@@ -69,6 +81,9 @@ export function updateInternalUser(token: string, id: number, payload: UpdateInt
   });
 }
 
+/**
+ * Menonaktifkan sementara akun internal.
+ */
 export function suspendInternalUser(token: string, id: number) {
   return apiRequest<{ message: string }>(`/super-admin/users/${id}/suspend`, {
     method: "PATCH",
@@ -76,6 +91,9 @@ export function suspendInternalUser(token: string, id: number) {
   });
 }
 
+/**
+ * Mengaktifkan kembali akun internal yang disuspend.
+ */
 export function activateInternalUser(token: string, id: number) {
   return apiRequest<{ message: string }>(`/super-admin/users/${id}/activate`, {
     method: "PATCH",
@@ -83,6 +101,9 @@ export function activateInternalUser(token: string, id: number) {
   });
 }
 
+/**
+ * Menghapus akun internal secara permanen.
+ */
 export function deleteInternalUser(token: string, id: number) {
   return apiRequest<{ message: string }>(`/super-admin/users/${id}`, {
     method: "DELETE",

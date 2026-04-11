@@ -4,10 +4,20 @@ import { clearParticipantAuthSession } from "./auth-storage";
 
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000/api";
 
+/**
+ * Base URL API backend (dapat dioverride via env NEXT_PUBLIC_API_BASE_URL).
+ */
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || DEFAULT_API_BASE_URL;
+
+/**
+ * Origin backend tanpa suffix `/api`, dipakai untuk resolusi URL aset.
+ */
 export const API_ORIGIN = API_BASE_URL.replace(/\/api$/i, "");
 
+/**
+ * Mengubah path relatif aset backend menjadi URL absolut yang siap dipakai di browser.
+ */
 export function resolveApiAssetUrl(url?: string | null): string | undefined {
   const value = url?.trim();
   if (!value) return undefined;
@@ -38,6 +48,9 @@ function looksLikeImageAsset(value: string): boolean {
   return false;
 }
 
+/**
+ * Resolver khusus avatar dengan validasi dasar agar hanya URL gambar yang lolos.
+ */
 export function resolveAvatarUrl(url?: string | null): string | undefined {
   const value = url?.trim();
   if (!value) return undefined;
@@ -62,6 +75,10 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   token?: string;
 };
 
+/**
+ * Wrapper fetch generik untuk komunikasi API.
+ * Menangani JSON/FormData, token bearer, parsing response, dan error standar.
+ */
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, headers, token, ...rest } = options;
   const isFormDataBody = typeof FormData !== "undefined" && body instanceof FormData;
@@ -115,6 +132,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return payload as T;
 }
 
+/**
+ * Menormalisasi objek error ke pesan string yang ramah ditampilkan di UI.
+ */
 export function getReadableApiError(error: unknown) {
   if (error instanceof ApiError) {
     const firstFieldErrors = error.errors ? Object.values(error.errors)[0] : undefined;

@@ -1,4 +1,7 @@
-﻿export const participants = [
+/**
+ * Konstanta data peserta sederhana untuk kebutuhan placeholder/demo.
+ */
+export const participants = [
   {
     id: 1,
     name: "Ahmad Rizky",

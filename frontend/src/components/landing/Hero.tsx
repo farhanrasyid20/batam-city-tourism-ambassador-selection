@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { GoldButton } from "../../components/ui/GoldButton";
 import { useLandingPageContent } from "../../lib/landing-page-content";
 
+/**
+ * Section hero beranda yang menampilkan identitas event,
+ * CTA utama, dan visual pembuka halaman.
+ */
 export default function Hero() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);

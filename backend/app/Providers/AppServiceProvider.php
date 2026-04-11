@@ -4,6 +4,10 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
+/**
+ * Root service provider aplikasi.
+ * Menjadi tempat registrasi dependency dan bootstrap konfigurasi global.
+ */
 class AppServiceProvider extends ServiceProvider
 {
     /**

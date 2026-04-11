@@ -14,6 +14,10 @@ import {
   isParticipantEligibleForScoreStage,
 } from "../../../../data/mockData";
 
+/**
+ * Dashboard utama juri.
+ * Menampilkan ringkasan profil juri, jumlah peserta relevan, dan akses cepat ke penilaian.
+ */
 export default function JudgeDashboardPage() {
   const { user, participantList, judgeList } = useApp();
   const router = useRouter();

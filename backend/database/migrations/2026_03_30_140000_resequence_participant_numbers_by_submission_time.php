@@ -3,6 +3,10 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Migration definition.
+ * Applies and rolls back schema changes for this migration file.
+ */
 return new class extends Migration
 {
     public function up(): void

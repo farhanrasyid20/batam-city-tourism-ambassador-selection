@@ -3,6 +3,9 @@
 import { apiRequest } from "./api";
 import type { Score } from "../data/mockData";
 
+/**
+ * Kontrak API skor juri untuk fetch dan submit nilai per stage.
+ */
 export type BackendJudgeScoreStage = "Audition" | "Camp" | "Grand Final";
 export type BackendJudgeScoreType = "official" | "mentor_observation";
 
@@ -43,6 +46,9 @@ export type SubmitJudgeScoreResponse = {
   data: BackendJudgeScore;
 };
 
+/**
+ * Mengambil daftar skor juri dengan filter opsional (stage/peserta/juri).
+ */
 export function fetchJudgeScores(
   token: string,
   params?: {
@@ -66,6 +72,9 @@ export function fetchJudgeScores(
   });
 }
 
+/**
+ * Mengirim skor juri untuk seorang peserta pada stage tertentu.
+ */
 export function submitJudgeScore(token: string, payload: SubmitJudgeScorePayload) {
   return apiRequest<SubmitJudgeScoreResponse>("/judge/scores", {
     method: "POST",

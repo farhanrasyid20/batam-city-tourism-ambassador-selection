@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Admin module file.
+ * Handles admin page/component logic for the Duta Wisata management area.
+ */
+
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useApp } from "../../../../context/AppContext";
 import ProgressChecklistSection from "./components/ProgressChecklistSection";
@@ -1447,3 +1453,4 @@ export default function AdminScoresPage() {
     </div>
   );
 }
+

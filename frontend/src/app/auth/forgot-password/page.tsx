@@ -8,6 +8,10 @@ import { GoldButton } from "../../../components/ui/GoldButton";
 import { getReadableApiError } from "../../../lib/api";
 import { resetForgotPassword } from "../../../lib/auth-api";
 
+/**
+ * Halaman reset password peserta berbasis email.
+ * Mengelola validasi input, kirim permintaan reset ke backend, lalu redirect ke login saat sukses.
+ */
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -21,6 +25,10 @@ export default function ForgotPasswordPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  /**
+   * Menangani submit form reset password.
+   * Validasi dilakukan di client sebelum request dikirim ke API.
+   */
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
