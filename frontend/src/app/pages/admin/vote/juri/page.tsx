@@ -7,14 +7,14 @@
 
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Trophy, Medal, CheckCircle, Save } from "lucide-react";
+import { Trophy, Medal, Save, PlusCircle } from "lucide-react";
 import GoldCard from "../../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../../components/ui/GoldButton";
 import { useApp } from "../../../../../context/AppContext";
 import { getParticipantSelectionStage } from "../../../../../data/mockData";
 import { resolveApiAssetUrl, getReadableApiError } from "../../../../../lib/api";
 import { getParticipantAuthSession } from "../../../../../lib/auth-storage";
-import { fetchJudgeScoreRecap } from "../../../../../lib/judge-score-recap-api";
+import { fetchJudgeScoreRecap, updateJudgeScoreAdjustment } from "../../../../../lib/judge-score-recap-api";
 import { updateJuryWinners } from "../../../../../lib/auth-api";
 
 type RankValue = 1 | 2 | 3;
@@ -28,6 +28,23 @@ type RankedCandidate = {
   instagramHandle: string;
   totalScore: number;
 };
+
+type RecapRow = {
+  participant_id: string;
+  participant_number: string;
+  grand_final_average: number;
+  final_score: number;
+  final_score_base: number;
+  admin_score_adjustment: number;
+  admin_score_adjustment_note: string | null;
+};
+
+function parseParticipantUserId(participantId: string): number | null {
+  const raw = participantId.replace(/^P_API_/i, "").trim();
+  if (!raw) return null;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 function toTitleCase(value: string) {
   return value
@@ -93,14 +110,10 @@ export default function AdminVoteJuryPage() {
     setJudgeEncikWinnerList,
     judgePuanWinnerList,
     setJudgePuanWinnerList,
-    judgePairRankingList,
-    setJudgePairRankingList,
     judgeEncikPublished,
     setJudgeEncikPublished,
     judgePuanPublished,
     setJudgePuanPublished,
-    judgePairPublished,
-    setJudgePairPublished,
     judgeEncikDisplayMode,
     setJudgeEncikDisplayMode,
     judgePuanDisplayMode,
@@ -116,7 +129,6 @@ export default function AdminVoteJuryPage() {
 
   const [draftEncikWinners, setDraftEncikWinners] = useState(judgeEncikWinnerList);
   const [draftPuanWinners, setDraftPuanWinners] = useState(judgePuanWinnerList);
-  const [draftPairRankings, setDraftPairRankings] = useState(judgePairRankingList);
 
   const token = useMemo(() => getParticipantAuthSession()?.token ?? "", []);
 
@@ -124,12 +136,10 @@ export default function AdminVoteJuryPage() {
     overrides?: Partial<{
       judge_encik_published: boolean;
       judge_puan_published: boolean;
-      judge_pair_published: boolean;
       judge_encik_display_mode: "name_only" | "name_with_score";
       judge_puan_display_mode: "name_only" | "name_with_score";
       judge_encik_winners: typeof draftEncikWinners;
       judge_puan_winners: typeof draftPuanWinners;
-      judge_pair_rankings: typeof draftPairRankings;
     }>,
     successMessage?: string
   ) => {
@@ -141,12 +151,10 @@ export default function AdminVoteJuryPage() {
     const payload = {
       judge_encik_published: overrides?.judge_encik_published ?? judgeEncikPublished,
       judge_puan_published: overrides?.judge_puan_published ?? judgePuanPublished,
-      judge_pair_published: overrides?.judge_pair_published ?? judgePairPublished,
       judge_encik_display_mode: overrides?.judge_encik_display_mode ?? judgeEncikDisplayMode,
       judge_puan_display_mode: overrides?.judge_puan_display_mode ?? judgePuanDisplayMode,
       judge_encik_winners: overrides?.judge_encik_winners ?? draftEncikWinners,
       judge_puan_winners: overrides?.judge_puan_winners ?? draftPuanWinners,
-      judge_pair_rankings: overrides?.judge_pair_rankings ?? draftPairRankings,
     } as const;
 
     try {
@@ -156,16 +164,13 @@ export default function AdminVoteJuryPage() {
 
       setJudgeEncikPublished(Boolean(response.data.judge_encik_published));
       setJudgePuanPublished(Boolean(response.data.judge_puan_published));
-      setJudgePairPublished(Boolean(response.data.judge_pair_published));
       setJudgeEncikDisplayMode(response.data.judge_encik_display_mode);
       setJudgePuanDisplayMode(response.data.judge_puan_display_mode);
       setJudgeEncikWinnerList((response.data.judge_encik_winners ?? []) as typeof draftEncikWinners);
       setJudgePuanWinnerList((response.data.judge_puan_winners ?? []) as typeof draftPuanWinners);
-      setJudgePairRankingList((response.data.judge_pair_rankings ?? []) as typeof draftPairRankings);
 
       setDraftEncikWinners((response.data.judge_encik_winners ?? []) as typeof draftEncikWinners);
       setDraftPuanWinners((response.data.judge_puan_winners ?? []) as typeof draftPuanWinners);
-      setDraftPairRankings((response.data.judge_pair_rankings ?? []) as typeof draftPairRankings);
 
       setJudgeWinnerList(
         [
@@ -178,8 +183,7 @@ export default function AdminVoteJuryPage() {
 
       syncLegacyAggregateSettings(
         Boolean(response.data.judge_encik_published),
-        Boolean(response.data.judge_puan_published),
-        Boolean(response.data.judge_pair_published)
+        Boolean(response.data.judge_puan_published)
       );
 
       setNotice(successMessage || response.message || "Perubahan juara juri berhasil disimpan.");
@@ -194,7 +198,6 @@ export default function AdminVoteJuryPage() {
 
   useEffect(() => setDraftEncikWinners(judgeEncikWinnerList), [judgeEncikWinnerList]);
   useEffect(() => setDraftPuanWinners(judgePuanWinnerList), [judgePuanWinnerList]);
-  useEffect(() => setDraftPairRankings(judgePairRankingList), [judgePairRankingList]);
 
   const finalCandidates = useMemo(() => {
     return participantList.filter((participant) => {
@@ -208,9 +211,11 @@ export default function AdminVoteJuryPage() {
     [voteCandidateList]
   );
 
-  const [recapRows, setRecapRows] = useState<
-    Array<{ participant_id: string; participant_number: string; grand_final_average: number }>
-  >([]);
+  const [recapRows, setRecapRows] = useState<RecapRow[]>([]);
+  const [adjustParticipantId, setAdjustParticipantId] = useState("");
+  const [adjustmentValue, setAdjustmentValue] = useState("0");
+  const [adjustmentNote, setAdjustmentNote] = useState("");
+  const [adjustmentSaving, setAdjustmentSaving] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -220,14 +225,18 @@ export default function AdminVoteJuryPage() {
       try {
         setLoading(true);
         setError("");
-        const recap = await fetchJudgeScoreRecap(token);
+        const recap = await fetchJudgeScoreRecap(token, { force: true, maxAgeMs: 0 });
         if (cancelled) return;
 
         setRecapRows(
           recap.data.map((row) => ({
             participant_id: row.participant_id,
             participant_number: row.participant_number,
-            grand_final_average: row.grand_final_average,
+            grand_final_average: Number(row.grand_final_average ?? 0),
+            final_score: Number(row.final_score ?? 0),
+            final_score_base: Number(row.final_score_base ?? row.final_score ?? 0),
+            admin_score_adjustment: Number(row.admin_score_adjustment ?? 0),
+            admin_score_adjustment_note: row.admin_score_adjustment_note ?? null,
           }))
         );
       } catch (err) {
@@ -250,7 +259,7 @@ export default function AdminVoteJuryPage() {
     return finalCandidates
       .map((participant) => {
         const recap = byParticipantId.get(participant.id) ?? byNumber.get(participant.number);
-        const totalScore = Math.round(((recap?.grand_final_average ?? 0) as number) * 100) / 100;
+        const totalScore = Math.round(((recap?.final_score ?? recap?.grand_final_average ?? 0) as number) * 100) / 100;
         return {
           participantId: participant.id,
           number: participant.number,
@@ -274,6 +283,24 @@ export default function AdminVoteJuryPage() {
     () => new Map(computedRanking.map((item) => [item.participantId, item.totalScore] as const)),
     [computedRanking]
   );
+  const recapByParticipant = useMemo(
+    () => new Map(recapRows.map((row) => [row.participant_id, row] as const)),
+    [recapRows]
+  );
+
+  useEffect(() => {
+    if (!adjustParticipantId && computedRanking[0]) {
+      setAdjustParticipantId(computedRanking[0].participantId);
+    }
+  }, [adjustParticipantId, computedRanking]);
+
+  useEffect(() => {
+    if (!adjustParticipantId) return;
+    const selected = recapByParticipant.get(adjustParticipantId);
+    if (!selected) return;
+    setAdjustmentValue(String(selected.admin_score_adjustment ?? 0));
+    setAdjustmentNote(selected.admin_score_adjustment_note ?? "");
+  }, [adjustParticipantId, recapByParticipant]);
 
   const computedEncikRanking = useMemo(() => computedRanking.filter((item) => item.gender === "Encik"), [computedRanking]);
   const computedPuanRanking = useMemo(() => computedRanking.filter((item) => item.gender === "Puan"), [computedRanking]);
@@ -401,27 +428,6 @@ export default function AdminVoteJuryPage() {
     setJudgeWinnerList([...draftEncikWinners, ...nextPuan].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3));
   };
 
-  const setPairByRank = (rank: RankValue, key: "encikParticipantId" | "puanParticipantId", participantId: string) => {
-    const existing = draftPairRankings.find((entry) => entry.rank === rank);
-    const next = existing
-      ? { ...existing, [key]: participantId }
-      : {
-          rank,
-          encikParticipantId: key === "encikParticipantId" ? participantId : "",
-          puanParticipantId: key === "puanParticipantId" ? participantId : "",
-        };
-    const withoutCurrent = draftPairRankings.filter((entry) => entry.rank !== rank);
-    const nextPairs = [...withoutCurrent, next].sort((a, b) => a.rank - b.rank);
-    setDraftPairRankings(nextPairs);
-    setJudgePairRankingList(nextPairs);
-  };
-
-  const clearPairByRank = (rank: RankValue) => {
-    const nextPairs = draftPairRankings.filter((entry) => entry.rank !== rank);
-    setDraftPairRankings(nextPairs);
-    setJudgePairRankingList(nextPairs);
-  };
-
   const saveEncik = async () => {
     await persistJurySettings(
       {
@@ -440,21 +446,56 @@ export default function AdminVoteJuryPage() {
     );
   };
 
-  const savePairs = async () => {
-    await persistJurySettings(
-      {
-        judge_pair_rankings: draftPairRankings,
-      },
-      "Pasangan juara tersimpan ke database."
-    );
+  const handleSaveAdjustment = async () => {
+    if (!token) {
+      setError("Sesi login tidak ditemukan. Silakan login ulang.");
+      return;
+    }
+    const participantUserId = parseParticipantUserId(adjustParticipantId);
+    if (!participantUserId) {
+      setError("Pilih peserta final terlebih dahulu.");
+      return;
+    }
+
+    const parsedAdjustment = Number.parseFloat(adjustmentValue || "0");
+    if (!Number.isFinite(parsedAdjustment)) {
+      setError("Nilai tambahan admin tidak valid.");
+      return;
+    }
+
+    try {
+      setAdjustmentSaving(true);
+      setError("");
+      const response = await updateJudgeScoreAdjustment(token, {
+        participant_user_id: participantUserId,
+        admin_score_adjustment: parsedAdjustment,
+        admin_score_adjustment_note: adjustmentNote.trim() || null,
+      });
+      setNotice(response.message || "Nilai tambahan admin berhasil disimpan.");
+      const recap = await fetchJudgeScoreRecap(token, { force: true, maxAgeMs: 0 });
+      setRecapRows(
+        recap.data.map((row) => ({
+          participant_id: row.participant_id,
+          participant_number: row.participant_number,
+          grand_final_average: Number(row.grand_final_average ?? 0),
+          final_score: Number(row.final_score ?? 0),
+          final_score_base: Number(row.final_score_base ?? row.final_score ?? 0),
+          admin_score_adjustment: Number(row.admin_score_adjustment ?? 0),
+          admin_score_adjustment_note: row.admin_score_adjustment_note ?? null,
+        }))
+      );
+    } catch (err) {
+      setError(getReadableApiError(err));
+    } finally {
+      setAdjustmentSaving(false);
+    }
   };
 
   const syncLegacyAggregateSettings = (
     nextEncikPublished: boolean,
-    nextPuanPublished: boolean,
-    nextPairPublished: boolean
+    nextPuanPublished: boolean
   ) => {
-    const nextAnyPublished = nextEncikPublished || nextPuanPublished || nextPairPublished;
+    const nextAnyPublished = nextEncikPublished || nextPuanPublished;
     setJudgeWinnersPublished(nextAnyPublished);
     setJudgeWinnerDisplayMode(
       judgeEncikDisplayMode === "name_with_score" || judgePuanDisplayMode === "name_with_score"
@@ -468,10 +509,10 @@ export default function AdminVoteJuryPage() {
     if (!judgeEncikPublished) {
       setJudgeEncikWinnerList(draftEncikWinners);
       setJudgeEncikPublished(true);
-      syncLegacyAggregateSettings(true, judgePuanPublished, judgePairPublished);
+      syncLegacyAggregateSettings(true, judgePuanPublished);
     } else {
       setJudgeEncikPublished(false);
-      syncLegacyAggregateSettings(false, judgePuanPublished, judgePairPublished);
+      syncLegacyAggregateSettings(false, judgePuanPublished);
     }
 
     await persistJurySettings(
@@ -490,10 +531,10 @@ export default function AdminVoteJuryPage() {
     if (!judgePuanPublished) {
       setJudgePuanWinnerList(draftPuanWinners);
       setJudgePuanPublished(true);
-      syncLegacyAggregateSettings(judgeEncikPublished, true, judgePairPublished);
+      syncLegacyAggregateSettings(judgeEncikPublished, true);
     } else {
       setJudgePuanPublished(false);
-      syncLegacyAggregateSettings(judgeEncikPublished, false, judgePairPublished);
+      syncLegacyAggregateSettings(judgeEncikPublished, false);
     }
 
     await persistJurySettings(
@@ -507,36 +548,10 @@ export default function AdminVoteJuryPage() {
     );
   };
 
-  const togglePublishPair = async () => {
-    const nextPublished = !judgePairPublished;
-    if (!judgePairPublished) {
-      setJudgePairRankingList(draftPairRankings);
-      setJudgePairPublished(true);
-      syncLegacyAggregateSettings(judgeEncikPublished, judgePuanPublished, true);
-    } else {
-      setJudgePairPublished(false);
-      syncLegacyAggregateSettings(judgeEncikPublished, judgePuanPublished, false);
-    }
-
-    await persistJurySettings(
-      {
-        judge_pair_published: nextPublished,
-        judge_pair_rankings: draftPairRankings,
-      },
-      nextPublished
-        ? "Publikasi Pasangan Juara diaktifkan."
-        : "Publikasi Pasangan Juara dinonaktifkan."
-    );
-  };
-
   const getWinner = (group: "Encik" | "Puan", rank: RankValue) => {
     const source = group === "Encik" ? draftEncikWinners : draftPuanWinners;
     return source.find((winner) => winner.rank === rank);
   };
-
-  const getPair = (rank: RankValue) => draftPairRankings.find((entry) => entry.rank === rank);
-
-  const getParticipantById = (id: string) => finalCandidates.find((participant) => participant.id === id);
 
   const renderRankingPanel = (
     title: string,
@@ -646,7 +661,7 @@ export default function AdminVoteJuryPage() {
           <div>
             <p className="text-sm font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>Status Publikasi Juara Juri</p>
             <p className="text-xs mt-1" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
-              Publikasi dibuat terpisah: Encik, Puan, dan Pasangan Juara.
+              Publikasi dibuat terpisah: Encik dan Puan.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -656,11 +671,58 @@ export default function AdminVoteJuryPage() {
             <button type="button" onClick={togglePublishPuan} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed" style={{ background: judgePuanPublished ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", border: `1px solid ${judgePuanPublished ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)"}`, color: judgePuanPublished ? "#22c55e" : "#ef4444", fontFamily: "var(--font-poppins)", cursor: "pointer" }}>
               {judgePuanPublished ? "Puan: Dipublikasikan" : "Puan: Nonaktif"}
             </button>
-            <button type="button" onClick={togglePublishPair} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed" style={{ background: judgePairPublished ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", border: `1px solid ${judgePairPublished ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)"}`, color: judgePairPublished ? "#22c55e" : "#ef4444", fontFamily: "var(--font-poppins)", cursor: "pointer" }}>
-              {judgePairPublished ? "Pasangan: Dipublikasikan" : "Pasangan: Nonaktif"}
-            </button>
           </div>
         </div>
+      </GoldCard>
+
+      <GoldCard className="mb-6">
+        <h3 className="text-sm font-bold" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
+          Nilai Tambahan Admin
+        </h3>
+        <p className="text-xs mt-2" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+          Tambahkan atau kurangi nilai akhir peserta setelah nilai juri dinyatakan fix.
+        </p>
+        <div className="grid md:grid-cols-4 gap-3 mt-4">
+          <select
+            value={adjustParticipantId}
+            onChange={(event) => setAdjustParticipantId(event.target.value)}
+            className="md:col-span-2 px-3 py-2 rounded-lg text-xs outline-none"
+            style={{ background: "#111", border: "1px solid rgba(212,175,55,0.2)", color: "#F5E6C8" }}
+          >
+            <option value="">Pilih peserta final</option>
+            {computedRanking.map((row) => (
+              <option key={row.participantId} value={row.participantId}>
+                {row.number} - {row.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            step="0.01"
+            value={adjustmentValue}
+            onChange={(event) => setAdjustmentValue(event.target.value)}
+            className="px-3 py-2 rounded-lg text-xs outline-none"
+            style={{ background: "#111", border: "1px solid rgba(212,175,55,0.2)", color: "#F5E6C8" }}
+            placeholder="Contoh: 2.50"
+          />
+          <GoldButton variant="primary" size="sm" onClick={handleSaveAdjustment} disabled={adjustmentSaving || !adjustParticipantId}>
+            <PlusCircle size={14} />
+            {adjustmentSaving ? "Menyimpan..." : "Simpan"}
+          </GoldButton>
+        </div>
+        <textarea
+          rows={3}
+          value={adjustmentNote}
+          onChange={(event) => setAdjustmentNote(event.target.value)}
+          className="w-full mt-3 px-3 py-2 rounded-lg text-xs outline-none"
+          style={{ background: "#111", border: "1px solid rgba(212,175,55,0.2)", color: "#F5E6C8" }}
+          placeholder="Catatan alasan penambahan/pengurangan nilai (opsional)"
+        />
+        {adjustParticipantId && recapByParticipant.get(adjustParticipantId) ? (
+          <p className="text-xs mt-2" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+            Nilai dasar: {Number(recapByParticipant.get(adjustParticipantId)?.final_score_base ?? 0).toFixed(2)} | Tambahan admin: {Number(recapByParticipant.get(adjustParticipantId)?.admin_score_adjustment ?? 0).toFixed(2)} | Nilai akhir: {Number(recapByParticipant.get(adjustParticipantId)?.final_score ?? 0).toFixed(2)}
+          </p>
+        ) : null}
       </GoldCard>
 
       <GoldCard className="mb-6">
@@ -713,59 +775,6 @@ export default function AdminVoteJuryPage() {
 
       {renderRankingPanel("Penetapan Juara Encik 1, 2, 3", computedEncikRanking, "Encik", saveEncik)}
       {renderRankingPanel("Penetapan Juara Puan 1, 2, 3", computedPuanRanking, "Puan", savePuan)}
-
-      <GoldCard>
-        <h3 className="text-sm font-bold mb-4" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>Penetapan Pasangan Juara Versi Juri (Manual)</h3>
-        <div className="space-y-3">
-          {([1, 2, 3] as RankValue[]).map((rank) => {
-            const pair = getPair(rank);
-            const encik = getParticipantById(pair?.encikParticipantId ?? "");
-            const puan = getParticipantById(pair?.puanParticipantId ?? "");
-            return (
-              <div key={`pair-${rank}`} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(212,175,55,0.16)" }}>
-                <p className="text-xs font-semibold mb-3" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>Pasangan Peringkat {rank}</p>
-                <div className="grid md:grid-cols-2 gap-3">
-                  <select value={pair?.encikParticipantId ?? ""} onChange={(event) => setPairByRank(rank, "encikParticipantId", event.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: "#111", border: "1px solid rgba(212,175,55,0.2)", color: "#F5E6C8" }}>
-                    <option value="">Pilih Encik</option>
-                    {finalEncikCandidates.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>{candidate.number} - {getDisplayName("Encik", candidate.name)}</option>
-                    ))}
-                  </select>
-                  <select value={pair?.puanParticipantId ?? ""} onChange={(event) => setPairByRank(rank, "puanParticipantId", event.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: "#111", border: "1px solid rgba(212,175,55,0.2)", color: "#F5E6C8" }}>
-                    <option value="">Pilih Puan</option>
-                    {finalPuanCandidates.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>{candidate.number} - {getDisplayName("Puan", candidate.name)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mt-2">
-                  <button
-                    type="button"
-                    onClick={() => clearPairByRank(rank)}
-                    className="px-3 py-2 rounded-lg text-xs font-semibold"
-                    style={{
-                      background: "rgba(239,68,68,0.12)",
-                      border: "1px solid rgba(239,68,68,0.35)",
-                      color: "#ef4444",
-                      fontFamily: "var(--font-poppins)",
-                    }}
-                  >
-                    Hapus Pasangan Ini
-                  </button>
-                </div>
-                <p className="text-xs mt-2" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
-                  {encik ? `${encik.number} - ${getDisplayName("Encik", encik.name)}` : "Encik belum dipilih"} | {puan ? `${puan.number} - ${getDisplayName("Puan", puan.name)}` : "Puan belum dipilih"}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-4">
-          <GoldButton variant="primary" size="sm" onClick={savePairs} disabled={saving}>
-            <CheckCircle size={14} /> Simpan Pasangan Juara
-          </GoldButton>
-        </div>
-      </GoldCard>
 
       {saving ? <p className="text-xs mt-4" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>Menyimpan ke database...</p> : null}
       {notice ? <p className="text-xs mt-4" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>{notice}</p> : null}

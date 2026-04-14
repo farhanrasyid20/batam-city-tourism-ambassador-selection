@@ -6,6 +6,7 @@ import React from "react";
 import { Upload } from "lucide-react";
 import GoldCard from "../../../../../components/dashboard/GoldCard";
 import type { ParticipantResources } from "../../../../../context/AppContext";
+import { resolveApiAssetUrl } from "../../../../../lib/api";
 import type {
   ResourceDocumentField,
   ResourceImageField,
@@ -24,6 +25,23 @@ type TextSectionCardProps = {
   clearSingleImage: (key: ResourceImageField, fallbackCaption: string) => void;
 };
 
+function resolveResourcePreviewImage(value?: string | null): string {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "";
+  if (
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("blob:")
+  ) {
+    return normalized;
+  }
+  if (normalized.startsWith("/storage/") || normalized.startsWith("storage/")) {
+    return resolveApiAssetUrl(normalized) ?? normalized;
+  }
+  return normalized;
+}
+
 export default function TextSectionCard({
   form,
   section,
@@ -34,6 +52,9 @@ export default function TextSectionCard({
   updateSingleImage,
   clearSingleImage,
 }: TextSectionCardProps) {
+  const twibbonThumbnailPreview = resolveResourcePreviewImage(form.twibbonThumbnail.imageUrl);
+  const whatsappThumbnailPreview = resolveResourcePreviewImage(form.whatsappThumbnail.imageUrl);
+
   return (
     <GoldCard glow>
       <div className="flex items-center gap-2 mb-5">
@@ -164,8 +185,8 @@ export default function TextSectionCard({
               className="rounded-xl overflow-hidden mb-3"
               style={{ border: "1px solid rgba(212,175,55,0.15)", background: "#101010", minHeight: 160 }}
             >
-              {form.twibbonThumbnail.imageUrl ? (
-                <img src={form.twibbonThumbnail.imageUrl} alt="Thumbnail Twibbon" className="w-full h-40 object-cover" />
+              {twibbonThumbnailPreview ? (
+                <img src={twibbonThumbnailPreview} alt="Thumbnail Twibbon" className="w-full h-40 object-cover" />
               ) : (
                 <div className="h-40 flex items-center justify-center text-xs" style={{ color: "#666", fontFamily: "var(--font-poppins)" }}>
                   Belum ada thumbnail
@@ -220,8 +241,8 @@ export default function TextSectionCard({
               className="rounded-xl overflow-hidden mb-3"
               style={{ border: "1px solid rgba(212,175,55,0.15)", background: "#101010", minHeight: 160 }}
             >
-              {form.whatsappThumbnail.imageUrl ? (
-                <img src={form.whatsappThumbnail.imageUrl} alt="Thumbnail Grup WhatsApp" className="w-full h-40 object-cover" />
+              {whatsappThumbnailPreview ? (
+                <img src={whatsappThumbnailPreview} alt="Thumbnail Grup WhatsApp" className="w-full h-40 object-cover" />
               ) : (
                 <div className="h-40 flex items-center justify-center text-xs" style={{ color: "#666", fontFamily: "var(--font-poppins)" }}>
                   Belum ada thumbnail

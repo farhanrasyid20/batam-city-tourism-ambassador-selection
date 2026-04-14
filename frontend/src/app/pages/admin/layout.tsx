@@ -74,8 +74,10 @@ const adminNavItems = [
     label: "Manajemen Konten",
     icon: <Newspaper size={16} />,
     children: [
-      { label: "Kelola Berita", href: "/pages/admin/news", icon: <Newspaper size={14} /> },
+      { label: "Branding & Identitas", href: "/pages/admin/branding", icon: <ShieldCheck size={14} /> },
       { label: "Landing Page", href: "/pages/admin/landing-page", icon: <BookOpen size={14} /> },
+      { label: "Berita", href: "/pages/admin/news", icon: <Newspaper size={14} /> },
+      { label: "Partner/Sponsor", href: "/pages/admin/partners", icon: <Users size={14} /> },
       { label: "FAQ", href: "/pages/admin/faq", icon: <Newspaper size={14} /> },
       { label: "Feedback", href: "/pages/admin/feedback", icon: <MessageSquare size={14} /> },
     ],
@@ -129,8 +131,10 @@ export default function AdminPagesLayout({
             .join(" - ");
 
           const status = (item.selection_status ?? "Pending") as Participant["status"];
-          const eliminatedInAudition = Boolean(item.eliminated_in_audition) || status === "Rejected";
-          const normalizedStatus: Participant["status"] = eliminatedInAudition ? "Rejected" : status;
+          const eliminatedInAudition =
+            Boolean(item.eliminated_in_audition) ||
+            (status === "Rejected" && item.selection_stage === "Audition");
+          const normalizedStatus: Participant["status"] = status;
           const generatedCode = normalizeParticipantCode(
             item.participant_code,
             item.audition_number,
@@ -182,7 +186,7 @@ export default function AdminPagesLayout({
             achievement: item.achievement ?? undefined,
             photo: resolveApiAssetUrl(item.photo) ?? "/default-avatar.svg",
             status: normalizedStatus,
-            selectionStage: eliminatedInAudition ? "Audition" : item.selection_stage ?? undefined,
+            selectionStage: item.selection_stage ?? (eliminatedInAudition ? "Audition" : undefined),
             registeredAt: item.registered_at ?? new Date().toISOString().slice(0, 10),
             documents:
               item.documents?.map((doc) => ({
@@ -196,7 +200,10 @@ export default function AdminPagesLayout({
               })) ?? [],
             submittedToAdmin: item.submitted_to_admin ?? false,
             eliminatedInAudition,
-            rejectionReason: eliminatedInAudition ? (item.selection_status_note ?? undefined) : undefined,
+            rejectionReason:
+              eliminatedInAudition || status === "Rejected"
+                ? (item.selection_status_note ?? undefined)
+                : undefined,
             scores: [],
           };
         });

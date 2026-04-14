@@ -6,18 +6,20 @@
  */
 
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
-import { getReadableApiError } from "../../../../lib/api";
+import { getReadableApiError, resolveApiAssetUrl } from "../../../../lib/api";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
-import PartnershipEditor from "./components/PartnershipEditor";
 import {
   defaultLandingPageContent,
+  getScheduleDateLabel,
   saveLandingPageContent,
+  uploadLandingGuidePdf,
   useLandingPageContent,
   type LandingPageContent,
+  type LandingScheduleItem,
 } from "../../../../lib/landing-page-content";
 
 const inputStyle: React.CSSProperties = {
@@ -116,18 +118,33 @@ export default function AdminLandingPageContentPage() {
   const landingPageContent = useLandingPageContent();
   const [form, setForm] = useState<LandingPageContent>(defaultLandingPageContent);
   const [saveMessage, setSaveMessage] = useState("");
+  const [isUploadingGuidePdf, setIsUploadingGuidePdf] = useState(false);
+  const [guidePdfDraft, setGuidePdfDraft] = useState<{ file: File; previewUrl: string } | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     hero: true,
     about: true,
     registration: true,
     winners: true,
     requirements: true,
-    partnership: true,
   });
 
   useEffect(() => {
     setForm(landingPageContent);
   }, [landingPageContent]);
+
+  useEffect(() => {
+    return () => {
+      if (guidePdfDraft?.previewUrl) {
+        URL.revokeObjectURL(guidePdfDraft.previewUrl);
+      }
+    };
+  }, [guidePdfDraft]);
+
+  const currentGuidePdfUrl = useMemo(() => {
+    const raw = form.about.guidePdfUrl.trim();
+    if (!raw) return "";
+    return resolveApiAssetUrl(raw) ?? raw;
+  }, [form.about.guidePdfUrl]);
 
   const updateHero = (key: keyof LandingPageContent["hero"], value: string) => {
     setForm((prev) => ({ ...prev, hero: { ...prev.hero, [key]: value } }));
@@ -149,8 +166,8 @@ export default function AdminLandingPageContentPage() {
 
   const updateScheduleItem = (
     index: number,
-    field: "activity" | "date",
-    value: string
+    field: keyof LandingScheduleItem,
+    value: string | boolean
   ) => {
     updateRegistration(
       "scheduleItems",
@@ -167,6 +184,11 @@ export default function AdminLandingPageContentPage() {
         id: `schedule-${Date.now()}`,
         activity: "",
         date: "",
+        startDate: "",
+        endDate: "",
+        isExtended: false,
+        extendedUntil: "",
+        extensionNote: "",
       },
     ]);
   };
@@ -192,6 +214,8 @@ export default function AdminLandingPageContentPage() {
           about: {
             ...form.about,
             missionItems: form.about.missionItems.map((item) => item.trim()).filter(Boolean),
+            guidePdfUrl:
+              form.about.guidePdfUrl.trim() || defaultLandingPageContent.about.guidePdfUrl,
           },
           registration: {
             ...form.registration,
@@ -199,18 +223,74 @@ export default function AdminLandingPageContentPage() {
             scheduleItems: form.registration.scheduleItems
               .map((item, index) => ({
                 ...item,
-                id: item.id || `schedule-${index + 1}`,
+                id: `schedule-${index + 1}`,
                 activity: item.activity.trim(),
-                date: item.date.trim(),
+                date: getScheduleDateLabel(item),
+                startDate: (item.startDate ?? "").trim(),
+                endDate: (item.endDate ?? "").trim(),
+                isExtended: Boolean(item.isExtended),
+                extendedUntil: (item.extendedUntil ?? "").trim(),
+                extensionNote: (item.extensionNote ?? "").trim(),
               }))
-              .filter((item) => item.activity || item.date),
+              .filter((item) => item.activity || item.date || item.startDate || item.endDate),
           },
+          partnership: form.partnership,
         },
         token
       );
       setSaveMessage("Konten landing page berhasil diperbarui.");
     } catch (error) {
       setSaveMessage(getReadableApiError(error));
+    }
+  };
+
+  const handleGuidePdfSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+
+    if (!file) return;
+    if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
+      setSaveMessage("File harus berformat PDF.");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setGuidePdfDraft((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return { file, previewUrl };
+    });
+    setSaveMessage("Pratinjau siap. Silakan review PDF, lalu klik Upload PDF jika sudah sesuai.");
+  };
+
+  const clearGuidePdfDraft = () => {
+    setGuidePdfDraft((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+  };
+
+  const handleGuidePdfUpload = async () => {
+    if (!guidePdfDraft?.file) {
+      setSaveMessage("Pilih PDF dulu untuk direview.");
+      return;
+    }
+
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setSaveMessage("Sesi login tidak ditemukan.");
+      return;
+    }
+
+    setIsUploadingGuidePdf(true);
+    try {
+      const updated = await uploadLandingGuidePdf(guidePdfDraft.file, token);
+      setForm(updated);
+      clearGuidePdfDraft();
+      setSaveMessage("File buku panduan berhasil diupload dan langsung dipakai di landing public.");
+    } catch (error) {
+      setSaveMessage(getReadableApiError(error));
+    } finally {
+      setIsUploadingGuidePdf(false);
     }
   };
 
@@ -342,6 +422,136 @@ export default function AdminLandingPageContentPage() {
               addLabel="Tambah Misi"
             />
           </div>
+          <div className="mt-4">
+            <FieldLabel>Path / URL PDF Buku Panduan (Landing Public)</FieldLabel>
+            <input
+              value={form.about.guidePdfUrl}
+              onChange={(event) => updateAbout("guidePdfUrl", event.target.value)}
+              placeholder="/participant-resources/Buku-Panduan-Duta-Wisata-2027.pdf atau https://..."
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+              style={inputStyle}
+            />
+            <p className="text-xs mt-2" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+              Dipakai tombol Buka PDF, Unduh PDF, dan viewer buku panduan di landing public.
+            </p>
+          </div>
+          <div className="mt-3">
+            <FieldLabel>Upload File PDF Buku Panduan</FieldLabel>
+            <div className="flex flex-wrap items-center gap-3">
+              <label
+                className="px-4 py-2.5 rounded-xl text-sm inline-flex items-center justify-center"
+                style={{
+                  background: "rgba(212,175,55,0.1)",
+                  border: "1px solid rgba(212,175,55,0.25)",
+                  color: "#D4AF37",
+                  fontFamily: "var(--font-poppins)",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={handleGuidePdfSelect}
+                  disabled={isUploadingGuidePdf}
+                  className="hidden"
+                />
+                Pilih PDF Untuk Direview
+              </label>
+              <button
+                type="button"
+                onClick={handleGuidePdfUpload}
+                disabled={isUploadingGuidePdf || !guidePdfDraft}
+                className="px-4 py-2.5 rounded-xl text-sm"
+                style={{
+                  background: "linear-gradient(135deg, #F5D06F, #C8A24D)",
+                  border: "1px solid rgba(212,175,55,0.35)",
+                  color: "#121212",
+                  fontFamily: "var(--font-poppins)",
+                  cursor: isUploadingGuidePdf || !guidePdfDraft ? "not-allowed" : "pointer",
+                  opacity: isUploadingGuidePdf || !guidePdfDraft ? 0.6 : 1,
+                }}
+              >
+                {isUploadingGuidePdf ? "Mengupload PDF..." : "Upload PDF"}
+              </button>
+              <button
+                type="button"
+                onClick={clearGuidePdfDraft}
+                disabled={isUploadingGuidePdf || !guidePdfDraft}
+                className="px-4 py-2.5 rounded-xl text-sm"
+                style={{
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  color: "#FCA5A5",
+                  fontFamily: "var(--font-poppins)",
+                  cursor: isUploadingGuidePdf || !guidePdfDraft ? "not-allowed" : "pointer",
+                  opacity: isUploadingGuidePdf || !guidePdfDraft ? 0.6 : 1,
+                }}
+              >
+                Batal
+              </button>
+              <span className="text-xs" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                Maksimal 20MB. Setelah upload berhasil, URL akan otomatis diperbarui.
+              </span>
+            </div>
+            {guidePdfDraft ? (
+              <p className="text-xs mt-2" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>
+                File dipilih: {guidePdfDraft.file.name}
+              </p>
+            ) : null}
+          </div>
+          <div className="mt-4 grid lg:grid-cols-2 gap-4">
+            <div
+              className="rounded-2xl p-3"
+              style={{ border: "1px solid rgba(212,175,55,0.2)", background: "rgba(255,255,255,0.02)" }}
+            >
+              <p className="text-xs mb-2" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>
+                PDF Aktif Saat Ini
+              </p>
+              {currentGuidePdfUrl ? (
+                <>
+                  <iframe
+                    src={currentGuidePdfUrl}
+                    title="PDF aktif saat ini"
+                    className="w-full h-[360px] rounded-xl"
+                    style={{ border: "1px solid rgba(212,175,55,0.2)", background: "#111" }}
+                  />
+                  <a
+                    href={currentGuidePdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex mt-2 text-xs"
+                    style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
+                  >
+                    Buka PDF aktif di tab baru
+                  </a>
+                </>
+              ) : (
+                <p className="text-xs" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                  Belum ada PDF aktif.
+                </p>
+              )}
+            </div>
+            <div
+              className="rounded-2xl p-3"
+              style={{ border: "1px solid rgba(212,175,55,0.2)", background: "rgba(255,255,255,0.02)" }}
+            >
+              <p className="text-xs mb-2" style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)" }}>
+                Preview File Baru (Sebelum Upload)
+              </p>
+              {guidePdfDraft ? (
+                <iframe
+                  src={guidePdfDraft.previewUrl}
+                  title="Preview file baru"
+                  className="w-full h-[360px] rounded-xl"
+                  style={{ border: "1px solid rgba(212,175,55,0.2)", background: "#111" }}
+                />
+              ) : (
+                <p className="text-xs" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                  Pilih file PDF dulu untuk melihat pratinjau.
+                </p>
+              )}
+            </div>
+          </div>
             </>
           ) : null}
         </GoldCard>
@@ -383,7 +593,12 @@ export default function AdminLandingPageContentPage() {
 
             <div className="space-y-3">
               {form.registration.scheduleItems.map((item, index) => (
-                <div key={item.id} className="grid lg:grid-cols-[1fr_0.8fr_auto] gap-3 items-start">
+                <div
+                  key={`${item.id || "schedule"}-${index}`}
+                  className="rounded-2xl p-3 space-y-3"
+                  style={{ border: "1px solid rgba(212,175,55,0.15)", background: "rgba(255,255,255,0.02)" }}
+                >
+                  <div className="grid lg:grid-cols-[1fr_0.8fr_auto] gap-3 items-start">
                   <input
                     value={item.activity}
                     onChange={(event) => updateScheduleItem(index, "activity", event.target.value)}
@@ -394,7 +609,7 @@ export default function AdminLandingPageContentPage() {
                   <input
                     value={item.date}
                     onChange={(event) => updateScheduleItem(index, "date", event.target.value)}
-                    placeholder="Tanggal atau rentang jadwal"
+                    placeholder="Label jadwal manual (opsional)"
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                     style={inputStyle}
                   />
@@ -411,6 +626,55 @@ export default function AdminLandingPageContentPage() {
                   >
                     <Trash2 size={14} />
                   </button>
+                </div>
+                  <div className="grid lg:grid-cols-3 gap-3">
+                    <input
+                      type="date"
+                      value={item.startDate ?? ""}
+                      onChange={(event) => updateScheduleItem(index, "startDate", event.target.value)}
+                      className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                      style={inputStyle}
+                    />
+                    <input
+                      type="date"
+                      value={item.endDate ?? ""}
+                      onChange={(event) => updateScheduleItem(index, "endDate", event.target.value)}
+                      className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                      style={inputStyle}
+                    />
+                    <label
+                      className="px-4 py-3 rounded-xl text-sm flex items-center gap-2"
+                      style={{ ...inputStyle, cursor: "pointer" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(item.isExtended)}
+                        onChange={(event) => updateScheduleItem(index, "isExtended", event.target.checked)}
+                      />
+                      Jadwal diperpanjang
+                    </label>
+                  </div>
+                  {item.isExtended ? (
+                    <div className="grid lg:grid-cols-2 gap-3">
+                      <input
+                        type="date"
+                        value={item.extendedUntil ?? ""}
+                        onChange={(event) => updateScheduleItem(index, "extendedUntil", event.target.value)}
+                        className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                        style={inputStyle}
+                      />
+                      <input
+                        value={item.extensionNote ?? ""}
+                        onChange={(event) => updateScheduleItem(index, "extensionNote", event.target.value)}
+                        placeholder="Alasan perpanjangan (opsional)"
+                        className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                        style={inputStyle}
+                      />
+                    </div>
+                  ) : null}
+                  <p className="text-xs" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
+                    Tampilan publik: {getScheduleDateLabel(item)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -458,37 +722,6 @@ export default function AdminLandingPageContentPage() {
                     />
                   </div>
                 ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.35em] mb-1" style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}>
-                Kategori Pasangan
-              </p>
-              <p className="text-xs mb-3" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
-                Bagian ini tetap full width seperti kartu pasangan utama di landing page.
-              </p>
-              <div
-                className="rounded-2xl p-4"
-                style={{
-                  border: "1px solid rgba(212,175,55,0.18)",
-                  background: "rgba(255,255,255,0.02)",
-                }}
-              >
-                <FieldLabel>{form.winnerCategories.pairItem.title}</FieldLabel>
-                <textarea
-                  value={form.winnerCategories.pairItem.description}
-                  onChange={(event) => setForm((prev) => ({
-                    ...prev,
-                    winnerCategories: {
-                      ...prev.winnerCategories,
-                      pairItem: { ...prev.winnerCategories.pairItem, description: event.target.value },
-                    },
-                  }))}
-                  rows={2}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
-                  style={inputStyle}
-                />
               </div>
             </div>
 
@@ -568,26 +801,6 @@ export default function AdminLandingPageContentPage() {
             </div>
           </div>
             </>
-          ) : null}
-        </GoldCard>
-
-        <GoldCard>
-          {renderSectionHeader("partnership", "Partnership")}
-          {openSections.partnership ? (
-            <div className="mt-4">
-          <PartnershipEditor
-            partners={form.partnership.partners}
-            onChange={(partners) =>
-              setForm((prev) => ({
-                ...prev,
-                partnership: {
-                  ...prev.partnership,
-                  partners,
-                },
-              }))
-            }
-          />
-            </div>
           ) : null}
         </GoldCard>
 

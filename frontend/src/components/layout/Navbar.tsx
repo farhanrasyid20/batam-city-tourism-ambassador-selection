@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { GoldButton } from "../ui/GoldButton";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../lib/site-branding-content";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -21,6 +22,7 @@ const navLinks = [
  * serta aksi cepat ke halaman autentikasi dan pendaftaran.
  */
 export default function Navbar() {
+  const branding = useSiteBrandingContent();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -57,10 +59,11 @@ export default function Navbar() {
             onClick={() => setMenuOpen(false)}
           >
             <Image
-              src="/logo1.png"
-              alt="Duta Wisata Batam"
+              src={resolveBrandingAssetUrl(branding.logoMain)}
+              alt={branding.siteNameLine1}
               width={48}
               height={48}
+              unoptimized
               className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 object-contain shrink-0"
               priority
             />
@@ -73,7 +76,7 @@ export default function Navbar() {
                   letterSpacing: "0.08em",
                 }}
               >
-                DUTA WISATA
+                {branding.siteNameLine1}
               </p>
               <p
                 className="text-[9px] sm:text-xs leading-tight truncate"
@@ -83,7 +86,7 @@ export default function Navbar() {
                   opacity: 0.8,
                 }}
               >
-                KOTA BATAM 2026
+                {branding.siteNameLine2}
               </p>
             </div>
           </Link>

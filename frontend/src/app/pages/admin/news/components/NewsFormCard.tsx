@@ -7,6 +7,7 @@ import Image from "next/image";
 import { ImagePlus, Save, X } from "lucide-react";
 import GoldCard from "../../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../../components/ui/GoldButton";
+import { resolveApiAssetUrl } from "../../../../../lib/api";
 import { categories } from "./config";
 import TinyMceEditor from "./TinyMceEditor";
 import type { NewsFormState } from "./types";
@@ -34,6 +35,8 @@ export default function NewsFormCard({
   handleSave,
   resetForm,
 }: NewsFormCardProps) {
+  const coverImageSrc = resolveApiAssetUrl(form.coverImage) ?? form.coverImage;
+
   return (
     <GoldCard glow className="mb-6">
       <h3
@@ -103,7 +106,7 @@ export default function NewsFormCard({
             style={{ border: "1px solid rgba(212,175,55,0.2)", background: "#101010", height: 170 }}
           >
             {form.coverImage ? (
-              <Image src={form.coverImage} alt="Preview background berita" width={1200} height={680} className="w-full h-full object-cover" unoptimized />
+              <Image src={coverImageSrc} alt="Preview background berita" width={1200} height={680} className="w-full h-full object-cover" unoptimized />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: "#666", fontFamily: "var(--font-poppins)" }}>
                 Belum ada background

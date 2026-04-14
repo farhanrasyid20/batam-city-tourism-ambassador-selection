@@ -17,6 +17,7 @@ import {
   updateParticipantResources,
   type UpdateParticipantResourcesFiles,
 } from "../../../../../lib/auth-api";
+import { resolveApiAssetUrl } from "../../../../../lib/api";
 import { getParticipantAuthSession } from "../../../../../lib/auth-storage";
 import type {
   ResourceDocumentField,
@@ -39,6 +40,50 @@ function createEmptyImage(caption: string): ResourceImage {
     imageUrl: "",
     imageName: "",
     caption,
+  };
+}
+
+function normalizeResourceAssetUrl(value?: string | null): string {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "";
+  if (
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("blob:")
+  ) {
+    return normalized;
+  }
+  if (normalized.startsWith("/storage/") || normalized.startsWith("storage/")) {
+    return resolveApiAssetUrl(normalized) ?? normalized;
+  }
+  return normalized;
+}
+
+function normalizeResourcesForUi(value: ParticipantResources): ParticipantResources {
+  const normalizeDocument = (doc: ResourceDocument): ResourceDocument => ({
+    ...doc,
+    linkUrl: normalizeResourceAssetUrl(doc.linkUrl),
+    fileDataUrl: normalizeResourceAssetUrl(doc.fileDataUrl),
+  });
+  const normalizeImage = (image: ResourceImage): ResourceImage => ({
+    ...image,
+    imageUrl: normalizeResourceAssetUrl(image.imageUrl),
+  });
+
+  return {
+    ...value,
+    guideDocument: normalizeDocument(value.guideDocument),
+    submissionDocument: normalizeDocument(value.submissionDocument),
+    formS1Document: normalizeDocument(value.formS1Document),
+    formS2Document: normalizeDocument(value.formS2Document),
+    formS3Document: normalizeDocument(value.formS3Document),
+    formS4Document: normalizeDocument(value.formS4Document),
+    twibbonDocument: normalizeDocument(value.twibbonDocument),
+    twibbonThumbnail: normalizeImage(value.twibbonThumbnail),
+    whatsappThumbnail: normalizeImage(value.whatsappThumbnail),
+    closeUpExamples: value.closeUpExamples.map(normalizeImage),
+    fullBodyExamples: value.fullBodyExamples.map(normalizeImage),
   };
 }
 
@@ -319,8 +364,9 @@ export function useParticipantResourcesForm() {
     try {
       const payload = stripInlineDataUrls(form);
       const response = await updateParticipantResources(token, payload, pendingFiles);
-      setParticipantResources(response.data as ParticipantResources);
-      setForm(response.data as ParticipantResources);
+      const normalizedResources = normalizeResourcesForUi(response.data as ParticipantResources);
+      setParticipantResources(normalizedResources);
+      setForm(normalizedResources);
       setPendingFiles({});
       setSaveMessage("Pusat dokumen peserta berhasil diperbarui.");
     } catch (error) {

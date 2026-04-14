@@ -281,185 +281,6 @@ function RankingColumn({
   );
 }
 
-function PairParticipantCard({
-  label,
-  entry,
-}: {
-  label: "Encik" | "Puan";
-  entry?: RankedParticipant;
-}) {
-  if (!entry) {
-    return (
-      <div
-        className="rounded-2xl p-3"
-        style={{
-          background: "#1A1A1A",
-          border: "1px dashed rgba(200,162,77,0.22)",
-        }}
-      >
-        <p className="text-xs mb-2" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
-          {label}
-        </p>
-        <p style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>Data belum tersedia.</p>
-      </div>
-    );
-  }
-
-  const winner = entry.participant;
-
-  return (
-    <div
-      className="rounded-2xl p-3 flex items-center gap-3"
-      style={{
-        background: "#1A1A1A",
-        border: "1px solid rgba(200,162,77,0.16)",
-      }}
-    >
-      <img
-        src={winner.photo}
-        alt={winner.name}
-        className="w-12 h-12 rounded-xl object-cover object-top shrink-0"
-        style={{ border: "1px solid rgba(200,162,77,0.28)" }}
-      />
-
-      <div className="min-w-0 flex-1">
-        <p
-          className="text-[11px] uppercase tracking-[0.2em] mb-1"
-          style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
-        >
-          {label}
-        </p>
-        <p
-          className="truncate text-sm"
-          style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)", fontWeight: 600 }}
-        >
-          {winner.name}
-        </p>
-        <p
-          className="text-[11px] mt-1"
-          style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}
-        >
-          {winner.number} | Peringkat pilihan juri
-        </p>
-        <p
-          className="text-[11px] mt-2"
-          style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
-        >
-          <Instagram size={12} className="inline mr-1" />
-          {winner.instagram}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function JuryPairTable({
-  pairRows,
-  isPublished,
-}: {
-  pairRows: Array<{ rank: number; encik?: RankedParticipant; puan?: RankedParticipant }>;
-  isPublished: boolean;
-}) {
-  const rowsToRender = isPublished
-    ? pairRows
-    : ([1, 2, 3] as const).map((rank) => ({ rank, encik: undefined, puan: undefined }));
-
-  return (
-    <div
-      className="rounded-[28px] p-5 sm:p-6"
-      style={{
-        background: "#111111",
-        border: "1px solid rgba(200,162,77,0.36)",
-        boxShadow: "0 14px 34px rgba(0,0,0,0.34)",
-      }}
-    >
-      <div className="flex items-start justify-between gap-3 mb-5">
-        <div>
-          <p
-            className="text-[11px] uppercase tracking-[0.28em] mb-2"
-            style={{ color: "rgba(200,162,77,0.78)", fontFamily: "var(--font-poppins)" }}
-          >
-            Pasangan Pilihan Juri
-          </p>
-          <h3
-            className="text-lg sm:text-xl leading-tight"
-            style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
-          >
-            Juara Encik dan Puan Versi Juri
-          </h3>
-        </div>
-        <div
-          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-          style={{
-            background: "rgba(200,162,77,0.14)",
-            border: "1px solid rgba(200,162,77,0.24)",
-            color: "#F5D06F",
-          }}
-        >
-          <Crown size={18} />
-        </div>
-      </div>
-
-      {!isPublished ? (
-        <div
-          className="rounded-2xl p-4 mb-4"
-          style={{
-            background: "#1A1A1A",
-            border: "1px dashed rgba(200,162,77,0.22)",
-          }}
-        >
-          <p style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-            Peringkat pasangan juri belum dipublikasikan oleh admin.
-          </p>
-        </div>
-      ) : null}
-
-      <div className="grid gap-3">
-        {rowsToRender.map((row) => (
-          <div
-            key={row.rank}
-            className="rounded-[24px] p-3 sm:p-4"
-            style={{
-              background: "#141414",
-              border:
-                row.rank === 1
-                  ? "1px solid rgba(200,162,77,0.32)"
-                  : "1px solid rgba(200,162,77,0.14)",
-            }}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                style={{
-                  background:
-                    row.rank === 1
-                      ? "linear-gradient(135deg, #F7DF95, #C8A24D)"
-                      : "rgba(200,162,77,0.16)",
-                  color: row.rank === 1 ? "#0F0F0F" : "#F5D06F",
-                  fontFamily: "var(--font-cinzel)",
-                }}
-              >
-                {row.rank}
-              </div>
-              <p
-                className="text-sm"
-                style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontWeight: 700 }}
-              >
-                Pasangan Peringkat {row.rank}
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-3">
-              <PairParticipantCard label="Encik" entry={row.encik} />
-              <PairParticipantCard label="Puan" entry={row.puan} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /**
  * Section highlight voting publik di landing page.
  * Menampilkan kandidat teratas dan ajakan menuju halaman vote utama.
@@ -473,10 +294,8 @@ export default function VoteHighlightSection() {
     voteRankingPublished,
     judgeEncikWinnerList,
     judgePuanWinnerList,
-    judgePairRankingList,
     judgeEncikPublished,
     judgePuanPublished,
-    judgePairPublished,
     judgeEncikDisplayMode,
     judgePuanDisplayMode,
     judgeWinnersPublished,
@@ -525,26 +344,16 @@ export default function VoteHighlightSection() {
   const showVoteRankingSection = voteRankingPublished;
   const hasStoredEncikWinners = judgeEncikWinnerList.length > 0;
   const hasStoredPuanWinners = judgePuanWinnerList.length > 0;
-  const hasStoredPairWinners = judgePairRankingList.some(
-    (entry) => Boolean(entry.encikParticipantId) || Boolean(entry.puanParticipantId)
-  );
   // Backward compatibility with legacy single publish flag.
   const showLegacyJurySection =
     judgeWinnersPublished &&
-    (hasStoredEncikWinners || hasStoredPuanWinners || hasStoredPairWinners) &&
+    (hasStoredEncikWinners || hasStoredPuanWinners) &&
     !judgeEncikPublished &&
-    !judgePuanPublished &&
-    !judgePairPublished;
-  // Recovery fallback:
-  // if pair section is published but encik/puan publish flags become stale/false,
-  // keep showing encik+puan winners when winner data exists.
-  const showFallbackFromPairPublish =
-    judgePairPublished && !judgeEncikPublished && !judgePuanPublished && !showLegacyJurySection;
+    !judgePuanPublished;
   const showJuryEncikSection =
-    hasStoredEncikWinners && (judgeEncikPublished || showLegacyJurySection || showFallbackFromPairPublish);
+    hasStoredEncikWinners && (judgeEncikPublished || showLegacyJurySection);
   const showJuryPuanSection =
-    hasStoredPuanWinners && (judgePuanPublished || showLegacyJurySection || showFallbackFromPairPublish);
-  const showJuryPairSection = hasStoredPairWinners && (judgePairPublished || showLegacyJurySection);
+    hasStoredPuanWinners && (judgePuanPublished || showLegacyJurySection);
   const safeActive = modulo(activeIndex, ranking.length);
   const totalThumbPages = Math.max(1, Math.ceil(ranking.length / thumbsPerPage));
   const safeThumbPage = Math.floor(safeActive / thumbsPerPage);
@@ -670,26 +479,15 @@ export default function VoteHighlightSection() {
       .filter(Boolean) as RankedParticipant[];
   }, [judgePuanWinnerList, toRankedEntryById]);
 
-  const juryPairRows = useMemo(() => {
-    return ([1, 2, 3] as const).map((rank) => {
-      const pair = judgePairRankingList.find((entry) => entry.rank === rank);
-      return {
-        rank,
-        encik: toRankedEntryById(pair?.encikParticipantId),
-        puan: toRankedEntryById(pair?.puanParticipantId),
-      };
-    });
-  }, [judgePairRankingList, toRankedEntryById]);
-
   const voteEncikRanking = useMemo(
     () =>
-      buildRankEntries(finalists.filter((p) => p.gender === "Encik"), juryAverageMap, "vote", officialLikesMap).slice(0, 3),
+      buildRankEntries(finalists.filter((p) => p.gender === "Encik"), juryAverageMap, "vote", officialLikesMap).slice(0, 1),
     [finalists, juryAverageMap, officialLikesMap]
   );
 
   const votePuanRanking = useMemo(
     () =>
-      buildRankEntries(finalists.filter((p) => p.gender === "Puan"), juryAverageMap, "vote", officialLikesMap).slice(0, 3),
+      buildRankEntries(finalists.filter((p) => p.gender === "Puan"), juryAverageMap, "vote", officialLikesMap).slice(0, 1),
     [finalists, juryAverageMap, officialLikesMap]
   );
 
@@ -962,7 +760,7 @@ export default function VoteHighlightSection() {
               title="Juara Encik Versi Juri"
               entries={showJuryEncikSection || showLegacyJurySection ? juryEncikRanking : []}
               mode="jury"
-              isPublished={showJuryEncikSection || showLegacyJurySection || showFallbackFromPairPublish}
+              isPublished={showJuryEncikSection || showLegacyJurySection}
               unpublishedMessage="Juara Encik versi juri belum dipublikasikan oleh admin."
               showJuryScore={
                 showLegacyJurySection
@@ -974,20 +772,13 @@ export default function VoteHighlightSection() {
               title="Juara Puan Versi Juri"
               entries={showJuryPuanSection || showLegacyJurySection ? juryPuanRanking : []}
               mode="jury"
-              isPublished={showJuryPuanSection || showLegacyJurySection || showFallbackFromPairPublish}
+              isPublished={showJuryPuanSection || showLegacyJurySection}
               unpublishedMessage="Juara Puan versi juri belum dipublikasikan oleh admin."
               showJuryScore={
                 showLegacyJurySection
                   ? judgeWinnerDisplayMode === "name_with_score"
                   : judgePuanDisplayMode === "name_with_score"
               }
-            />
-          </div>
-
-          <div className="mb-5">
-            <JuryPairTable
-              pairRows={juryPairRows}
-              isPublished={showJuryPairSection || showLegacyJurySection || showFallbackFromPairPublish}
             />
           </div>
 

@@ -23,12 +23,17 @@ import { useApp } from "../../../../context/AppContext";
 import {
   getParticipantSelectionStage,
   getParticipantVerificationStatus,
-  schedule,
   selectionStageLabels,
 } from "../../../../data/mockData";
+import {
+  getScheduleDateLabel,
+  getScheduleStatus,
+  useLandingPageContent,
+} from "../../../../lib/landing-page-content";
 
 export default function AdminDashboardPage() {
   const { participantList, newsList } = useApp();
+  const landingContent = useLandingPageContent();
   const router = useRouter();
 
   const totalParticipants = participantList.length;
@@ -56,7 +61,7 @@ export default function AdminDashboardPage() {
       value: totalParticipants,
       icon: <Users size={20} />,
       color: "#D4AF37",
-      sub: `${encikCount} Encik â€¢ ${puanCount} Puan`,
+      sub: `${encikCount} Encik | ${puanCount} Puan`,
     },
     {
       label: "Menunggu Verifikasi",
@@ -202,38 +207,42 @@ export default function AdminDashboardPage() {
             Jadwal Pelaksanaan 2026
           </h3>
           <div className="space-y-2">
-            {schedule.map((item, index) => (
+            {landingContent.registration.scheduleItems.map((item, index) => (
               <div
                 key={`${item.activity}-${index}`}
                 className="flex items-center justify-between p-3 rounded-xl"
                 style={{
-                  background: item.status === "active" ? "rgba(212,175,55,0.1)" : "rgba(255,255,255,0.02)",
-                  border: `1px solid ${item.status === "active" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.06)"}`,
+                  background: getScheduleStatus(item) === "active" ? "rgba(212,175,55,0.1)" : "rgba(255,255,255,0.02)",
+                  border: `1px solid ${getScheduleStatus(item) === "active" ? "rgba(212,175,55,0.3)" : "rgba(255,255,255,0.06)"}`,
                 }}
               >
                 <div>
                   <p
                     className="text-xs font-semibold"
                     style={{
-                      color: item.status === "active" ? "#D4AF37" : "#BDBDBD",
+                      color: getScheduleStatus(item) === "active" ? "#D4AF37" : "#BDBDBD",
                       fontFamily: "var(--font-poppins)",
                     }}
                   >
                     {item.activity}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: "#666", fontFamily: "var(--font-poppins)" }}>
-                    {item.date}
+                    {getScheduleDateLabel(item)}
                   </p>
                 </div>
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
                   style={{
-                    background: item.status === "active" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)",
-                    color: item.status === "active" ? "#22c55e" : "#555",
+                    background: getScheduleStatus(item) === "active" ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)",
+                    color: getScheduleStatus(item) === "active" ? "#22c55e" : "#555",
                     fontFamily: "var(--font-poppins)",
                   }}
                 >
-                  {item.status === "active" ? "Aktif" : item.status === "done" ? "Selesai" : "Upcoming"}
+                  {getScheduleStatus(item) === "active"
+                    ? "Aktif"
+                    : getScheduleStatus(item) === "done"
+                      ? "Selesai"
+                      : "Akan Datang"}
                 </span>
               </div>
             ))}

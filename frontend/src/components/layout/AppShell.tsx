@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { getParticipantAuthSession } from "../../lib/auth-storage";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../lib/site-branding-content";
 
 const PUBLIC_ROUTES = ["/", "/about", "/news", "/vote", "/faq", "/feedback"];
 const AUTH_ROUTE_PREFIX = "/auth";
@@ -24,7 +25,19 @@ function isPublicRoute(pathname: string): boolean {
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
+  const branding = useSiteBrandingContent();
   const showPublicLayout = isPublicRoute(pathname);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
+    if (link && branding.favicon) {
+      link.href = resolveBrandingAssetUrl(branding.favicon);
+    }
+
+    document.documentElement.style.setProperty("--brand-gold", branding.themeColor || "#C8A24D");
+  }, [branding.favicon, branding.themeColor]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;

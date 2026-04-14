@@ -120,12 +120,12 @@ class PublicFinalistController extends Controller
             'vote_ranking_published' => (bool) ($publicationSetting?->vote_ranking_published ?? false),
             'judge_encik_published' => (bool) ($publicationSetting?->judge_encik_published ?? false),
             'judge_puan_published' => (bool) ($publicationSetting?->judge_puan_published ?? false),
-            'judge_pair_published' => (bool) ($publicationSetting?->judge_pair_published ?? false),
+            'judge_pair_published' => false,
             'judge_encik_display_mode' => (string) ($publicationSetting?->judge_encik_display_mode ?? 'name_only'),
             'judge_puan_display_mode' => (string) ($publicationSetting?->judge_puan_display_mode ?? 'name_only'),
             'judge_encik_winners' => $publicationSetting?->judge_encik_winners ?? [],
             'judge_puan_winners' => $publicationSetting?->judge_puan_winners ?? [],
-            'judge_pair_rankings' => $publicationSetting?->judge_pair_rankings ?? [],
+            'judge_pair_rankings' => [],
         ]);
     }
 }

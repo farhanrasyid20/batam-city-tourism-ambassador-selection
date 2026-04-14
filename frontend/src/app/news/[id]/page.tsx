@@ -20,6 +20,15 @@ function formatDateId(dateStr: string) {
   });
 }
 
+function normalizeComparableText(value: string) {
+  return value
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .trim()
+    .toLowerCase();
+}
+
 /**
  * Halaman detail berita berbasis parameter `id`.
  * Mengambil item dari state global dan merender hero, ringkasan, serta isi artikel.
@@ -31,6 +40,21 @@ export default function NewsDetailPage() {
   const news = newsList.find((item) => item.id === id) ?? null;
   const articleBody: NewsBlock[] =
     news && news.body.length > 0 ? news.body : [{ type: "paragraph", text: news?.excerpt ?? "" }];
+  const normalizedTitle = normalizeComparableText(news?.title ?? "");
+  const normalizedExcerpt = normalizeComparableText(news?.excerpt ?? "");
+  const normalizedBody = articleBody.filter((block, index) => {
+    if (index > 1) return true;
+    const text = normalizeComparableText("text" in block ? (block.text ?? "") : "");
+    if (!text) return true;
+    if (index === 0 && block.type === "heading" && normalizedTitle && text === normalizedTitle) {
+      return false;
+    }
+    if (block.type === "paragraph" && normalizedExcerpt && (text === normalizedExcerpt || text.startsWith(normalizedExcerpt))) {
+      return false;
+    }
+    return true;
+  });
+  const shouldShowExcerpt = !news?.contentHtml?.trim() && Boolean(news?.excerpt?.trim());
 
   if (!news) {
     return (
@@ -113,21 +137,30 @@ export default function NewsDetailPage() {
             boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
           }}
         >
-          <p
-            className="mb-7"
-            style={{
-              color: "#F5E6C8",
-              fontFamily: "var(--font-poppins)",
-              lineHeight: 1.9,
-              fontWeight: 600,
-            }}
-          >
-            {news.excerpt}
-          </p>
+          {shouldShowExcerpt ? (
+            <>
+              <p
+                className="mb-7"
+                style={{
+                  color: "#F5E6C8",
+                  fontFamily: "var(--font-poppins)",
+                  lineHeight: 1.9,
+                  fontWeight: 600,
+                }}
+              >
+                {news.excerpt}
+              </p>
 
-          <div className="w-full h-px mb-8" style={{ background: "rgba(200,162,77,0.15)" }} />
+              <div className="w-full h-px mb-8" style={{ background: "rgba(200,162,77,0.15)" }} />
+            </>
+          ) : null}
 
-          <NewsArticleClient body={articleBody} contentHtml={news.contentHtml} />
+          <NewsArticleClient
+            body={normalizedBody}
+            contentHtml={news.contentHtml}
+            title={news.title}
+            excerpt={news.excerpt}
+          />
         </div>
       </div>
     </article>

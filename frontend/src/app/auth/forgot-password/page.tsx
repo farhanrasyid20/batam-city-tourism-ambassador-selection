@@ -7,12 +7,14 @@ import { ArrowLeft, Eye, EyeOff, KeyRound } from "lucide-react";
 import { GoldButton } from "../../../components/ui/GoldButton";
 import { getReadableApiError } from "../../../lib/api";
 import { resetForgotPassword } from "../../../lib/auth-api";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../../lib/site-branding-content";
 
 /**
  * Halaman reset password peserta berbasis email.
  * Mengelola validasi input, kirim permintaan reset ke backend, lalu redirect ke login saat sukses.
  */
 export default function ForgotPasswordPage() {
+  const branding = useSiteBrandingContent();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -113,10 +115,11 @@ export default function ForgotPasswordPage() {
         >
           <div className="text-center mb-8">
             <Image
-              src="/logo1.png"
+              src={resolveBrandingAssetUrl(branding.logoMain)}
               alt="Logo"
               width={64}
               height={64}
+              unoptimized
               className="w-16 h-16 object-contain mx-auto mb-3"
               style={{ filter: "drop-shadow(0 0 10px rgba(200,162,77,0.4))" }}
             />
@@ -124,7 +127,7 @@ export default function ForgotPasswordPage() {
               RESET PASSWORD
             </h1>
             <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-              Duta Wisata Kota Batam 2026
+              {branding.siteNameLine1} {branding.siteNameLine2}
             </p>
           </div>
 

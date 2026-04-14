@@ -27,7 +27,7 @@ import {
 
 type VerificationTab = {
   label: string;
-  key: VerificationStatus;
+  key: VerificationStatus | "Eliminated";
   count: number;
   color: string;
   list: Participant[];
@@ -55,6 +55,9 @@ const statusColors: Record<VerificationStatus, { color: string; bg: string; icon
     icon: <XCircle size={12} />,
   },
 };
+
+const verificationDisplayLabels: Record<VerificationStatus, string> = verificationStatusLabels;
+const eliminatedTabColor = "#f43f5e";
 
 const documentDisplayOrder = [
   "identityCard",
@@ -104,6 +107,19 @@ function toSocialHandle(value?: string | null): string {
   return raw;
 }
 
+function resolveVerificationPhotoSrc(photo?: string | null): string {
+  const value = (photo ?? "").trim();
+  if (!value) return "/default-avatar.svg";
+  if (value.startsWith("data:image")) return value;
+  if (value.includes("/default-avatar.svg")) return "/default-avatar.svg";
+  return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
+}
+
+function isParticipantEliminatedInAudition(participant: Participant): boolean {
+  if (participant.eliminatedInAudition) return true;
+  return participant.status === "Rejected" && participant.selectionStage === "Audition";
+}
+
 function buildVerificationIssuesFromDocuments(
   participant: Participant,
   documents: NonNullable<Participant["documents"]>
@@ -129,8 +145,15 @@ function getSelectionStageAfterVerification(status: VerificationStatus): Selecti
 }
 
 export default function AdminVerificationPage() {
-  const { participantList, setParticipantList, currentParticipant, setCurrentParticipant, participantResources } = useApp();
-  const [activeTab, setActiveTab] = useState<VerificationStatus>("Pending");
+  const {
+    participantList,
+    setParticipantList,
+    currentParticipant,
+    setCurrentParticipant,
+    participantResources,
+    voteCandidateList,
+  } = useApp();
+  const [activeTab, setActiveTab] = useState<VerificationTab["key"]>("Pending");
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [noteDraftById, setNoteDraftById] = useState<Record<string, string>>({});
   const [openRejectInputId, setOpenRejectInputId] = useState<string | null>(null);
@@ -160,6 +183,32 @@ export default function AdminVerificationPage() {
     }
   };
 
+  const voteCandidateByParticipantId = useMemo(
+    () => new Map(voteCandidateList.map((item) => [item.participantId, item] as const)),
+    [voteCandidateList]
+  );
+
+  const voteCandidateByNumber = useMemo(
+    () => new Map(voteCandidateList.map((item) => [item.number, item] as const)),
+    [voteCandidateList]
+  );
+
+  const resolveVoteCandidate = (participant: Participant) => {
+    return (
+      voteCandidateByParticipantId.get(participant.id) ||
+      voteCandidateByParticipantId.get(`P_API_${participant.id}`) ||
+      voteCandidateByNumber.get((participant.participantCode ?? participant.number ?? "").trim())
+    );
+  };
+
+  const resolveVerificationPhotoWithVote = (participant: Participant): string => {
+    const profilePhoto = resolveVerificationPhotoSrc(participant.photo);
+    if (!profilePhoto.includes("/default-avatar.svg")) return profilePhoto;
+    const candidate = resolveVoteCandidate(participant);
+    if (!candidate?.photo) return profilePhoto;
+    return resolveVerificationPhotoSrc(candidate.photo);
+  };
+
   const verificationMap = useMemo<Record<string, VerificationStatus>>(() => {
     const result: Record<string, VerificationStatus> = {};
     participantList.forEach((participant) => {
@@ -168,13 +217,32 @@ export default function AdminVerificationPage() {
     return result;
   }, [participantList]);
 
-  const tabs: VerificationTab[] = ["Pending", "NeedsRevision", "Verified", "Rejected"].map((status) => ({
-    key: status,
-    label: verificationStatusLabels[status],
-    count: participantList.filter((participant) => verificationMap[participant.id] === status).length,
-    color: statusColors[status].color,
-    list: participantList.filter((participant) => verificationMap[participant.id] === status),
-  }));
+  const nonEliminatedParticipants = useMemo(
+    () => participantList.filter((participant) => !isParticipantEliminatedInAudition(participant)),
+    [participantList]
+  );
+
+  const eliminatedParticipants = useMemo(
+    () => participantList.filter((participant) => isParticipantEliminatedInAudition(participant)),
+    [participantList]
+  );
+
+  const tabs: VerificationTab[] = [
+    ...(["Pending", "NeedsRevision", "Verified", "Rejected"] as VerificationStatus[]).map((status) => ({
+      key: status,
+      label: verificationDisplayLabels[status],
+      count: nonEliminatedParticipants.filter((participant) => verificationMap[participant.id] === status).length,
+      color: statusColors[status].color,
+      list: nonEliminatedParticipants.filter((participant) => verificationMap[participant.id] === status),
+    })),
+    {
+      key: "Eliminated",
+      label: "Tereliminasi",
+      count: eliminatedParticipants.length,
+      color: eliminatedTabColor,
+      list: eliminatedParticipants,
+    },
+  ];
 
   const resolvedActiveTab =
     tabs.find((tab) => tab.key === activeTab && tab.count > 0)?.key ??
@@ -436,7 +504,17 @@ export default function AdminVerificationPage() {
         ) : (
           activeList.map((participant) => {
             const verificationStatus = verificationMap[participant.id];
-            const badge = statusColors[verificationStatus];
+            const isEliminatedInAudition = isParticipantEliminatedInAudition(participant);
+            const badge = isEliminatedInAudition
+              ? {
+                  color: eliminatedTabColor,
+                  bg: "rgba(244,63,94,0.15)",
+                  icon: <XCircle size={12} />,
+                }
+              : statusColors[verificationStatus];
+            const verificationLabel = isEliminatedInAudition
+              ? "Tereliminasi"
+              : verificationDisplayLabels[verificationStatus];
             const isSelected = selectedParticipantId === participant.id;
             const revisionCount = participant.reviewItems?.filter((item) => item.status === "revision_required").length ?? 0;
 
@@ -444,7 +522,7 @@ export default function AdminVerificationPage() {
               <GoldCard key={participant.id}>
                 <div className="flex items-center gap-4 flex-wrap">
                   <Image
-                    src={participant.photo}
+                    src={resolveVerificationPhotoWithVote(participant)}
                     alt={participant.name}
                     width={48}
                     height={48}
@@ -538,7 +616,7 @@ export default function AdminVerificationPage() {
                       style={{ background: badge.bg, color: badge.color, fontFamily: "var(--font-poppins)" }}
                     >
                       {badge.icon}
-                      {verificationStatusLabels[verificationStatus]}
+                      {verificationLabel}
                     </span>
                     <button
                       onClick={() => setSelectedParticipantId((prev) => (prev === participant.id ? null : participant.id))}
@@ -557,51 +635,57 @@ export default function AdminVerificationPage() {
                     </button>
                   </div>
 
-                  <div className="flex gap-2 flex-wrap">
-                    <GoldButton
-                      variant="primary"
-                      size="sm"
-                      onClick={() => updateParticipantVerification(participant.id, "Verified", noteDraftById[participant.id])}
-                      disabled={savingVerificationFor === participant.id}
-                    >
-                      <CheckCircle size={14} />
-                      {savingVerificationFor === participant.id ? "Menyimpan..." : "Verifikasi"}
-                    </GoldButton>
-                    <button
-                      onClick={() => updateParticipantVerification(participant.id, "NeedsRevision", noteDraftById[participant.id])}
-                      disabled={savingVerificationFor === participant.id}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-                      style={{
-                        background: "rgba(249,115,22,0.12)",
-                        border: "1px solid rgba(249,115,22,0.3)",
-                        color: "#f97316",
-                        fontFamily: "var(--font-poppins)",
-                        cursor: savingVerificationFor === participant.id ? "not-allowed" : "pointer",
-                        opacity: savingVerificationFor === participant.id ? 0.7 : 1,
-                      }}
-                      type="button"
-                    >
-                      <AlertTriangle size={14} className="inline mr-1" />
-                      Perlu Perbaikan
-                    </button>
-                    <button
-                      onClick={() => setOpenRejectInputId((prev) => (prev === participant.id ? null : participant.id))}
-                      disabled={savingVerificationFor === participant.id}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-                      style={{
-                        background: "rgba(239,68,68,0.1)",
-                        border: "1px solid rgba(239,68,68,0.3)",
-                        color: "#ef4444",
-                        fontFamily: "var(--font-poppins)",
-                        cursor: savingVerificationFor === participant.id ? "not-allowed" : "pointer",
-                        opacity: savingVerificationFor === participant.id ? 0.7 : 1,
-                      }}
-                      type="button"
-                    >
-                      <XCircle size={14} className="inline mr-1" />
-                      Tolak
-                    </button>
-                  </div>
+                  {isEliminatedInAudition ? (
+                    <p className="text-xs px-3 py-2 rounded-xl" style={{ color: "#fb7185", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.25)", fontFamily: "var(--font-poppins)" }}>
+                      Tereliminasi di tahap audisi (atur dari menu Tahapan & Nilai).
+                    </p>
+                  ) : (
+                    <div className="flex gap-2 flex-wrap">
+                      <GoldButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => updateParticipantVerification(participant.id, "Verified", noteDraftById[participant.id])}
+                        disabled={savingVerificationFor === participant.id}
+                      >
+                        <CheckCircle size={14} />
+                        {savingVerificationFor === participant.id ? "Menyimpan..." : "Verifikasi"}
+                      </GoldButton>
+                      <button
+                        onClick={() => updateParticipantVerification(participant.id, "NeedsRevision", noteDraftById[participant.id])}
+                        disabled={savingVerificationFor === participant.id}
+                        className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                        style={{
+                          background: "rgba(249,115,22,0.12)",
+                          border: "1px solid rgba(249,115,22,0.3)",
+                          color: "#f97316",
+                          fontFamily: "var(--font-poppins)",
+                          cursor: savingVerificationFor === participant.id ? "not-allowed" : "pointer",
+                          opacity: savingVerificationFor === participant.id ? 0.7 : 1,
+                        }}
+                        type="button"
+                      >
+                        <AlertTriangle size={14} className="inline mr-1" />
+                        Perlu Perbaikan
+                      </button>
+                      <button
+                        onClick={() => setOpenRejectInputId((prev) => (prev === participant.id ? null : participant.id))}
+                        disabled={savingVerificationFor === participant.id}
+                        className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                        style={{
+                          background: "rgba(239,68,68,0.1)",
+                          border: "1px solid rgba(239,68,68,0.3)",
+                          color: "#ef4444",
+                          fontFamily: "var(--font-poppins)",
+                          cursor: savingVerificationFor === participant.id ? "not-allowed" : "pointer",
+                          opacity: savingVerificationFor === participant.id ? 0.7 : 1,
+                        }}
+                        type="button"
+                      >
+                        <XCircle size={14} className="inline mr-1" />
+                        Tolak
+                      </button>
+                    </div>
+                  )}
                   {saveVerificationNotice[participant.id] ? (
                     <p
                       className="text-xs mt-2"
@@ -632,10 +716,10 @@ export default function AdminVerificationPage() {
                           Telepon: {participant.phone}
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                          Status verifikasi: {verificationStatusLabels[verificationStatus]}
+                          Status verifikasi: {verificationLabel}
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                          Tahap setelah verifikasi: {participant.selectionStage ?? "Verification"}
+                          Tahap setelah verifikasi: {isEliminatedInAudition ? "Tereliminasi di Audisi" : participant.selectionStage ?? "Verification"}
                         </p>
                         <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                           Submit ke admin: {participant.submittedToAdmin ? "Sudah" : "Belum"}
@@ -1069,10 +1153,10 @@ export default function AdminVerificationPage() {
                   </div>
                 ) : null}
 
-                {openRejectInputId === participant.id ? (
+                {!isEliminatedInAudition && openRejectInputId === participant.id ? (
                   <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(239,68,68,0.15)" }}>
                     <label className="block text-xs mb-2" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
-                      Alasan penolakan:
+                      Alasan penolakan administrasi:
                     </label>
                     <input
                       type="text"
@@ -1132,12 +1216,12 @@ export default function AdminVerificationPage() {
         )}
       </div>
 
-      {selectedParticipant?.verificationStatus === "Rejected" && selectedParticipant.rejectionReason ? (
+      {selectedParticipant?.rejectionReason ? (
         <div className="mt-4">
           <GoldCard>
-            <p className="text-xs" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
-              Alasan penolakan terakhir: {selectedParticipant.rejectionReason}
-            </p>
+              <p className="text-xs" style={{ color: "#ef4444", fontFamily: "var(--font-poppins)" }}>
+              {isParticipantEliminatedInAudition(selectedParticipant) ? "Alasan eliminasi audisi terakhir" : "Alasan penolakan terakhir"}: {selectedParticipant.rejectionReason}
+              </p>
           </GoldCard>
         </div>
       ) : null}
@@ -1175,10 +1259,10 @@ export default function AdminVerificationPage() {
               </button>
             </div>
             <div className="p-3" style={{ maxHeight: "75vh", overflow: "auto" }}>
-              {previewState.previewType === "image" ? (
+              {previewState.previewType === "image" && previewState.href ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={previewState.href} alt={previewState.title} className="w-full h-auto rounded-xl" />
-              ) : previewState.previewType === "pdf" ? (
+              ) : previewState.previewType === "pdf" && previewState.href ? (
                 <iframe
                   src={previewState.href}
                   title={previewState.title}
@@ -1188,23 +1272,27 @@ export default function AdminVerificationPage() {
               ) : (
                 <div className="p-6 text-center">
                   <p className="text-sm mb-3" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                    Preview langsung belum didukung untuk tipe file ini.
+                    {previewState.href
+                      ? "Preview langsung belum didukung untuk tipe file ini."
+                      : "File preview tidak tersedia."}
                   </p>
-                  <a
-                    href={previewState.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 rounded-xl inline-flex items-center"
-                    style={{
-                      background: "rgba(212,175,55,0.14)",
-                      border: "1px solid rgba(212,175,55,0.35)",
-                      color: "#D4AF37",
-                      fontFamily: "var(--font-poppins)",
-                    }}
-                  >
-                    <ExternalLink size={14} className="mr-2" />
-                    Buka Dokumen
-                  </a>
+                  {previewState.href ? (
+                    <a
+                      href={previewState.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-xl inline-flex items-center"
+                      style={{
+                        background: "rgba(212,175,55,0.14)",
+                        border: "1px solid rgba(212,175,55,0.35)",
+                        color: "#D4AF37",
+                        fontFamily: "var(--font-poppins)",
+                      }}
+                    >
+                      <ExternalLink size={14} className="mr-2" />
+                      Buka Dokumen
+                    </a>
+                  ) : null}
                 </div>
               )}
             </div>

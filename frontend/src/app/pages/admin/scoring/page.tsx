@@ -261,7 +261,7 @@ const normalizeParticipantPhoto = (raw?: string | null) => {
 
   const lower = value.toLowerCase();
   if (lower.includes("default-avatar.svg")) return "/default-avatar.svg";
-  if (value.startsWith("data:image")) return "/default-avatar.svg";
+  if (value.startsWith("data:image") || value.startsWith("blob:")) return value;
 
   return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
 };
@@ -273,6 +273,57 @@ const isDefaultAvatar = (value?: string | null) => {
 
 const isRejectedParticipant = (participant: Participant) =>
   participant.eliminatedInAudition === true || participant.status === "Rejected";
+
+const getAuditionNumber = (participant: Participant) =>
+  (participant.auditionNumber ?? "").trim() || (participant.number ?? "").trim();
+
+const getPostAuditionNumber = (participant: Participant) =>
+  (participant.participantCode ?? "").trim() || (participant.number ?? "").trim();
+
+const getDisplayNumberByStage = (
+  participant: Participant,
+  stage: AdminScoreStage,
+) => {
+  if (stage === "Audition" || stage === "Technical Meeting") {
+    return getAuditionNumber(participant);
+  }
+  return getPostAuditionNumber(participant);
+};
+
+const extractNumberOrder = (value: string) => {
+  const match = value.match(/(\d{1,6})/);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+};
+
+const compareParticipantsByNumber = (a: Participant, b: Participant) => {
+  const aNumber = (a.number ?? "").trim();
+  const bNumber = (b.number ?? "").trim();
+  const orderA = extractNumberOrder(aNumber);
+  const orderB = extractNumberOrder(bNumber);
+  if (orderA !== orderB) return orderA - orderB;
+  return a.name.localeCompare(b.name, "id-ID");
+};
+
+const toCanonicalParticipantId = (id: string) => {
+  const raw = (id ?? "").trim();
+  const numeric = raw.replace(/^P_API_/i, "");
+  if (/^\d+$/.test(numeric)) return `P_API_${numeric}`;
+  return raw.toUpperCase();
+};
+
+const dedupeByParticipantId = <T extends { id: string }>(items: T[]): T[] => {
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    const key = toCanonicalParticipantId(item.id);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+  return result;
+};
 
 export default function AdminScoresPage() {
   // Pusat state dan logic utama halaman scoring admin.
@@ -471,16 +522,20 @@ export default function AdminScoresPage() {
       )
       .sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
 
-    return sourceCandidates.map((candidate) => {
+    const mapped = sourceCandidates.map((candidate) => {
       const participantId = `P_API_${candidate.user_id}`;
       const matched =
         participantsWithResolvedPhoto.find((participant) => participant.id === participantId) ??
         participantsWithResolvedPhoto.find(
           (participant) =>
-            participant.number?.trim() &&
-            candidate.participant_code?.trim() &&
-            participant.number.trim().toUpperCase() ===
-              candidate.participant_code.trim().toUpperCase(),
+            (
+              getAuditionNumber(participant).trim().toUpperCase() ===
+                (candidate.audition_number ?? "").trim().toUpperCase() ||
+              getPostAuditionNumber(participant).trim().toUpperCase() ===
+                (candidate.participant_code ?? "").trim().toUpperCase() ||
+              (participant.number ?? "").trim().toUpperCase() ===
+                (candidate.participant_code ?? "").trim().toUpperCase()
+            ),
         );
 
       const resolvedGender = (candidate.gender ?? matched?.gender ?? "Encik") as
@@ -492,8 +547,8 @@ export default function AdminScoresPage() {
         ...(matched ?? {
           id: participantId,
           number:
-            candidate.participant_code ??
             candidate.audition_number ??
+            candidate.participant_code ??
             candidate.participant_id,
           name: resolvedName,
           nickname: candidate.nickname ?? "",
@@ -517,25 +572,34 @@ export default function AdminScoresPage() {
             "Grand Final": false,
           },
         }),
+        number: matched
+          ? getDisplayNumberByStage(matched, "Audition")
+          : candidate.audition_number ?? candidate.participant_code ?? candidate.participant_id,
         score: candidate.audition_average ?? 0,
       };
     });
+    return dedupeByParticipantId(mapped);
   }, [activeGender, activeStage, participantsWithResolvedPhoto, top20Preview]);
 
   // Daftar peserta utama untuk tabel kiri. Ubah filter ini kalau aturan tampil per tahap berubah.
-  const participants = useMemo(
-    () =>
-      participantsWithResolvedPhoto.filter((participant) => {
+  const participants = useMemo(() => {
+    const mapped = participantsWithResolvedPhoto.filter((participant) => {
         if (activeGender !== "Semua" && participant.gender !== activeGender)
           return false;
         return isParticipantRelevantForAdminStage(participant, activeStage);
-      }),
-    [activeGender, activeStage, participantsWithResolvedPhoto],
-  );
+      })
+      .map((participant) => ({
+        ...participant,
+        number: getDisplayNumberByStage(participant, activeStage),
+      }))
+      .sort(compareParticipantsByNumber);
+    return dedupeByParticipantId(mapped);
+  }, [activeGender, activeStage, participantsWithResolvedPhoto]);
 
   // Ranking nilai admin diambil dari score resmi juri pada tahap aktif.
   const rankings = useMemo<RankedParticipant[]>(
-    () =>
+    () => {
+      const mapped =
       !isScoreStage(activeStage) && activeStage !== "Final Result"
         ? []
         : activeStage === "Audition" && auditionTopRankings.length > 0
@@ -550,7 +614,9 @@ export default function AdminScoresPage() {
               ),
             }))
             .filter((participant) => participant.score > 0)
-            .sort((a, b) => b.score - a.score),
+            .sort((a, b) => b.score - a.score);
+      return dedupeByParticipantId(mapped);
+    },
     [activeStage, auditionTopRankings, participants, scoreList],
   );
 

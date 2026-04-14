@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../lib/site-branding-content";
 
 /**
  * Preloader global saat inisialisasi awal aplikasi.
  * Muncul singkat untuk transisi masuk sebelum konten utama siap.
  */
 export default function GlobalPreloader() {
+  const branding = useSiteBrandingContent();
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -44,10 +46,11 @@ export default function GlobalPreloader() {
     >
       <div className="flex flex-col items-center gap-4">
         <Image
-          src="/logo1.png"
-          alt="Loading Duta Wisata Batam"
+          src={resolveBrandingAssetUrl(branding.logoLoader)}
+          alt={`Loading ${branding.siteNameLine1}`}
           width={96}
           height={96}
+          unoptimized
           priority
           style={{ filter: "drop-shadow(0 0 14px rgba(200,162,77,0.45))" }}
         />
@@ -56,4 +59,3 @@ export default function GlobalPreloader() {
     </div>
   );
 }
-

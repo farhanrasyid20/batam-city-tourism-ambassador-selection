@@ -80,7 +80,7 @@ class PublicVoteAdminController extends Controller
                 'vote_ranking_published' => (bool) ($setting->vote_ranking_published ?? false),
                 'judge_encik_published' => (bool) ($setting->judge_encik_published ?? false),
                 'judge_puan_published' => (bool) ($setting->judge_puan_published ?? false),
-                'judge_pair_published' => (bool) ($setting->judge_pair_published ?? false),
+                'judge_pair_published' => false,
             ],
         ]);
     }
@@ -134,10 +134,8 @@ class PublicVoteAdminController extends Controller
             'judge_puan_display_mode',
             'judge_encik_winners',
             'judge_puan_winners',
-            'judge_pair_rankings',
             'judge_encik_published',
             'judge_puan_published',
-            'judge_pair_published',
         ] as $field) {
             if ($request->has($field)) {
                 $payload[$field] = $request->input($field);
@@ -156,10 +154,10 @@ class PublicVoteAdminController extends Controller
                 'judge_puan_display_mode' => (string) ($setting->judge_puan_display_mode ?: 'name_only'),
                 'judge_encik_winners' => $setting->judge_encik_winners ?? [],
                 'judge_puan_winners' => $setting->judge_puan_winners ?? [],
-                'judge_pair_rankings' => $setting->judge_pair_rankings ?? [],
+                'judge_pair_rankings' => [],
                 'judge_encik_published' => (bool) ($setting->judge_encik_published ?? false),
                 'judge_puan_published' => (bool) ($setting->judge_puan_published ?? false),
-                'judge_pair_published' => (bool) ($setting->judge_pair_published ?? false),
+                'judge_pair_published' => false,
             ],
         ]);
     }

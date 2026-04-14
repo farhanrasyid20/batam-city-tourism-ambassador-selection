@@ -9,12 +9,14 @@ import { GoldButton } from "../../../components/ui/GoldButton";
 import { getReadableApiError } from "../../../lib/api";
 import { loginParticipant, registerParticipant } from "../../../lib/auth-api";
 import { saveParticipantAuthSession } from "../../../lib/auth-storage";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../../lib/site-branding-content";
 
 /**
  * Halaman registrasi peserta.
  * Membuat akun baru, lalu auto-login dan menyimpan sesi autentikasi ke storage lokal.
  */
 export default function RegisterPage() {
+  const branding = useSiteBrandingContent();
   const router = useRouter();
   const { login, setPasswordForEmail, setAuthenticatedUser } = useApp();
 
@@ -155,10 +157,11 @@ export default function RegisterPage() {
         >
           <div className="text-center mb-8">
             <Image
-              src="/logo1.png"
+              src={resolveBrandingAssetUrl(branding.logoMain)}
               alt="Logo"
               width={64}
               height={64}
+              unoptimized
               className="w-16 h-16 object-contain mx-auto mb-3"
               style={{ filter: "drop-shadow(0 0 10px rgba(200,162,77,0.4))" }}
             />
@@ -173,7 +176,7 @@ export default function RegisterPage() {
               PENDAFTARAN PESERTA
             </h1>
             <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-              Duta Wisata Kota Batam 2026
+              {branding.siteNameLine1} {branding.siteNameLine2}
             </p>
           </div>
 

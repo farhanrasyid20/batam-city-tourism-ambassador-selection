@@ -440,7 +440,7 @@ export default function AdminVoteTopPage() {
       voteCandidateList
         .filter((item) => item.enabled && item.gender === "Encik")
         .sort((a, b) => b.officialLikeCount - a.officialLikeCount)
-        .slice(0, 3),
+        .slice(0, 1),
     [voteCandidateList]
   );
 
@@ -449,7 +449,7 @@ export default function AdminVoteTopPage() {
       voteCandidateList
         .filter((item) => item.enabled && item.gender === "Puan")
         .sort((a, b) => b.officialLikeCount - a.officialLikeCount)
-        .slice(0, 3),
+        .slice(0, 1),
     [voteCandidateList]
   );
 
@@ -607,7 +607,7 @@ export default function AdminVoteTopPage() {
             Kandidat Voting Instagram
           </h3>
           <p className="text-xs" style={{ color: "#9CA3AF", fontFamily: "var(--font-poppins)" }}>
-            Top 3 vote otomatis dihitung dari Like IG Resmi tertinggi.
+            Top 1 vote otomatis dihitung dari Like IG Resmi tertinggi.
           </p>
         </div>
 

@@ -24,11 +24,13 @@ import {
   fetchPublicNews,
   fetchPublicFinalists,
   fetchPublicParticipantResources,
+  fetchJudgeParticipants,
   submitFeedback,
   type FeedbackCategory as BackendFeedbackCategory,
   type FeedbackEntry as BackendFeedbackEntry,
   type ParticipantResourcesPayload,
   type PublicFinalistListItem,
+  type JudgeParticipantListItem,
 } from "../lib/auth-api";
 import { resolveApiAssetUrl } from "../lib/api";
 import {
@@ -495,6 +497,55 @@ function compactResourceImageForStorage(image: ResourceImage): ResourceImage {
   };
 }
 
+function normalizeParticipantResourceAssetUrl(value?: string | null): string {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "";
+  if (
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("blob:")
+  ) {
+    return normalized;
+  }
+  if (normalized.startsWith("/storage/") || normalized.startsWith("storage/")) {
+    return resolveApiAssetUrl(normalized) ?? normalized;
+  }
+  return normalized;
+}
+
+function normalizeResourceDocumentForUi(document: ResourceDocument): ResourceDocument {
+  return {
+    ...document,
+    linkUrl: normalizeParticipantResourceAssetUrl(document.linkUrl),
+    fileDataUrl: normalizeParticipantResourceAssetUrl(document.fileDataUrl),
+  };
+}
+
+function normalizeResourceImageForUi(image: ResourceImage): ResourceImage {
+  return {
+    ...image,
+    imageUrl: normalizeParticipantResourceAssetUrl(image.imageUrl),
+  };
+}
+
+function normalizeParticipantResourcesForUi(resources: ParticipantResources): ParticipantResources {
+  return {
+    ...resources,
+    guideDocument: normalizeResourceDocumentForUi(resources.guideDocument),
+    submissionDocument: normalizeResourceDocumentForUi(resources.submissionDocument),
+    formS1Document: normalizeResourceDocumentForUi(resources.formS1Document),
+    formS2Document: normalizeResourceDocumentForUi(resources.formS2Document),
+    formS3Document: normalizeResourceDocumentForUi(resources.formS3Document),
+    formS4Document: normalizeResourceDocumentForUi(resources.formS4Document),
+    twibbonDocument: normalizeResourceDocumentForUi(resources.twibbonDocument),
+    twibbonThumbnail: normalizeResourceImageForUi(resources.twibbonThumbnail),
+    whatsappThumbnail: normalizeResourceImageForUi(resources.whatsappThumbnail),
+    closeUpExamples: resources.closeUpExamples.map(normalizeResourceImageForUi),
+    fullBodyExamples: resources.fullBodyExamples.map(normalizeResourceImageForUi),
+  };
+}
+
 function compactParticipantResourcesForStorage(resources: ParticipantResources): ParticipantResources {
   return {
     ...resources,
@@ -753,6 +804,118 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
   };
 }
 
+function mapJudgeParticipantToParticipant(item: JudgeParticipantListItem): Participant {
+  const education = [
+    item.education_category?.trim(),
+    item.education_institution?.trim(),
+    item.education_degree?.trim(),
+    item.education_major?.trim(),
+  ]
+    .filter(Boolean)
+    .join(" - ");
+
+  const selectionStatus = (item.selection_status ?? "Pending") as
+    | "Pending"
+    | "Verified"
+    | "TechnicalMeeting"
+    | "Rejected"
+    | "Audition"
+    | "Top20"
+    | "PreCamp"
+    | "Camp"
+    | "GrandFinal"
+    | "Winner";
+
+  const verificationStatus =
+    selectionStatus === "Rejected"
+      ? "Rejected"
+      : [
+          "Verified",
+          "TechnicalMeeting",
+          "Audition",
+          "Top20",
+          "PreCamp",
+          "Camp",
+          "GrandFinal",
+          "Winner",
+        ].includes(selectionStatus)
+        ? "Verified"
+        : "Pending";
+
+  const number =
+    item.participant_code?.trim() ||
+    item.audition_number?.trim() ||
+    item.participant_number?.trim() ||
+    `P-${item.id}`;
+
+  return {
+    id: `P_API_${item.id}`,
+    number,
+    auditionNumber: item.audition_number ?? undefined,
+    participantCode: item.participant_code ?? undefined,
+    name: item.name ?? "Peserta",
+    nickname: item.nickname ?? undefined,
+    fullName: item.name ?? undefined,
+    religion: item.religion ?? undefined,
+    gender: (item.gender ?? "Encik") as "Encik" | "Puan",
+    nationalId: item.national_id ?? "",
+    currentStatus: item.current_status ?? undefined,
+    birthPlace: item.birth_place ?? "",
+    birthDate: item.birth_date ?? "",
+    domicileAddress: item.domicile_address ?? undefined,
+    ktpAddress: item.ktp_address ?? undefined,
+    heightCm: typeof item.height_cm === "number" ? item.height_cm : Number(item.height_cm ?? 0),
+    weightKg: item.weight_kg ?? undefined,
+    shirtSize: item.shirt_size ?? undefined,
+    chestCircumferenceCm: item.chest_circumference_cm ?? undefined,
+    waistCircumferenceCm: item.waist_circumference_cm ?? undefined,
+    hipCircumferenceCm: item.hip_circumference_cm ?? undefined,
+    pantsSize: item.pants_size ?? undefined,
+    shoeSize: item.shoe_size ?? undefined,
+    education: education || "-",
+    instagram: item.instagram ?? "",
+    tiktok: item.tiktok ?? undefined,
+    parentPhone: item.parent_phone ?? undefined,
+    fatherName: item.father_name ?? undefined,
+    motherName: item.mother_name ?? undefined,
+    phone: item.phone ?? "",
+    email: item.email ?? "",
+    occupation: item.occupation ?? undefined,
+    skills: item.skills ?? undefined,
+    hobbies: item.hobbies ?? undefined,
+    languages: item.languages ?? undefined,
+    vision: item.vision ?? undefined,
+    mission: item.mission ?? undefined,
+    experience: item.experience ?? undefined,
+    achievement: item.achievement ?? undefined,
+    agreementNoAgency: item.agreement_no_agency ?? undefined,
+    agencyName: item.agency_name ?? undefined,
+    agreementParentPermission: item.agreement_parent_permission ?? undefined,
+    agreementAllStages: item.agreement_all_stages ?? undefined,
+    motivationStatement: item.motivation_statement ?? undefined,
+    contributionIdea: item.contribution_idea ?? undefined,
+    publicSpeakingExperience: item.public_speaking_experience ?? undefined,
+    photo: item.photo ?? "",
+    status: selectionStatus,
+    verificationStatus,
+    selectionStage: item.selection_stage ?? undefined,
+    adminVerificationNote: item.selection_status_note ?? undefined,
+    documents:
+      item.documents?.map((doc) => ({
+        key: doc.key,
+        label: doc.label,
+        status: doc.status ?? "missing",
+        note: doc.note ?? undefined,
+        url: doc.url ?? undefined,
+        originalName: doc.original_name ?? undefined,
+      })) ?? [],
+    submittedToAdmin: Boolean(item.submitted_to_admin),
+    eliminatedInAudition: Boolean(item.eliminated_in_audition),
+    registeredAt: item.registered_at ?? new Date().toISOString().slice(0, 10),
+    scores: [],
+  };
+}
+
 /**
  * Provider global aplikasi.
  * Bertanggung jawab menginisialisasi state, sinkronisasi storage lokal,
@@ -828,7 +991,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         readStoredJson<JudgeWinnerDisplayMode>(JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY);
 
       if (storedFaq) setFaqList(storedFaq);
-      if (storedParticipantResources) setParticipantResources(storedParticipantResources);
+      if (storedParticipantResources) {
+        setParticipantResources(normalizeParticipantResourcesForUi(storedParticipantResources));
+      }
       if (typeof storedVoteTopPublished === "boolean") setVoteTopPublished(storedVoteTopPublished);
       if (typeof storedVoteRankingPublished === "boolean") setVoteRankingPublished(storedVoteRankingPublished);
       if (storedJudgeEncikWinnerList?.length) setJudgeEncikWinnerList(storedJudgeEncikWinnerList);
@@ -947,6 +1112,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!authInitialized) return;
+    const session = getParticipantAuthSession();
+    const role = session?.user?.role ?? user?.role;
+    if (!session?.token) return;
+    if (role !== "admin" && role !== "super_admin" && role !== "judge") return;
+
+    let cancelled = false;
+    const loadParticipants = async () => {
+      try {
+        const response = await fetchJudgeParticipants(session.token, { force: true, maxAgeMs: 0 });
+        if (cancelled) return;
+        const mapped = response.data.map(mapJudgeParticipantToParticipant);
+        if (mapped.length) {
+          setParticipantList(mapped);
+        }
+      } catch {
+        // fallback to existing participantList
+      }
+    };
+
+    void loadParticipants();
+    return () => {
+      cancelled = true;
+    };
+  }, [authInitialized, user?.role]);
+
+  useEffect(() => {
     let cancelled = false;
 
     const syncPublicFinalists = async () => {
@@ -1004,7 +1196,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const response = await fetchPublicParticipantResources();
         if (cancelled) return;
         if (response?.data) {
-          setParticipantResources(response.data as ParticipantResourcesPayload as ParticipantResources);
+          setParticipantResources(
+            normalizeParticipantResourcesForUi(
+              response.data as ParticipantResourcesPayload as ParticipantResources
+            )
+          );
         }
       } catch {
         // fallback to local storage / defaults

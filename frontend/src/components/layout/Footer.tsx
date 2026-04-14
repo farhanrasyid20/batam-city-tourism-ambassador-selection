@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Phone, Mail, Instagram } from "lucide-react";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../lib/site-branding-content";
 
 const footerLinks = [
   { label: "Home", href: "/" },
@@ -20,6 +21,8 @@ const footerLinks = [
  * kontak, dan tautan penting penyelenggara.
  */
 export default function Footer() {
+  const branding = useSiteBrandingContent();
+  const contactPhoneHref = `tel:${branding.contactPhone.replace(/[^\d+]/g, "")}`;
   return (
     <footer
       className="py-12"
@@ -33,10 +36,11 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <Image
-                src="/logo1.png"
-                alt="Logo Duta Wisata Batam"
+                src={resolveBrandingAssetUrl(branding.logoMain)}
+                alt={branding.siteNameLine1}
                 width={48}
                 height={48}
+                unoptimized
                 className="w-12 h-12 object-contain"
               />
               <div>
@@ -48,7 +52,7 @@ export default function Footer() {
                     fontSize: "0.9rem",
                   }}
                 >
-                  DUTA WISATA
+                  {branding.siteNameLine1}
                 </p>
                 <p
                   style={{
@@ -58,7 +62,7 @@ export default function Footer() {
                     opacity: 0.7,
                   }}
                 >
-                  KOTA BATAM 2026
+                  {branding.siteNameLine2}
                 </p>
               </div>
             </div>
@@ -66,9 +70,7 @@ export default function Footer() {
               className="text-xs leading-relaxed"
               style={{ color: "#CBB998", fontFamily: "var(--font-poppins)" }}
             >
-              Platform digital resmi Pemilihan Encik dan Puan Duta Wisata Kota Batam
-              2026 yang diselenggarakan oleh Dinas Kebudayaan dan Pariwisata Kota
-              Batam.
+              {branding.footerDescription}
             </p>
           </div>
 
@@ -93,41 +95,41 @@ export default function Footer() {
                   className="text-xs"
                   style={{ color: "#CBB998", fontFamily: "var(--font-poppins)" }}
                 >
-                  Dinas Kebudayaan dan Pariwisata Kota Batam
+                  {branding.contactOrganization}
                   <br />
-                  Jl. Engku Putri No.1, Batam Centre, Kota Batam
+                  {branding.contactAddress}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <Phone size={14} style={{ color: "#C8A24D" }} />
                 <a
-                  href="tel:+62778469000"
+                  href={contactPhoneHref}
                   className="text-xs transition-colors hover:text-[#C8A24D]"
                   style={{ color: "#CBB998", fontFamily: "var(--font-poppins)" }}
                 >
-                  (0778) 469000
+                  {branding.contactPhone}
                 </a>
               </div>
               <div className="flex items-center gap-2">
                 <Mail size={14} style={{ color: "#C8A24D" }} />
                 <a
-                  href="mailto:dutawisata@batam.go.id"
+                  href={`mailto:${branding.contactEmail}`}
                   className="text-xs transition-colors hover:text-[#C8A24D]"
                   style={{ color: "#CBB998", fontFamily: "var(--font-poppins)" }}
                 >
-                  dutawisata@batam.go.id
+                  {branding.contactEmail}
                 </a>
               </div>
               <div className="flex items-center gap-2">
                 <Instagram size={14} style={{ color: "#C8A24D" }} />
                 <a
-                  href="https://www.instagram.com/dutawisatakotabatam/"
+                  href={branding.contactInstagramUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="text-xs transition-colors hover:text-[#C8A24D]"
                   style={{ color: "#CBB998", fontFamily: "var(--font-poppins)" }}
                 >
-                  @dutawisatakotabatam
+                  {branding.contactInstagram}
                 </a>
               </div>
             </div>

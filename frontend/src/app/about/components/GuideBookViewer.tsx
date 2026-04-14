@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Document, Page, pdfjs } from "react-pdf";
 import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, Download } from "lucide-react";
+import { useLandingPageContent } from "../../../lib/landing-page-content";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
@@ -12,13 +13,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-const guideBookHref = "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf";
-
 /**
  * Halaman viewer buku panduan versi penuh.
  * Dirancang responsif untuk desktop, tablet, dan mobile dengan kontrol navigasi PDF.
  */
 export default function GuideBookViewer() {
+  const landingPageContent = useLandingPageContent();
+  const aboutContent = landingPageContent.about;
+  const guideBookHref =
+    aboutContent.guidePdfUrl?.trim() || "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf";
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [viewerWidth, setViewerWidth] = useState(900);
@@ -64,7 +67,7 @@ export default function GuideBookViewer() {
               <ArrowLeft size={16} /> Kembali ke About
             </Link>
             <h1 style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)", fontSize: "clamp(1.6rem, 3.5vw, 2.4rem)", fontWeight: 700 }}>
-              Buku Panduan Duta Wisata Batam 2026
+              {aboutContent.guideTitle}
             </h1>
             <p className="mt-2 text-sm sm:text-base text-gray-400 max-w-3xl" style={{ fontFamily: "var(--font-poppins)" }}>
               Viewer ini dibuat khusus agar panduan bisa dibaca langsung di desktop, HP, dan iPad tanpa terjebak di halaman pertama PDF.

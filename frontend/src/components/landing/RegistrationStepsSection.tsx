@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useLandingPageContent } from "../../lib/landing-page-content";
+import {
+  getScheduleDateLabel,
+  getScheduleStatus,
+  useLandingPageContent,
+} from "../../lib/landing-page-content";
 
 /**
  * Section tahapan pendaftaran peserta pada landing page.
@@ -112,7 +116,7 @@ export default function RegistrationStepsSection() {
             <div className="space-y-3">
               {registrationContent.scheduleItems.map((item, index) => (
                 <div
-                  key={item.id || `${item.activity}-${index}`}
+                  key={`${item.id || item.activity || "schedule"}-${index}`}
                   className="rounded-xl px-4 py-3"
                   style={{
                     background: "rgba(200,162,77,0.08)",
@@ -125,9 +129,40 @@ export default function RegistrationStepsSection() {
                   >
                     {item.activity}
                   </p>
-                  <p className="text-xs mt-1" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
-                    {item.date}
-                  </p>
+                  <div className="mt-1 flex items-center gap-2 flex-wrap">
+                    <p className="text-xs" style={{ color: "#C8A24D", fontFamily: "var(--font-poppins)" }}>
+                      {getScheduleDateLabel(item)}
+                    </p>
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full"
+                      style={{
+                        background:
+                          getScheduleStatus(item) === "active"
+                            ? "rgba(34,197,94,0.15)"
+                            : getScheduleStatus(item) === "done"
+                              ? "rgba(107,114,128,0.2)"
+                              : "rgba(245,208,111,0.12)",
+                        color:
+                          getScheduleStatus(item) === "active"
+                            ? "#22c55e"
+                            : getScheduleStatus(item) === "done"
+                              ? "#9CA3AF"
+                              : "#F5D06F",
+                        fontFamily: "var(--font-poppins)",
+                      }}
+                    >
+                      {getScheduleStatus(item) === "active"
+                        ? "Aktif"
+                        : getScheduleStatus(item) === "done"
+                          ? "Selesai"
+                          : "Akan Datang"}
+                    </span>
+                  </div>
+                  {item.isExtended && item.extensionNote ? (
+                    <p className="text-[11px] mt-1" style={{ color: "#F5D06F", fontFamily: "var(--font-poppins)" }}>
+                      Catatan: {item.extensionNote}
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>

@@ -31,8 +31,12 @@ export type JudgeScoreRecapItem = {
   camp_average: number;
   grand_final_total: number;
   grand_final_average: number;
+  final_score_base?: number;
   camp_weighted_30: number;
   grand_final_weighted_70: number;
+  admin_score_adjustment?: number;
+  admin_score_adjustment_note?: string | null;
+  admin_score_adjustment_updated_at?: string | null;
   final_score: number;
   audition_rank?: number | null;
   camp_rank?: number | null;
@@ -60,6 +64,22 @@ export type JudgeScoreRecapResponse = {
   };
   data: JudgeScoreRecapItem[];
   total: number;
+};
+
+export type UpdateJudgeScoreAdjustmentPayload = {
+  participant_user_id: number;
+  admin_score_adjustment: number;
+  admin_score_adjustment_note?: string | null;
+};
+
+export type UpdateJudgeScoreAdjustmentResponse = {
+  message: string;
+  data: {
+    participant_user_id: number;
+    admin_score_adjustment: number;
+    admin_score_adjustment_note?: string | null;
+    admin_score_adjustment_updated_at?: string | null;
+  };
 };
 
 type RecapCacheEnvelope = {
@@ -114,4 +134,15 @@ export function fetchJudgeScoreRecap(
 
   recapInFlight.set(cacheKey, request);
   return request;
+}
+
+export function updateJudgeScoreAdjustment(
+  token: string,
+  payload: UpdateJudgeScoreAdjustmentPayload
+) {
+  return apiRequest<UpdateJudgeScoreAdjustmentResponse>("/super-admin/scoring/final-adjustment", {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
 }

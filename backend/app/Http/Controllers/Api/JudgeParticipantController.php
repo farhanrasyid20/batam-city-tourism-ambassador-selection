@@ -83,7 +83,7 @@ class JudgeParticipantController extends Controller
         $participants = User::query()
             ->where('role', 'participant')
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,nickname,religion,national_id,current_status,birth_place,birth_date,domicile_address,ktp_address,height_cm,weight_kg,shirt_size,chest_circumference_cm,waist_circumference_cm,hip_circumference_cm,pants_size,shoe_size,instagram,tiktok,parent_phone,father_name,mother_name,photo,education_category,education_institution,education_degree,education_major,occupation,skills,hobbies,languages,vision,mission,experience,achievement,selection_status,selection_status_note,eliminated_in_audition,eliminated_at,submitted_to_admin,submitted_to_admin_at',
+                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,nickname,religion,national_id,current_status,birth_place,birth_date,domicile_address,ktp_address,height_cm,weight_kg,shirt_size,chest_circumference_cm,waist_circumference_cm,hip_circumference_cm,pants_size,shoe_size,instagram,tiktok,parent_phone,father_name,mother_name,photo,education_category,education_institution,education_degree,education_major,occupation,skills,hobbies,languages,vision,mission,experience,achievement,agreement_no_agency,agency_name,agreement_parent_permission,agreement_all_stages,motivation_statement,contribution_idea,public_speaking_experience,selection_status,selection_status_note,eliminated_in_audition,eliminated_at,submitted_to_admin,submitted_to_admin_at',
                 'participantDocuments:user_id,document_key,label,is_required,status,original_name,size_bytes,mime_type,path,url,uploaded_at,note',
             ])
             ->orderByDesc('id')
@@ -193,6 +193,13 @@ class JudgeParticipantController extends Controller
                 'mission' => $profile?->mission,
                 'experience' => $profile?->experience,
                 'achievement' => $profile?->achievement,
+                'agreement_no_agency' => $profile?->agreement_no_agency,
+                'agency_name' => $profile?->agency_name,
+                'agreement_parent_permission' => $profile?->agreement_parent_permission,
+                'agreement_all_stages' => $profile?->agreement_all_stages,
+                'motivation_statement' => $profile?->motivation_statement,
+                'contribution_idea' => $profile?->contribution_idea,
+                'public_speaking_experience' => $profile?->public_speaking_experience,
                 'selection_status' => $selectionStatus,
                 'selection_status_note' => $profile?->selection_status_note,
                 'selection_stage' => $this->mapSelectionStage($selectionStatus, $eliminatedInAudition),

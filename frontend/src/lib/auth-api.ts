@@ -271,6 +271,13 @@ export type JudgeParticipantListItem = {
   mission?: string | null;
   experience?: string | null;
   achievement?: string | null;
+  agreement_no_agency?: "yes" | "no" | null;
+  agency_name?: string | null;
+  agreement_parent_permission?: "yes" | "no" | null;
+  agreement_all_stages?: "yes" | "no" | null;
+  motivation_statement?: string | null;
+  contribution_idea?: string | null;
+  public_speaking_experience?: string | null;
   documents?: ParticipantDocumentMeta[];
   selection_status?:
     | "Pending"

@@ -8,10 +8,11 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore, ImagePlus, X, ExternalLink } from "lucide-react";
+import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore, ImagePlus, X, ExternalLink, FileSpreadsheet, FileText } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { useApp } from "../../../../context/AppContext";
-import { resolveApiAssetUrl } from "../../../../lib/api";
+import { API_BASE_URL, resolveApiAssetUrl } from "../../../../lib/api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 import {
   getParticipantSelectionStage,
   getParticipantVerificationStatus,
@@ -105,7 +106,10 @@ function getBiodataFieldBadge(isVerifiedByAdmin: boolean, value: string) {
   };
 }
 
-function getDocumentBadgeMeta(document: NonNullable<ParticipantExtended["documents"]>[number]) {
+function getDocumentBadgeMeta(
+  document: NonNullable<ParticipantExtended["documents"]>[number],
+  isParticipantVerifiedByAdmin: boolean
+) {
   const isUploaded = hasUploadedDocument(document);
   if (!isUploaded || document.status === "missing") {
     return {
@@ -122,6 +126,13 @@ function getDocumentBadgeMeta(document: NonNullable<ParticipantExtended["documen
     };
   }
   if (document.status === "verified") {
+    return {
+      label: "Terverifikasi Admin",
+      bg: "rgba(34,197,94,0.14)",
+      color: "#22c55e",
+    };
+  }
+  if (isParticipantVerifiedByAdmin && document.status === "submitted") {
     return {
       label: "Terverifikasi Admin",
       bg: "rgba(34,197,94,0.14)",
@@ -181,6 +192,37 @@ function resolveParticipantPhoto(photo?: string | null) {
   return resolveApiAssetUrl(value) ?? "/default-avatar.svg";
 }
 
+function normalizePhotoForPdf(photo?: string | null) {
+  const value = (photo ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("data:image")) return value;
+  if (value.includes("/default-avatar.svg")) return "/default-avatar.svg";
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    try {
+      const url = new URL(value);
+      return url.pathname.startsWith("/storage/") ? url.pathname : value;
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
+function extractDigits(value: string): number {
+  const match = value.match(/(\d{1,4})/);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  return Number(match[1]);
+}
+
+function getDisplayNumber(participant: Participant) {
+  const status = participant.status;
+  const auditionStages = ["Verified", "TechnicalMeeting", "Audition", "Rejected"];
+  if (auditionStages.includes(status)) {
+    return (participant.auditionNumber ?? "").trim() || participant.number;
+  }
+  return (participant.participantCode ?? "").trim() || participant.number;
+}
+
 const stageFilterOptions: Array<{ value: StageFilterValue; label: string }> = [
   { value: "all", label: "Semua Tahap" },
   { value: "Verification", label: selectionStageLabels.Verification },
@@ -200,7 +242,7 @@ const verificationFilterOptions: Array<{ value: VerificationFilterValue; label: 
 ];
 
 export default function AdminParticipantsPage() {
-  const { participantList, setParticipantList } = useApp();
+  const { participantList, setParticipantList, voteCandidateList } = useApp();
   const [searchKeyword, setSearchKeyword] = useState("");
   const [stageFilter, setStageFilter] = useState<StageFilterValue>("all");
   const [verificationFilter, setVerificationFilter] = useState<VerificationFilterValue>("all");
@@ -210,8 +252,40 @@ export default function AdminParticipantsPage() {
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; name: string } | null>(null);
   const participantPhotoInputRef = useRef<HTMLInputElement | null>(null);
 
+  const voteCandidateByParticipantId = useMemo(
+    () => new Map(voteCandidateList.map((item) => [item.participantId, item] as const)),
+    [voteCandidateList]
+  );
+
+  const voteCandidateByNumber = useMemo(
+    () => new Map(voteCandidateList.map((item) => [item.number, item] as const)),
+    [voteCandidateList]
+  );
+
+  const resolveVoteCandidate = (participant: Participant) => {
+    return (
+      voteCandidateByParticipantId.get(participant.id) ||
+      voteCandidateByParticipantId.get(`P_API_${participant.id}`) ||
+      voteCandidateByNumber.get((participant.participantCode ?? participant.number ?? "").trim())
+    );
+  };
+
+  const resolveParticipantPhotoWithVote = (participant: Participant) => {
+    const profilePhoto = resolveParticipantPhoto(participant.photo);
+    const isDefault = profilePhoto.includes("/default-avatar.svg");
+    const candidate = resolveVoteCandidate(participant);
+    if (!isDefault || !candidate?.photo) return profilePhoto;
+    return resolveApiAssetUrl(candidate.photo) ?? candidate.photo ?? profilePhoto;
+  };
+
+  const resolveInstagramWithVote = (participant: Participant) => {
+    if ((participant.instagram ?? "").trim()) return participant.instagram;
+    const candidate = resolveVoteCandidate(participant);
+    return candidate?.instagramHandle ?? "";
+  };
+
   const filteredParticipants = useMemo(() => {
-    return participantList.filter((participant) => {
+    const filtered = participantList.filter((participant) => {
       const normalizedSearch = searchKeyword.toLowerCase();
       const selectionStage = getParticipantSelectionStage(participant);
       const verificationStatus = getParticipantVerificationStatus(participant);
@@ -224,6 +298,15 @@ export default function AdminParticipantsPage() {
       const matchVerification = verificationFilter === "all" || verificationStatus === verificationFilter;
       const matchGender = genderFilter === "all" || participant.gender === genderFilter;
       return matchSearch && matchStage && matchVerification && matchGender;
+    });
+
+    return filtered.sort((a, b) => {
+      const aCode = getDisplayNumber(a);
+      const bCode = getDisplayNumber(b);
+      const aNum = extractDigits(aCode);
+      const bNum = extractDigits(bCode);
+      if (aNum !== bNum) return aNum - bNum;
+      return a.name.localeCompare(b.name);
     });
   }, [genderFilter, participantList, searchKeyword, stageFilter, verificationFilter]);
 
@@ -269,6 +352,446 @@ export default function AdminParticipantsPage() {
       revisionCount: reviewItems.filter((item) => item.status === "revision_required").length,
       okCount: reviewItems.filter((item) => item.status === "ok").length,
     };
+  };
+
+  const documentLabels: Record<string, string> = {
+    identityCard: "KTP / SIM / Paspor / Kartu Pelajar",
+    closeUpPhoto: "Foto Close Up 4R",
+    fullBodyPhoto: "Foto Full Body 4R",
+    formS01: "Formulir S-01",
+    formS02: "Formulir S-02",
+    formS03: "Formulir S-03",
+    formS04: "Formulir S-04",
+  };
+
+  const getDocumentMeta = (
+    participant: ParticipantExtended,
+    key: keyof typeof documentLabels,
+    isParticipantVerifiedByAdmin: boolean
+  ) => {
+    const document = (participant.documents ?? []).find((item) => item.key === key);
+    if (!document) {
+      return {
+        statusLabel: "Belum ada",
+        fileName: "-",
+        url: "-",
+      };
+    }
+
+    const statusLabel =
+      document.status === "verified"
+        ? "Terverifikasi"
+        : document.status === "revision_required"
+          ? "Perlu revisi"
+          : isParticipantVerifiedByAdmin && document.status === "submitted"
+            ? "Terverifikasi"
+          : document.status === "submitted"
+            ? "Tersubmit"
+            : "Belum ada";
+
+    return {
+      statusLabel,
+      fileName: (document.original_name ?? document.originalName ?? "-").trim() || "-",
+      url: (document.url ?? "").trim() || "-",
+    };
+  };
+
+  const buildExportRow = (participant: Participant, index: number) => {
+    const extended = participant as ParticipantExtended;
+    const verificationStatus = getParticipantVerificationStatus(participant);
+    const isParticipantVerifiedByAdmin = verificationStatus === "Verified";
+    const selectionStage = getParticipantSelectionStage(participant);
+    const isEliminated = Boolean(participant.eliminatedInAudition);
+    const stageLabel = isEliminated ? "Tereliminasi (Audisi)" : selectionStageLabels[selectionStage];
+    const verificationLabel =
+      isEliminated && verificationStatus === "Rejected" ? "Tereliminasi" : verificationStatusLabels[verificationStatus];
+    const identityCard = getDocumentMeta(extended, "identityCard", isParticipantVerifiedByAdmin);
+    const closeUpPhoto = getDocumentMeta(extended, "closeUpPhoto", isParticipantVerifiedByAdmin);
+    const fullBodyPhoto = getDocumentMeta(extended, "fullBodyPhoto", isParticipantVerifiedByAdmin);
+    const formS01 = getDocumentMeta(extended, "formS01", isParticipantVerifiedByAdmin);
+    const formS02 = getDocumentMeta(extended, "formS02", isParticipantVerifiedByAdmin);
+    const formS03 = getDocumentMeta(extended, "formS03", isParticipantVerifiedByAdmin);
+    const formS04 = getDocumentMeta(extended, "formS04", isParticipantVerifiedByAdmin);
+
+    return {
+      no: index + 1,
+      nomorPeserta: getDisplayNumber(participant),
+      nama: getParticipantFullName(extended),
+      panggilan: extractNickname(extended),
+      kategori: participant.gender === "Encik" ? "Encik (Putra)" : "Puan (Putri)",
+      agama: firstFilled(extended.religion),
+      statusSaatIni: firstFilled(extended.currentStatus),
+      nik: firstFilled(participant.nationalId),
+      tempatLahir: firstFilled(participant.birthPlace),
+      tanggalLahir: firstFilled(participant.birthDate),
+      tinggiBadan: `${firstFilled(participant.heightCm)} cm`,
+      beratBadan: `${firstFilled(extended.weightKg)} kg`,
+      ukuranBaju: firstFilled(extended.shirtSize),
+      lingkarDada: `${firstFilled(extended.chestCircumferenceCm)} cm`,
+      lingkarPinggang: `${firstFilled(extended.waistCircumferenceCm)} cm`,
+      lingkarPinggul: `${firstFilled(extended.hipCircumferenceCm)} cm`,
+      ukuranCelana: firstFilled(extended.pantsSize),
+      ukuranSepatu: firstFilled(extended.shoeSize),
+      pendidikan: firstFilled(participant.education),
+      instagram: firstFilled(resolveInstagramWithVote(participant)),
+      tiktok: firstFilled(extended.tiktok),
+      email: participant.email,
+      phone: participant.phone,
+      parentPhone: firstFilled(extended.parentPhone),
+      fatherName: firstFilled(extended.fatherName),
+      motherName: firstFilled(extended.motherName),
+      domicileAddress: firstFilled(extended.domicileAddress),
+      ktpAddress: firstFilled(extended.ktpAddress),
+      occupation: firstFilled(extended.occupation),
+      skills: firstFilled(extended.skills),
+      hobbies: firstFilled(extended.hobbies),
+      languages: firstFilled(extended.languages),
+      vision: firstFilled(extended.vision),
+      mission: firstFilled(extended.mission),
+      experience: firstFilled(extended.experience),
+      achievement: firstFilled(extended.achievement),
+      agreementNoAgency: firstFilled(extended.agreementNoAgency),
+      agencyName: firstFilled(extended.agencyName),
+      agreementParentPermission: firstFilled(extended.agreementParentPermission),
+      agreementAllStages: firstFilled(extended.agreementAllStages),
+      motivationStatement: firstFilled(extended.motivationStatement),
+      contributionIdea: firstFilled(extended.contributionIdea),
+      publicSpeakingExperience: firstFilled(extended.publicSpeakingExperience),
+      photo: normalizePhotoForPdf(resolveVoteCandidate(participant)?.photo || participant.photo),
+      documentLabels,
+      verifikasi: verificationLabel,
+      tahap: stageLabel,
+      identityCardStatus: identityCard.statusLabel,
+      identityCardFile: identityCard.fileName,
+      identityCardUrl: identityCard.url,
+      closeUpStatus: closeUpPhoto.statusLabel,
+      closeUpFile: closeUpPhoto.fileName,
+      closeUpUrl: closeUpPhoto.url,
+      fullBodyStatus: fullBodyPhoto.statusLabel,
+      fullBodyFile: fullBodyPhoto.fileName,
+      fullBodyUrl: fullBodyPhoto.url,
+      s01Status: formS01.statusLabel,
+      s01File: formS01.fileName,
+      s01Url: formS01.url,
+      s02Status: formS02.statusLabel,
+      s02File: formS02.fileName,
+      s02Url: formS02.url,
+      s03Status: formS03.statusLabel,
+      s03File: formS03.fileName,
+      s03Url: formS03.url,
+      s04Status: formS04.statusLabel,
+      s04File: formS04.fileName,
+      s04Url: formS04.url,
+    };
+  };
+
+  const buildExportRows = () => {
+    return filteredParticipants.map((participant, index) => buildExportRow(participant, index));
+  };
+
+  const exportParticipantsToExcel = () => {
+    const rows = buildExportRows();
+    if (!rows.length) return;
+
+    const headers = [
+      "No",
+      "Nomor Peserta",
+      "Nama Lengkap",
+      "Nama Panggilan",
+      "Kategori",
+      "Agama",
+      "Status Saat Ini",
+      "NIK",
+      "Tempat Lahir",
+      "Tanggal Lahir",
+      "Tinggi Badan",
+      "Berat Badan",
+      "Ukuran Baju",
+      "Lingkar Dada",
+      "Lingkar Pinggang",
+      "Lingkar Pinggul",
+      "Ukuran Celana",
+      "Ukuran Sepatu",
+      "Pendidikan",
+      "Instagram",
+      "TikTok",
+      "Email",
+      "Telepon",
+      "No. HP Orang Tua/Wali",
+      "Nama Ayah",
+      "Nama Ibu",
+      "Alamat Domisili",
+      "Alamat Sesuai KTP",
+      "Pekerjaan",
+      "Keahlian / Bakat",
+      "Hobi",
+      "Bahasa",
+      "Visi",
+      "Misi",
+      "Pengalaman",
+      "Prestasi",
+      "Kontrak Agensi",
+      "Nama Agensi",
+      "Izin Orang Tua/Wali",
+      "Izin Semua Tahap",
+      "Motivasi",
+      "Kontribusi",
+      "Pengalaman Public Speaking",
+      "Status Verifikasi",
+      "Tahap Seleksi",
+      "Status KTP/SIM/Paspor/Kartu Pelajar",
+      "File KTP/SIM/Paspor/Kartu Pelajar",
+      "URL KTP/SIM/Paspor/Kartu Pelajar",
+      "Status Foto Close Up 4R",
+      "File Foto Close Up 4R",
+      "URL Foto Close Up 4R",
+      "Status Foto Full Body 4R",
+      "File Foto Full Body 4R",
+      "URL Foto Full Body 4R",
+      "Status Formulir S-01",
+      "File Formulir S-01",
+      "URL Formulir S-01",
+      "Status Formulir S-02",
+      "File Formulir S-02",
+      "URL Formulir S-02",
+      "Status Formulir S-03",
+      "File Formulir S-03",
+      "URL Formulir S-03",
+      "Status Formulir S-04",
+      "File Formulir S-04",
+      "URL Formulir S-04",
+    ];
+
+    const escapeCsv = (value: string | number) => {
+      const text = String(value ?? "");
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+
+    const csvLines = [
+      headers.map(escapeCsv).join(","),
+      ...rows.map((row) =>
+        [
+          row.no,
+          row.nomorPeserta,
+          row.nama,
+          row.panggilan,
+          row.kategori,
+          row.agama,
+          row.statusSaatIni,
+          row.nik,
+          row.tempatLahir,
+          row.tanggalLahir,
+          row.tinggiBadan,
+          row.beratBadan,
+          row.ukuranBaju,
+          row.lingkarDada,
+          row.lingkarPinggang,
+          row.lingkarPinggul,
+          row.ukuranCelana,
+          row.ukuranSepatu,
+          row.pendidikan,
+          row.instagram,
+          row.tiktok,
+          row.email,
+          row.phone,
+          row.parentPhone,
+          row.fatherName,
+          row.motherName,
+          row.domicileAddress,
+          row.ktpAddress,
+          row.occupation,
+          row.skills,
+          row.hobbies,
+          row.languages,
+          row.vision,
+          row.mission,
+          row.experience,
+          row.achievement,
+          row.agreementNoAgency,
+          row.agencyName,
+          row.agreementParentPermission,
+          row.agreementAllStages,
+          row.motivationStatement,
+          row.contributionIdea,
+          row.publicSpeakingExperience,
+          row.verifikasi,
+          row.tahap,
+          row.identityCardStatus,
+          row.identityCardFile,
+          row.identityCardUrl,
+          row.closeUpStatus,
+          row.closeUpFile,
+          row.closeUpUrl,
+          row.fullBodyStatus,
+          row.fullBodyFile,
+          row.fullBodyUrl,
+          row.s01Status,
+          row.s01File,
+          row.s01Url,
+          row.s02Status,
+          row.s02File,
+          row.s02Url,
+          row.s03Status,
+          row.s03File,
+          row.s03Url,
+          row.s04Status,
+          row.s04File,
+          row.s04Url,
+        ]
+          .map(escapeCsv)
+          .join(",")
+      ),
+    ];
+
+    const blob = new Blob(["\uFEFF" + csvLines.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const dateTag = new Date().toISOString().slice(0, 10);
+    anchor.href = url;
+    anchor.download = `data-peserta-${dateTag}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const resolveDownloadFileName = (headerValue: string | null, fallbackName: string) => {
+    const raw = headerValue ?? "";
+    const utf8Match = raw.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+      try {
+        const decoded = decodeURIComponent(utf8Match[1]).trim();
+        if (decoded) return decoded;
+      } catch {
+        // ignore decode error and fallback to plain filename parser
+      }
+    }
+
+    const plainMatch = raw.match(/filename\s*=\s*"?([^\";]+)"?/i);
+    if (plainMatch?.[1]) {
+      const clean = plainMatch[1].trim();
+      if (clean) return clean;
+    }
+
+    return fallbackName;
+  };
+
+  const triggerBlobDownload = (blob: Blob, fallbackName: string, contentDisposition?: string | null) => {
+    const fileName = resolveDownloadFileName(contentDisposition ?? null, fallbackName)
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .trim() || fallbackName;
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 15000);
+  };
+
+  const exportParticipantsToPdf = async () => {
+    const rows = buildExportRows();
+    if (!rows.length) return;
+
+    const session = getParticipantAuthSession();
+    const token = session?.token;
+
+    if (!token) {
+      alert("Sesi login tidak ditemukan. Silakan login ulang.");
+      return;
+    }
+
+    const title = "Data Peserta Duta Wisata Batam 2026";
+    const response = await fetch(`${API_BASE_URL}/super-admin/participants/pdf-bulk`, {
+      method: "POST",
+      headers: {
+        Accept: "application/pdf, application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        participants: rows,
+        title,
+      }),
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        try {
+          const payload = await response.json() as { message?: string };
+          alert(payload.message || "Gagal generate PDF semua peserta.");
+          return;
+        } catch {
+          // fallback ke parser text jika body JSON tidak valid
+        }
+      }
+
+      const errorText = (await response.text()).trim();
+      const fallbackMessage = "Gagal generate PDF semua peserta. Cek log backend untuk detail error.";
+      alert(errorText.startsWith("<!DOCTYPE html>") ? fallbackMessage : (errorText || fallbackMessage));
+      return;
+    }
+
+    const blob = await response.blob();
+    triggerBlobDownload(
+      blob,
+      `data-peserta-${new Date().toISOString().slice(0, 10)}.pdf`,
+      response.headers.get("content-disposition")
+    );
+  };
+
+  const exportParticipantToPdf = async (participant: Participant) => {
+    const row = buildExportRow(participant, 0);
+    const title = `Data Peserta - ${row.nama} (${row.nomorPeserta})`;
+    const session = getParticipantAuthSession();
+    const token = session?.token;
+
+    if (!token) {
+      alert("Sesi login tidak ditemukan. Silakan login ulang.");
+      return;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/super-admin/participants/pdf`, {
+      method: "POST",
+      headers: {
+        Accept: "application/pdf, application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        participant: row,
+        title,
+      }),
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        try {
+          const payload = await response.json() as { message?: string };
+          alert(payload.message || "Gagal generate PDF peserta.");
+          return;
+        } catch {
+          // fallback ke parser text jika body JSON tidak valid
+        }
+      }
+
+      const errorText = (await response.text()).trim();
+      const fallbackMessage = "Gagal generate PDF peserta. Cek log backend untuk detail error.";
+      alert(errorText.startsWith("<!DOCTYPE html>") ? fallbackMessage : (errorText || fallbackMessage));
+      return;
+    }
+
+    const blob = await response.blob();
+    triggerBlobDownload(
+      blob,
+      `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "data-peserta"}.pdf`,
+      response.headers.get("content-disposition")
+    );
   };
 
   return (
@@ -359,6 +882,38 @@ export default function AdminParticipantsPage() {
             <option value="Encik">Encik (Putra)</option>
             <option value="Puan">Puan (Putri)</option>
           </select>
+
+          <button
+            type="button"
+            onClick={exportParticipantsToExcel}
+            className="px-4 py-2.5 rounded-xl text-sm inline-flex items-center gap-2"
+            style={{
+              background: "rgba(34,197,94,0.14)",
+              border: "1px solid rgba(34,197,94,0.28)",
+              color: "#22c55e",
+              fontFamily: "var(--font-poppins)",
+              cursor: "pointer",
+            }}
+          >
+            <FileSpreadsheet size={14} />
+            Export Excel
+          </button>
+
+          <button
+            type="button"
+            onClick={exportParticipantsToPdf}
+            className="px-4 py-2.5 rounded-xl text-sm inline-flex items-center gap-2"
+            style={{
+              background: "rgba(59,130,246,0.14)",
+              border: "1px solid rgba(59,130,246,0.28)",
+              color: "#60a5fa",
+              fontFamily: "var(--font-poppins)",
+              cursor: "pointer",
+            }}
+          >
+            <FileText size={14} />
+            Export PDF
+          </button>
         </div>
 
         <p className="text-xs mt-3 flex items-center gap-1.5" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
@@ -403,6 +958,12 @@ export default function AdminParticipantsPage() {
                   {filteredParticipants.map((participant, index) => {
                     const verificationStatus = getParticipantVerificationStatus(participant);
                     const selectionStage = getParticipantSelectionStage(participant);
+                    const isEliminated = Boolean(participant.eliminatedInAudition);
+                    const stageLabel = isEliminated ? "Tereliminasi (Audisi)" : selectionStageLabels[selectionStage];
+                    const verificationLabel =
+                      isEliminated && verificationStatus === "Rejected"
+                        ? "Tereliminasi"
+                        : verificationStatusLabels[verificationStatus];
 
                     return (
                       <tr
@@ -423,7 +984,7 @@ export default function AdminParticipantsPage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <Image
-                              src={resolveParticipantPhoto(participant.photo)}
+                              src={resolveParticipantPhotoWithVote(participant)}
                               alt={participant.name}
                               width={32}
                               height={32}
@@ -435,7 +996,7 @@ export default function AdminParticipantsPage() {
                                 {getParticipantDisplayName(participant as ParticipantExtended)}
                               </p>
                               <p className="text-xs" style={{ color: "#666" }}>
-                                {participant.number}
+                                {getDisplayNumber(participant)}
                               </p>
                             </div>
                           </div>
@@ -445,25 +1006,25 @@ export default function AdminParticipantsPage() {
                             className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
                             style={{
                               background:
-                                verificationStatus === "Verified"
+                                verificationLabel === "Terverifikasi"
                                   ? "rgba(34,197,94,0.15)"
-                                  : verificationStatus === "NeedsRevision"
+                                  : verificationLabel === "Perlu Perbaikan"
                                   ? "rgba(249,115,22,0.15)"
-                                  : verificationStatus === "Rejected"
+                                  : verificationLabel === "Tereliminasi"
                                   ? "rgba(239,68,68,0.15)"
                                   : "rgba(245,158,11,0.15)",
                               color:
-                                verificationStatus === "Verified"
+                                verificationLabel === "Terverifikasi"
                                   ? "#22c55e"
-                                  : verificationStatus === "NeedsRevision"
+                                  : verificationLabel === "Perlu Perbaikan"
                                   ? "#f97316"
-                                  : verificationStatus === "Rejected"
+                                  : verificationLabel === "Tereliminasi"
                                   ? "#ef4444"
                                   : "#F59E0B",
                               fontFamily: "var(--font-poppins)",
                             }}
                           >
-                            {verificationStatusLabels[verificationStatus]}
+                            {verificationLabel}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -471,7 +1032,7 @@ export default function AdminParticipantsPage() {
                             className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
                             style={{ background: "rgba(59,130,246,0.12)", color: "#60a5fa", fontFamily: "var(--font-poppins)" }}
                           >
-                            {selectionStageLabels[selectionStage]}
+                            {stageLabel}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -522,7 +1083,7 @@ export default function AdminParticipantsPage() {
                     style={{ border: "2px solid rgba(212,175,55,0.5)", cursor: "pointer" }}
                   >
                     <Image
-                      src={resolveParticipantPhoto(selectedParticipant.photo)}
+                      src={resolveParticipantPhotoWithVote(selectedParticipant)}
                       alt={selectedParticipant.name}
                       width={80}
                       height={80}
@@ -546,7 +1107,7 @@ export default function AdminParticipantsPage() {
                         type="button"
                         onClick={() => {
                           setPreviewPhoto({
-                            src: resolveParticipantPhoto(selectedParticipant.photo),
+                            src: resolveParticipantPhotoWithVote(selectedParticipant),
                             name: selectedParticipant.name,
                           });
                           setParticipantPhotoMenuOpen(false);
@@ -586,6 +1147,23 @@ export default function AdminParticipantsPage() {
                 <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                   Nama asli: {getParticipantFullName(selectedParticipant as ParticipantExtended)}
                 </p>
+                <div className="mt-3 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => exportParticipantToPdf(selectedParticipant)}
+                    className="px-3 py-2 rounded-xl text-xs inline-flex items-center gap-2"
+                    style={{
+                      background: "rgba(59,130,246,0.14)",
+                      border: "1px solid rgba(59,130,246,0.28)",
+                      color: "#60a5fa",
+                      fontFamily: "var(--font-poppins)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <FileText size={12} />
+                    Print PDF Peserta
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2 text-xs" style={{ fontFamily: "var(--font-poppins)" }}>
@@ -706,16 +1284,19 @@ export default function AdminParticipantsPage() {
 
                 <div className="flex justify-between gap-2">
                   <span style={{ color: "#888" }}>Instagram</span>
-                  {selectedParticipant.instagram ? (
+                  {resolveInstagramWithVote(selectedParticipant) ? (
                     <a
-                      href={selectedParticipant.instagram.startsWith("http") ? selectedParticipant.instagram : `https://instagram.com/${selectedParticipant.instagram.replace("@", "")}`}
+                      href={resolveInstagramWithVote(selectedParticipant).startsWith("http")
+                        ? resolveInstagramWithVote(selectedParticipant)
+                        : `https://instagram.com/${resolveInstagramWithVote(selectedParticipant).replace("@", "")}`
+                      }
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-1"
                       style={{ color: "#D4AF37", textAlign: "right", maxWidth: "160px", wordBreak: "break-word" }}
                     >
                       <Instagram size={11} />
-                      {selectedParticipant.instagram}
+                      {resolveInstagramWithVote(selectedParticipant)}
                     </a>
                   ) : (
                     <span style={{ color: "#666" }}>-</span>
@@ -820,6 +1401,11 @@ export default function AdminParticipantsPage() {
                     Dokumen Terkait
                   </p>
                   <div className="space-y-2">
+                    {(() => {
+                      const verificationStatus = getParticipantVerificationStatus(selectedParticipant);
+                      const isParticipantVerifiedByAdmin = verificationStatus === "Verified";
+                      return (
+                        <>
                     {(selectedParticipant.documents ?? []).map((document) => (
                       <div
                         key={`${selectedParticipant.id}-${document.key}`}
@@ -827,7 +1413,10 @@ export default function AdminParticipantsPage() {
                         style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
                       >
                         {(() => {
-                          const badge = getDocumentBadgeMeta(document as ParticipantExtended["documents"][number]);
+                          const badge = getDocumentBadgeMeta(
+                            document as ParticipantExtended["documents"][number],
+                            isParticipantVerifiedByAdmin
+                          );
                           return (
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-xs font-semibold" style={{ color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}>
@@ -870,6 +1459,9 @@ export default function AdminParticipantsPage() {
                         ) : null}
                       </div>
                     ))}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

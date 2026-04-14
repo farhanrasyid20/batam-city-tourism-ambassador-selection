@@ -19,13 +19,26 @@ export function readFileAsDataUrl(file: File): Promise<string> {
 
 export function stripHtml(html: string) {
   if (!html) return "";
+  const withSeparators = html
+    .replace(/<(br|\/p|\/div|\/li|\/h[1-6]|\/blockquote|\/figure)\s*\/?>/gi, " ")
+    .replace(/&nbsp;/gi, " ");
   const temp = document.createElement("div");
-  temp.innerHTML = html;
-  return (temp.textContent ?? temp.innerText ?? "").trim();
+  temp.innerHTML = withSeparators;
+  return (temp.textContent ?? temp.innerText ?? "").replace(/\s+/g, " ").trim();
 }
 
 export function toExcerptFromHtml(contentHtml: string) {
-  const text = stripHtml(contentHtml);
+  if (!contentHtml) return "";
+
+  const temp = document.createElement("div");
+  temp.innerHTML = contentHtml;
+
+  const firstLead = Array.from(temp.querySelectorAll("p, h1, h2, h3, h4, li"))
+    .map((node) => (node.textContent ?? "").replace(/\s+/g, " ").trim())
+    .find((text) => text.length > 0);
+
+  const text = firstLead || stripHtml(contentHtml);
+  if (!text) return "";
   if (text.length <= 130) return text;
   return `${text.slice(0, 127)}...`;
 }

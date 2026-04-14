@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\JudgeScore;
+use App\Models\ParticipantProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 /**
@@ -163,7 +165,7 @@ class JudgeScoreRecapController extends Controller
         $participantQuery = User::query()
             ->where('role', 'participant')
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender',
+                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,admin_score_adjustment,admin_score_adjustment_note,admin_score_adjustment_updated_at',
             ])
             ->orderBy('name');
 
@@ -228,7 +230,9 @@ class JudgeScoreRecapController extends Controller
 
             $campWeighted = round($camp['average'] * 0.30, 2);
             $grandFinalWeighted = round($grandFinal['average'] * 0.70, 2);
-            $finalScore = round($campWeighted + $grandFinalWeighted, 2);
+            $finalScoreBase = round($campWeighted + $grandFinalWeighted, 2);
+            $adminScoreAdjustment = round((float) ($profile?->admin_score_adjustment ?? 0), 2);
+            $finalScore = round($finalScoreBase + $adminScoreAdjustment, 2);
 
             return [
                 'participant_id' => $participantIdApi,
@@ -250,8 +254,12 @@ class JudgeScoreRecapController extends Controller
                 'camp_average' => $camp['average'],
                 'grand_final_total' => $grandFinal['total'],
                 'grand_final_average' => $grandFinal['average'],
+                'final_score_base' => $finalScoreBase,
                 'camp_weighted_30' => $campWeighted,
                 'grand_final_weighted_70' => $grandFinalWeighted,
+                'admin_score_adjustment' => $adminScoreAdjustment,
+                'admin_score_adjustment_note' => $profile?->admin_score_adjustment_note,
+                'admin_score_adjustment_updated_at' => $profile?->admin_score_adjustment_updated_at?->toIso8601String(),
                 'final_score' => $finalScore,
                 'audition_rank' => null,
                 'camp_rank' => null,
@@ -301,6 +309,49 @@ class JudgeScoreRecapController extends Controller
             ],
             'data' => $rows,
             'total' => $rows->count(),
+        ]);
+    }
+
+    public function updateAdjustment(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'participant_user_id' => [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where(static fn ($query) => $query->where('role', 'participant')),
+            ],
+            'admin_score_adjustment' => ['required', 'numeric', 'min:-100', 'max:100'],
+            'admin_score_adjustment_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $payload = $validator->validated();
+        $authUser = $request->attributes->get('auth_user');
+
+        $profile = ParticipantProfile::query()->firstOrCreate(
+            ['user_id' => (int) $payload['participant_user_id']]
+        );
+
+        $profile->admin_score_adjustment = round((float) $payload['admin_score_adjustment'], 2);
+        $profile->admin_score_adjustment_note = trim((string) ($payload['admin_score_adjustment_note'] ?? '')) ?: null;
+        $profile->admin_score_adjustment_updated_at = Carbon::now();
+        $profile->admin_score_adjustment_updated_by_user_id = $authUser?->id;
+        $profile->save();
+
+        return response()->json([
+            'message' => 'Nilai tambahan admin berhasil diperbarui.',
+            'data' => [
+                'participant_user_id' => (int) $profile->user_id,
+                'admin_score_adjustment' => (float) $profile->admin_score_adjustment,
+                'admin_score_adjustment_note' => $profile->admin_score_adjustment_note,
+                'admin_score_adjustment_updated_at' => $profile->admin_score_adjustment_updated_at?->toIso8601String(),
+            ],
         ]);
     }
 }

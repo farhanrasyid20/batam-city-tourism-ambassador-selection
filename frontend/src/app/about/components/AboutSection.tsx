@@ -23,8 +23,6 @@ const AboutGuideInlineViewer = dynamic(() => import("./AboutGuideInlineViewer"),
   ssr: false,
 });
 
-const guideBookHref = "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf";
-
 /**
  * Section About lengkap untuk landing/public page.
  * Menampilkan profil program, panduan, kategori pemenang, dan syarat pendaftaran.
@@ -35,6 +33,8 @@ export function AboutSection() {
   const aboutContent = landingPageContent.about;
   const requirementsContent = landingPageContent.requirements;
   const winnerContent = landingPageContent.winnerCategories;
+  const guideBookHref =
+    aboutContent.guidePdfUrl?.trim() || "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf";
 
   const soloWinnerCategories = useMemo(
     () =>
@@ -47,18 +47,6 @@ export function AboutSection() {
         }))
         .filter((item): item is NonNullable<typeof item> => item !== null),
     [winnerContent.soloItems]
-  );
-
-  const pairWinnerCategory = useMemo(
-    () =>
-      winnerCategories.find((item) => item.title === "Encik & Puan Duta Wisata Kota Batam 2026")
-        ? {
-            ...(winnerCategories.find((item) => item.title === "Encik & Puan Duta Wisata Kota Batam 2026") as NonNullable<(typeof winnerCategories)[number]>),
-            title: winnerContent.pairItem.title,
-            description: winnerContent.pairItem.description,
-          }
-        : null,
-    [winnerContent.pairItem]
   );
 
   const favoriteWinnerCategories = useMemo(
@@ -260,40 +248,6 @@ export function AboutSection() {
               </div>
             </div>
 
-            {pairWinnerCategory ? (
-              <div>
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-linear-to-br from-[#F5D06F] to-[#8C6A1C] text-black shrink-0">
-                    <Trophy size={18} />
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.28em] text-[#C8A24D]" style={{ fontFamily: "var(--font-poppins)" }}>
-                      {winnerContent.pairSectionLabel}
-                    </p>
-                    <p className="text-sm" style={{ color: "#D6D6D6", fontFamily: "var(--font-poppins)" }}>
-                      {winnerContent.pairSectionDescription}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl p-6 sm:p-8 bg-[#1A1A1A] border border-yellow-700/20 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-linear-to-br from-[#F5D06F] to-[#8C6A1C] text-black font-bold text-base shrink-0">
-                      5
-                    </div>
-                    <div>
-                      <h4 className="text-lg sm:text-xl font-semibold mb-3" style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}>
-                        {pairWinnerCategory.title}
-                      </h4>
-                      <p className="text-sm sm:text-base leading-relaxed" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                        {pairWinnerCategory.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
             <div>
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center bg-linear-to-br from-[#F5D06F] to-[#8C6A1C] text-black shrink-0">
@@ -313,7 +267,7 @@ export function AboutSection() {
                 {favoriteWinnerCategories.map((item, index) => (
                   <div key={item.title} className="rounded-2xl p-6 bg-[#1A1A1A] border border-yellow-700/20 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
                     <div className="mb-4 w-10 h-10 rounded-full flex items-center justify-center bg-linear-to-br from-[#F5D06F] to-[#8C6A1C] text-black font-bold text-sm">
-                      {index + 6}
+                      {index + 5}
                     </div>
                     <h4 className="text-base font-semibold mb-2" style={{ color: "#F5D06F", fontFamily: "var(--font-cinzel)" }}>
                       {item.title}

@@ -10,6 +10,11 @@ export type LandingScheduleItem = {
   id: string;
   activity: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
+  isExtended?: boolean;
+  extendedUntil?: string;
+  extensionNote?: string;
 };
 
 export type LandingWinnerCategoryItem = {
@@ -48,6 +53,7 @@ export type LandingPageContent = {
     guideCloseLabel: string;
     guideOpenPdfLabel: string;
     guideDownloadPdfLabel: string;
+    guidePdfUrl: string;
   };
   registration: {
     sectionLabel: string;
@@ -126,6 +132,7 @@ export const defaultLandingPageContent: LandingPageContent = {
     guideCloseLabel: "Tutup Panduan",
     guideOpenPdfLabel: "Buka PDF",
     guideDownloadPdfLabel: "Unduh PDF",
+    guidePdfUrl: "/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf",
   },
   registration: {
     sectionLabel: "Pendaftaran",
@@ -135,10 +142,66 @@ export const defaultLandingPageContent: LandingPageContent = {
     registerButtonLabel: "Daftar Sekarang",
     steps: ["Buat akun peserta", "Lengkapi biodata", "Unggah berkas", "Submit pendaftaran"],
     scheduleItems: [
-      { id: "schedule-1", activity: "Pendaftaran Online", date: "1 Mei - 31 Mei 2026" },
-      { id: "schedule-2", activity: "Seleksi Administrasi", date: "2 Juni - 5 Juni 2026" },
-      { id: "schedule-3", activity: "Pengumuman Finalis", date: "10 Juni 2026" },
-      { id: "schedule-4", activity: "Grand Final", date: "27 Juni 2026" },
+      {
+        id: "schedule-1",
+        activity: "Pendaftaran Online",
+        date: "2026-02-01 - 2026-04-09",
+        startDate: "2026-02-01",
+        endDate: "2026-04-09",
+        isExtended: false,
+        extendedUntil: "",
+        extensionNote: "",
+      },
+      {
+        id: "schedule-2",
+        activity: "Technical Meeting",
+        date: "2026-04-10",
+        startDate: "2026-04-10",
+        endDate: "2026-04-10",
+        isExtended: false,
+        extendedUntil: "",
+        extensionNote: "",
+      },
+      {
+        id: "schedule-3",
+        activity: "Audisi",
+        date: "2026-04-11",
+        startDate: "2026-04-11",
+        endDate: "2026-04-11",
+        isExtended: false,
+        extendedUntil: "",
+        extensionNote: "",
+      },
+      {
+        id: "schedule-4",
+        activity: "Pra-karantina",
+        date: "2026-04-13 - 2026-04-24",
+        startDate: "2026-04-13",
+        endDate: "2026-04-24",
+        isExtended: false,
+        extendedUntil: "",
+        extensionNote: "",
+      },
+      {
+        id: "schedule-5",
+        activity: "Karantina",
+        date: "2026-04-29 - 2026-05-01",
+        startDate: "2026-04-29",
+        endDate: "2026-05-01",
+        isExtended: false,
+        extendedUntil: "",
+        extensionNote: "",
+      },
+      {
+        id: "schedule-6",
+        activity: "Grand Final",
+        date: "2026-05-02",
+        startDate: "2026-05-02",
+        endDate: "2026-05-02",
+        isExtended: false,
+        extendedUntil: "",
+        extensionNote: "",
+      },
     ],
   },
   winnerCategories: {
@@ -230,6 +293,19 @@ export const defaultLandingPageContent: LandingPageContent = {
  * Menggabungkan payload parsial dari backend dengan fallback default agar shape tetap lengkap.
  */
 function mergeContent(value: Partial<LandingPageContent> | null | undefined): LandingPageContent {
+  const normalizedScheduleItemsRaw =
+    value?.registration?.scheduleItems?.length
+      ? value.registration.scheduleItems.map((item) => ({
+          ...item,
+          isExtended: Boolean(item.isExtended),
+          startDate: item.startDate ?? "",
+          endDate: item.endDate ?? "",
+          extendedUntil: item.extendedUntil ?? "",
+          extensionNote: item.extensionNote ?? "",
+        }))
+      : defaultLandingPageContent.registration.scheduleItems;
+  const normalizedScheduleItems = mergeMissingScheduleItems(normalizedScheduleItemsRaw);
+
   return {
     hero: {
       ...defaultLandingPageContent.hero,
@@ -248,9 +324,7 @@ function mergeContent(value: Partial<LandingPageContent> | null | undefined): La
       steps: value?.registration?.steps?.length
         ? value.registration.steps
         : defaultLandingPageContent.registration.steps,
-      scheduleItems: value?.registration?.scheduleItems?.length
-        ? value.registration.scheduleItems
-        : defaultLandingPageContent.registration.scheduleItems,
+      scheduleItems: normalizedScheduleItems,
     },
     winnerCategories: {
       ...defaultLandingPageContent.winnerCategories,
@@ -286,6 +360,80 @@ function mergeContent(value: Partial<LandingPageContent> | null | undefined): La
   };
 }
 
+function activityKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function mergeMissingScheduleItems(current: LandingScheduleItem[]): LandingScheduleItem[] {
+  const existing = new Set(current.map((item) => activityKey(item.activity || "")));
+  const merged = [...current];
+
+  for (const item of defaultLandingPageContent.registration.scheduleItems) {
+    const key = activityKey(item.activity || "");
+    if (!key || existing.has(key)) continue;
+    merged.push(item);
+  }
+
+  return ensureUniqueScheduleIds(merged);
+}
+
+function ensureUniqueScheduleIds(items: LandingScheduleItem[]): LandingScheduleItem[] {
+  const used = new Set<string>();
+
+  return items.map((item, index) => {
+    const baseId = (item.id || `schedule-${index + 1}`).trim() || `schedule-${index + 1}`;
+    let nextId = baseId;
+
+    if (used.has(nextId)) {
+      nextId = `${baseId}-${index + 1}`;
+    }
+
+    used.add(nextId);
+    return { ...item, id: nextId };
+  });
+}
+
+function toDateValue(raw?: string): number | null {
+  if (!raw) return null;
+  const value = Date.parse(raw);
+  return Number.isNaN(value) ? null : value;
+}
+
+export function getScheduleEffectiveEnd(item: LandingScheduleItem): string {
+  if (item.isExtended && item.extendedUntil) return item.extendedUntil;
+  return item.endDate || item.startDate || "";
+}
+
+export function getScheduleStatus(item: LandingScheduleItem): "done" | "active" | "upcoming" {
+  const now = Date.now();
+  const start = toDateValue(item.startDate);
+  const end = toDateValue(getScheduleEffectiveEnd(item));
+
+  if (start === null || end === null) return "upcoming";
+  if (now < start) return "upcoming";
+  if (now > end) return "done";
+  return "active";
+}
+
+export function getScheduleDateLabel(item: LandingScheduleItem): string {
+  const start = (item.startDate || "").trim();
+  const end = (item.endDate || "").trim();
+  const effectiveEnd = (getScheduleEffectiveEnd(item) || "").trim();
+
+  const base =
+    start && end
+      ? start === end
+        ? start
+        : `${start} - ${end}`
+      : start || end || (item.date || "").trim();
+
+  if (item.isExtended && effectiveEnd) {
+    return `${base} (Diperpanjang s/d ${effectiveEnd})`;
+  }
+
+  return base || "-";
+}
+
 let cachedContent: LandingPageContent = defaultLandingPageContent;
 
 export async function fetchLandingPageContent() {
@@ -305,6 +453,29 @@ export async function saveLandingPageContent(value: LandingPageContent, token: s
     method: "POST",
     token,
     body: value,
+  });
+
+  cachedContent = mergeContent(response.data);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(UPDATE_EVENT));
+  }
+
+  return cachedContent;
+}
+
+/**
+ * Upload PDF buku panduan landing page.
+ * Endpoint akan menyimpan file dan otomatis memperbarui about.guidePdfUrl.
+ */
+export async function uploadLandingGuidePdf(file: File, token: string) {
+  const body = new FormData();
+  body.append("guide_pdf_file", file);
+
+  const response = await apiRequest<LandingPageResponse>("/super-admin/landing-page/guide-pdf-upload", {
+    method: "POST",
+    token,
+    body,
   });
 
   cachedContent = mergeContent(response.data);

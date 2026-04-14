@@ -89,7 +89,7 @@ export default function StageRankingCard({
           {/* Ubah blok ini kalau nanti kartu ranking peserta mau dibuat lebih ringkas atau lebih detail. */}
           {rankings.map((participant, index) => (
             <button
-              key={participant.id}
+              key={`ranking-${participant.id}-${participant.number}-${index}`}
               type="button"
               onClick={() => onSelectParticipant(participant.id)}
               className="w-full flex items-center gap-4 p-3 rounded-xl transition-all text-left"

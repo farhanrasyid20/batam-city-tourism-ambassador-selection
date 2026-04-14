@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 /**
  * Controller layer entrypoint.
  * Handles HTTP request/response orchestration for this module.
@@ -15,6 +16,47 @@ use Illuminate\Support\Facades\Validator;
 
 class LandingPageController extends Controller
 {
+    public function uploadGuidePdf(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'guide_pdf_file' => ['required', 'file', 'mimes:pdf', 'max:20480'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $file = $request->file('guide_pdf_file');
+        $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'pdf';
+        $path = $file->storeAs(
+            'landing-page/guides',
+            Str::uuid().'.'.$extension,
+            'public'
+        );
+
+        $authUser = $request->attributes->get('auth_user');
+        $setting = LandingPageSetting::query()->find(1);
+        $normalized = $this->normalizeContent($setting?->content);
+        $normalized['about']['guidePdfUrl'] = '/storage/'.$path;
+
+        $saved = LandingPageSetting::query()->updateOrCreate(
+            ['id' => 1],
+            [
+                'content' => $normalized,
+                'updated_by_user_id' => $authUser?->id,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'File buku panduan berhasil diupload.',
+            'data' => $this->normalizeContent($saved->content),
+            'updated_at' => $saved->updated_at?->toIso8601String(),
+        ]);
+    }
+
     public function showPublic(): JsonResponse
     {
         $setting = LandingPageSetting::query()->find(1);
@@ -54,6 +96,7 @@ class LandingPageController extends Controller
             'about.guideCloseLabel' => ['required', 'string'],
             'about.guideOpenPdfLabel' => ['required', 'string'],
             'about.guideDownloadPdfLabel' => ['required', 'string'],
+            'about.guidePdfUrl' => ['nullable', 'string'],
 
             'registration' => ['required', 'array'],
             'registration.sectionLabel' => ['required', 'string'],
@@ -66,7 +109,12 @@ class LandingPageController extends Controller
             'registration.scheduleItems' => ['required', 'array'],
             'registration.scheduleItems.*.id' => ['required', 'string'],
             'registration.scheduleItems.*.activity' => ['required', 'string'],
-            'registration.scheduleItems.*.date' => ['required', 'string'],
+            'registration.scheduleItems.*.date' => ['nullable', 'string'],
+            'registration.scheduleItems.*.startDate' => ['nullable', 'string'],
+            'registration.scheduleItems.*.endDate' => ['nullable', 'string'],
+            'registration.scheduleItems.*.isExtended' => ['nullable', 'boolean'],
+            'registration.scheduleItems.*.extendedUntil' => ['nullable', 'string'],
+            'registration.scheduleItems.*.extensionNote' => ['nullable', 'string'],
 
             'winnerCategories' => ['required', 'array'],
             'winnerCategories.sectionTitle' => ['required', 'string'],
@@ -178,6 +226,7 @@ class LandingPageController extends Controller
                 'guideCloseLabel' => $this->toText(Arr::get($source, 'about.guideCloseLabel'), 'Tutup Panduan'),
                 'guideOpenPdfLabel' => $this->toText(Arr::get($source, 'about.guideOpenPdfLabel'), 'Buka PDF'),
                 'guideDownloadPdfLabel' => $this->toText(Arr::get($source, 'about.guideDownloadPdfLabel'), 'Unduh PDF'),
+                'guidePdfUrl' => $this->toText(Arr::get($source, 'about.guidePdfUrl'), '/participant-resources/Buku-Panduan-Duta-Wisata-2026.pdf'),
             ],
             'registration' => [
                 'sectionLabel' => $this->toText(Arr::get($source, 'registration.sectionLabel'), 'Pendaftaran'),
@@ -304,26 +353,98 @@ class LandingPageController extends Controller
 
             $activity = $this->toText($item['activity'] ?? null);
             $date = $this->toText($item['date'] ?? null);
+            $startDate = $this->toText($item['startDate'] ?? null);
+            $endDate = $this->toText($item['endDate'] ?? null);
+            $isExtended = (bool) ($item['isExtended'] ?? false);
+            $extendedUntil = $this->toText($item['extendedUntil'] ?? null);
+            $extensionNote = $this->toText($item['extensionNote'] ?? null);
 
-            if ($activity === '' && $date === '') {
+            if ($activity === '' && $date === '' && $startDate === '' && $endDate === '') {
                 continue;
+            }
+
+            if ($date === '') {
+                $date = $this->buildScheduleDateText($startDate, $endDate, $isExtended, $extendedUntil);
             }
 
             $normalized[] = [
                 'id' => $this->toText($item['id'] ?? null, 'schedule-'.($index + 1)),
                 'activity' => $activity,
                 'date' => $date,
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'isExtended' => $isExtended,
+                'extendedUntil' => $extendedUntil,
+                'extensionNote' => $extensionNote,
             ];
         }
 
-        return $normalized !== []
-            ? $normalized
-            : [
-                ['id' => 'schedule-1', 'activity' => 'Pendaftaran Online', 'date' => '1 Mei - 31 Mei 2026'],
-                ['id' => 'schedule-2', 'activity' => 'Seleksi Administrasi', 'date' => '2 Juni - 5 Juni 2026'],
-                ['id' => 'schedule-3', 'activity' => 'Pengumuman Finalis', 'date' => '10 Juni 2026'],
-                ['id' => 'schedule-4', 'activity' => 'Grand Final', 'date' => '27 Juni 2026'],
-            ];
+        if ($normalized === []) {
+            return $this->getDefaultScheduleItems();
+        }
+
+        return $this->mergeMissingScheduleItems($normalized);
+    }
+
+    private function getDefaultScheduleItems(): array
+    {
+        return [
+            ['id' => 'schedule-1', 'activity' => 'Pendaftaran Online', 'date' => '2026-02-01 - 2026-04-09', 'startDate' => '2026-02-01', 'endDate' => '2026-04-09', 'isExtended' => false, 'extendedUntil' => '', 'extensionNote' => ''],
+            ['id' => 'schedule-2', 'activity' => 'Technical Meeting', 'date' => '2026-04-10', 'startDate' => '2026-04-10', 'endDate' => '2026-04-10', 'isExtended' => false, 'extendedUntil' => '', 'extensionNote' => ''],
+            ['id' => 'schedule-3', 'activity' => 'Audisi', 'date' => '2026-04-11', 'startDate' => '2026-04-11', 'endDate' => '2026-04-11', 'isExtended' => false, 'extendedUntil' => '', 'extensionNote' => ''],
+            ['id' => 'schedule-4', 'activity' => 'Pra-karantina', 'date' => '2026-04-13 - 2026-04-24', 'startDate' => '2026-04-13', 'endDate' => '2026-04-24', 'isExtended' => false, 'extendedUntil' => '', 'extensionNote' => ''],
+            ['id' => 'schedule-5', 'activity' => 'Karantina', 'date' => '2026-04-29 - 2026-05-01', 'startDate' => '2026-04-29', 'endDate' => '2026-05-01', 'isExtended' => false, 'extendedUntil' => '', 'extensionNote' => ''],
+            ['id' => 'schedule-6', 'activity' => 'Grand Final', 'date' => '2026-05-02', 'startDate' => '2026-05-02', 'endDate' => '2026-05-02', 'isExtended' => false, 'extendedUntil' => '', 'extensionNote' => ''],
+        ];
+    }
+
+    private function mergeMissingScheduleItems(array $current): array
+    {
+        $defaults = $this->getDefaultScheduleItems();
+        $currentKeys = array_map(
+            fn (array $item): string => $this->activityKey($this->toText($item['activity'] ?? null)),
+            $current
+        );
+
+        foreach ($defaults as $item) {
+            $key = $this->activityKey($this->toText($item['activity'] ?? null));
+            if ($key === '' || in_array($key, $currentKeys, true)) {
+                continue;
+            }
+
+            $current[] = $item;
+        }
+
+        return $current;
+    }
+
+    private function activityKey(string $value): string
+    {
+        $lower = mb_strtolower(trim($value));
+        return preg_replace('/[^a-z0-9]/', '', $lower) ?? '';
+    }
+
+    private function buildScheduleDateText(
+        string $startDate,
+        string $endDate,
+        bool $isExtended,
+        string $extendedUntil
+    ): string {
+        if ($startDate !== '' && $endDate !== '') {
+            $base = $startDate === $endDate ? $startDate : $startDate.' - '.$endDate;
+        } elseif ($startDate !== '') {
+            $base = $startDate;
+        } elseif ($endDate !== '') {
+            $base = $endDate;
+        } else {
+            $base = '';
+        }
+
+        if ($isExtended && $extendedUntil !== '') {
+            $base = trim($base.' (Diperpanjang s/d '.$extendedUntil.')');
+        }
+
+        return $base;
     }
 
     private function normalizeWinnerItems(mixed $value, array $default): array

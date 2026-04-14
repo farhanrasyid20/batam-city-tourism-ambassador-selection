@@ -17,6 +17,7 @@ import { GoldButton } from "../../../components/ui/GoldButton";
 import { getReadableApiError } from "../../../lib/api";
 import { loginParticipant } from "../../../lib/auth-api";
 import { saveParticipantAuthSession } from "../../../lib/auth-storage";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../../lib/site-branding-content";
 
 type LocalRole = "peserta" | "admin" | "juri";
 
@@ -62,6 +63,7 @@ const roles = [
  * Mengakomodasi login API, fallback demo account, dan pengalihan berdasarkan role.
  */
 export default function LoginPage() {
+  const branding = useSiteBrandingContent();
   const router = useRouter();
   const { login, setPasswordForEmail, setAuthenticatedUser } = useApp();
 
@@ -298,10 +300,11 @@ export default function LoginPage() {
         >
           <div className="text-center mb-8">
             <Image
-              src="/logo1.png"
+              src={resolveBrandingAssetUrl(branding.logoMain)}
               alt="Logo"
               width={64}
               height={64}
+              unoptimized
               className="w-16 h-16 object-contain mx-auto mb-3"
               style={{ filter: "drop-shadow(0 0 10px rgba(200,162,77,0.4))" }}
             />
@@ -319,7 +322,7 @@ export default function LoginPage() {
               className="text-xs mt-1"
               style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}
             >
-              Duta Wisata Kota Batam 2026
+              {branding.siteNameLine1} {branding.siteNameLine2}
             </p>
           </div>
 

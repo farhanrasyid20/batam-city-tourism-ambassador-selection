@@ -1,10 +1,15 @@
+"use client";
+
 import Image from "next/image";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../lib/site-branding-content";
 
 /**
  * Loading UI global untuk App Router.
  * Ditampilkan saat halaman/segment sedang melakukan proses render atau fetch data.
  */
 export default function Loading() {
+  const branding = useSiteBrandingContent();
+
   return (
     <div
       className="min-h-screen flex items-center justify-center"
@@ -12,10 +17,11 @@ export default function Loading() {
     >
       <div className="flex flex-col items-center gap-4">
         <Image
-          src="/logo1.png"
-          alt="Loading Duta Wisata Batam"
+          src={resolveBrandingAssetUrl(branding.logoLoader)}
+          alt={`Loading ${branding.siteNameLine1}`}
           width={96}
           height={96}
+          unoptimized
           style={{
             filter: "drop-shadow(0 0 14px rgba(200,162,77,0.45))",
           }}

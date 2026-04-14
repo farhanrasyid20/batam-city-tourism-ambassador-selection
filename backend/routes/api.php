@@ -13,9 +13,11 @@ use App\Http\Controllers\Api\LandingPageController;
 use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\ParticipantBiodataController;
 use App\Http\Controllers\Api\ParticipantDocumentController;
+use App\Http\Controllers\Api\ParticipantPdfController;
 use App\Http\Controllers\Api\ParticipantResourceController;
 use App\Http\Controllers\Api\PublicFinalistController;
 use App\Http\Controllers\Api\PublicVoteAdminController;
+use App\Http\Controllers\Api\SiteSettingController;
 use App\Http\Controllers\Api\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +44,7 @@ Route::post('/forgot-password/reset', [AuthController::class, 'resetPasswordDire
 Route::post('/feedback', [FeedbackController::class, 'store']);
 Route::get('/public/faqs', [FaqController::class, 'index']);
 Route::get('/public/landing-page', [LandingPageController::class, 'showPublic']);
+Route::get('/public/site-settings/branding', [SiteSettingController::class, 'showBrandingPublic']);
 Route::get('/public/news', [NewsController::class, 'index']);
 Route::get('/public/finalists', [PublicFinalistController::class, 'index']);
 Route::get('/public/participant-resources', [ParticipantResourceController::class, 'showPublic']);
@@ -75,6 +78,9 @@ Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])
     Route::patch('/feedback/{id}/status', [FeedbackController::class, 'updateStatus']);
     Route::get('/landing-page', [LandingPageController::class, 'showPublic']);
     Route::post('/landing-page', [LandingPageController::class, 'update']);
+    Route::post('/landing-page/guide-pdf-upload', [LandingPageController::class, 'uploadGuidePdf']);
+    Route::get('/site-settings/branding', [SiteSettingController::class, 'showBrandingAdmin']);
+    Route::post('/site-settings/branding', [SiteSettingController::class, 'updateBranding']);
     Route::get('/users', [UserManagementController::class, 'index']);
     Route::post('/users', [UserManagementController::class, 'store']);
     Route::patch('/users/{id}', [UserManagementController::class, 'update']);
@@ -83,9 +89,12 @@ Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])
     Route::delete('/users/{id}', [UserManagementController::class, 'destroy']);
     Route::patch('/participants/{id}/selection-status', [UserManagementController::class, 'updateParticipantSelectionStatus']);
     Route::patch('/participants/{id}/document-reviews', [UserManagementController::class, 'updateParticipantDocumentReviews']);
+    Route::post('/participants/pdf', [ParticipantPdfController::class, 'store']);
+    Route::post('/participants/pdf-bulk', [ParticipantPdfController::class, 'storeBulk']);
     Route::patch('/vote/publication', [PublicVoteAdminController::class, 'updatePublication']);
     Route::post('/vote/candidates/{participantUserId}', [PublicVoteAdminController::class, 'updateCandidate']);
     Route::patch('/vote/jury', [PublicVoteAdminController::class, 'updateJuryWinners']);
+    Route::patch('/scoring/final-adjustment', [JudgeScoreRecapController::class, 'updateAdjustment']);
     Route::get('/scoring/audition/top20-preview', [AuditionPromotionController::class, 'preview']);
     Route::post('/scoring/audition/top20-apply', [AuditionPromotionController::class, 'apply']);
     Route::post('/exports/upload', [ExportReportController::class, 'upload']);

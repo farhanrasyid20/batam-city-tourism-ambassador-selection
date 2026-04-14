@@ -175,7 +175,7 @@ export default function ScoreStageSummary({
           <div className="space-y-2">
             {rankings.slice(0, 5).map((participant, index) => (
               <button
-                key={`summary-${participant.id}`}
+                key={`summary-${participant.id}-${participant.number}-${index}`}
                 type="button"
                 onClick={() => onSelectParticipant(participant.id)}
                 className="w-full flex items-center gap-4 p-3 rounded-xl transition-all text-left"

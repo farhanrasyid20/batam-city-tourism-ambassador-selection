@@ -65,6 +65,10 @@ class ParticipantProfile extends Model
         'selection_status',
         'selection_status_note',
         'selection_status_updated_at',
+        'admin_score_adjustment',
+        'admin_score_adjustment_note',
+        'admin_score_adjustment_updated_at',
+        'admin_score_adjustment_updated_by_user_id',
         'eliminated_in_audition',
         'eliminated_at',
     ];
@@ -77,6 +81,8 @@ class ParticipantProfile extends Model
             'submitted_to_admin' => 'boolean',
             'submitted_to_admin_at' => 'datetime',
             'selection_status_updated_at' => 'datetime',
+            'admin_score_adjustment' => 'decimal:2',
+            'admin_score_adjustment_updated_at' => 'datetime',
             'eliminated_in_audition' => 'boolean',
             'eliminated_at' => 'datetime',
         ];

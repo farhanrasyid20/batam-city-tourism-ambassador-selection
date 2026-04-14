@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, ChevronRight, PanelLeft, PanelRight, ChevronDown, KeyRound, UserCircle2, Bell, AlertCircle, CheckCircle2, Clock3, Star } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { resolveApiAssetUrl, resolveAvatarUrl } from "../../lib/api";
+import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../lib/site-branding-content";
 
 type NavItem = {
   label: string;
@@ -29,6 +30,7 @@ export default function DashboardLayout({
   children,
   role,
 }: DashboardLayoutProps) {
+  const branding = useSiteBrandingContent();
   const {
     user,
     logout,
@@ -354,10 +356,11 @@ export default function DashboardLayout({
       <div className="p-6 border-b" style={{ borderColor: "rgba(200,162,77,0.2)" }}>
         <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"}`}>
           <Image
-            src="/logo1.png"
+            src={resolveBrandingAssetUrl(branding.logoMain)}
             alt="Logo Duta Wisata Batam"
             width={40}
             height={40}
+            unoptimized
             className="w-10 h-10 object-contain"
             style={{ filter: "drop-shadow(0 0 8px rgba(200,162,77,0.4))" }}
           />
@@ -366,13 +369,13 @@ export default function DashboardLayout({
               className="text-xs font-bold leading-tight"
               style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
             >
-              DUTA WISATA
+              {branding.siteNameLine1}
             </p>
             <p
               className="text-xs leading-tight"
               style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)", opacity: 0.7 }}
             >
-              BATAM 2026
+              {branding.siteNameLine2}
             </p>
           </div>
         </div>
@@ -615,7 +618,7 @@ export default function DashboardLayout({
               className="lg:hidden text-sm font-semibold truncate"
               style={{ color: "#C8A24D", fontFamily: "var(--font-cinzel)" }}
             >
-              DUTA WISATA BATAM 2026
+              {`${branding.siteNameLine1} ${branding.siteNameLine2}`}
             </span>
           </div>
           <div className="flex items-center gap-3">
