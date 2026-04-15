@@ -60,12 +60,12 @@ const roles = [
 
 /**
  * Halaman login multi-role (peserta, admin, juri).
- * Mengakomodasi login API, fallback demo account, dan pengalihan berdasarkan role.
+ * Mengakomodasi login API dan pengalihan berdasarkan role.
  */
 export default function LoginPage() {
   const branding = useSiteBrandingContent();
   const router = useRouter();
-  const { login, setPasswordForEmail, setAuthenticatedUser } = useApp();
+  const { setPasswordForEmail, setAuthenticatedUser } = useApp();
 
   const [role, setRole] = useState<LocalRole>("peserta");
   const [email, setEmail] = useState("");
@@ -74,33 +74,6 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const canQuickReset = role === "peserta" && email.trim().length > 0;
-
-  const roleMap = {
-    peserta: "participant",
-    admin: "admin",
-    juri: "judge",
-  } as const;
-
-  const demoAccounts = [
-    {
-      role: "peserta" as LocalRole,
-      email: "ahmadrizky@email.com",
-      password: "demo123",
-      label: "Demo Peserta",
-    },
-    {
-      role: "juri" as LocalRole,
-      email: "juri1@dutawisatabatam.id",
-      password: "demo123",
-      label: "Demo Juri",
-    },
-    {
-      role: "admin" as LocalRole,
-      email: "admin@dutawisatabatam.id",
-      password: "admin123",
-      label: "Demo Admin",
-    },
-  ];
 
   /**
    * Mengarahkan pengguna ke dashboard sesuai role yang aktif.
@@ -118,8 +91,7 @@ export default function LoginPage() {
   };
 
   /**
-   * Menangani proses autentikasi berdasarkan role terpilih.
-   * Prioritas: akun demo internal -> API backend sesuai role.
+   * Menangani proses autentikasi berdasarkan role terpilih via API backend.
    */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,25 +99,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-      const selectedDemo = demoAccounts.find(
-        (acc) =>
-          acc.role === role &&
-          acc.email.toLowerCase() === normalizedEmail &&
-          acc.password === password
-      );
-
-      if (selectedDemo) {
-        await new Promise((r) => setTimeout(r, 250));
-        const ok = login(selectedDemo.email, selectedDemo.password, roleMap[selectedDemo.role]);
-        if (ok) {
-          redirectByRole(selectedDemo.role);
-          return;
-        }
-        setError("Akun demo gagal diproses.");
-        return;
-      }
-
       if (role === "peserta") {
         const response = await loginParticipant({ email, password });
         const backendRole = normalizeBackendRole(response.user.role);
@@ -236,13 +189,6 @@ export default function LoginPage() {
           setError(getReadableApiError(error));
           return;
         }
-      }
-
-      await new Promise((r) => setTimeout(r, 400));
-      const ok = login(email, password, roleMap[role]);
-      if (ok) {
-        redirectByRole(role);
-        return;
       }
 
       setError("Email atau password salah. Silakan coba lagi.");
@@ -507,42 +453,6 @@ export default function LoginPage() {
               </p>
             </div>
           ) : null}
-
-          <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(200,162,77,0.15)" }}>
-            <p
-              className="text-xs text-center mb-3"
-              style={{
-                color: "#BDBDBD",
-                fontFamily: "var(--font-poppins)",
-              opacity: 0.7,
-            }}
-          >
-              Demo Login internal:
-            </p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {demoAccounts.map((acc) => (
-                <button
-                  key={acc.role}
-                  onClick={() => {
-                    setRole(acc.role);
-                    setEmail(acc.email);
-                    setPassword(acc.password);
-                  }}
-                  className="text-xs px-3 py-1.5 rounded-lg transition-all"
-                  style={{
-                    background: "rgba(200,162,77,0.1)",
-                    border: "1px solid rgba(200,162,77,0.2)",
-                    color: "#C8A24D",
-                    fontFamily: "var(--font-poppins)",
-                    cursor: "pointer",
-                  }}
-                  type="button"
-                >
-                  {acc.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

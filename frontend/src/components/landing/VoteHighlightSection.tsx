@@ -30,6 +30,7 @@ type RankedParticipant = {
 
 const OFFICIAL_ACCOUNT = "@dutawisatakotabatam";
 const OFFICIAL_ACCOUNT_URL = "https://instagram.com/dutawisatakotabatam";
+const SHOWCASE_AUTO_ROTATE_MS = 4000;
 
 function formatLikes(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
@@ -510,7 +511,7 @@ export default function VoteHighlightSection() {
     const timer = window.setInterval(() => {
       if (document.hidden) return;
       setActiveIndex((prev) => prev + 1);
-    }, 12000);
+    }, SHOWCASE_AUTO_ROTATE_MS);
 
     return () => window.clearInterval(timer);
   }, [ranking.length]);
