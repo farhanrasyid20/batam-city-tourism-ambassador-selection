@@ -83,7 +83,11 @@ class JudgeParticipantController extends Controller
         $participants = User::query()
             ->where('role', 'participant')
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,nickname,religion,national_id,current_status,birth_place,birth_date,domicile_address,ktp_address,height_cm,weight_kg,shirt_size,chest_circumference_cm,waist_circumference_cm,hip_circumference_cm,pants_size,shoe_size,instagram,tiktok,parent_phone,father_name,mother_name,photo,education_category,education_institution,education_degree,education_major,occupation,skills,hobbies,languages,vision,mission,experience,achievement,agreement_no_agency,agency_name,agreement_parent_permission,agreement_all_stages,motivation_statement,contribution_idea,public_speaking_experience,selection_status,selection_status_note,eliminated_in_audition,eliminated_at,submitted_to_admin,submitted_to_admin_at',
+                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,selection_status,selection_status_note,eliminated_in_audition,eliminated_at,submitted_to_admin,submitted_to_admin_at',
+                'participantProfile.identity:participant_profile_id,nickname,religion,national_id,current_status,birth_place,birth_date,domicile_address,ktp_address,instagram,tiktok,parent_phone,father_name,mother_name,photo',
+                'participantProfile.measurement:participant_profile_id,height_cm,weight_kg,shirt_size,chest_circumference_cm,waist_circumference_cm,hip_circumference_cm,pants_size,shoe_size',
+                'participantProfile.background:participant_profile_id,education_category,education_institution,education_degree,education_major,occupation,skills,hobbies,languages',
+                'participantProfile.statement:participant_profile_id,vision,mission,experience,achievement,agreement_no_agency,agency_name,agreement_parent_permission,agreement_all_stages,motivation_statement,contribution_idea,public_speaking_experience',
                 'participantDocuments:user_id,document_key,label,is_required,status,original_name,size_bytes,mime_type,path,url,uploaded_at,note',
             ])
             ->orderByDesc('id')

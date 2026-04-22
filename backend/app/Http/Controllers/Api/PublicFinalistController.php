@@ -72,7 +72,9 @@ class PublicFinalistController extends Controller
                     });
             })
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,photo,instagram,education_category,education_institution,education_degree,education_major,selection_status,eliminated_in_audition',
+                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,selection_status,eliminated_in_audition',
+                'participantProfile.identity:participant_profile_id,photo,instagram',
+                'participantProfile.background:participant_profile_id,education_category,education_institution,education_degree,education_major',
                 'participantDocuments:user_id,document_key,path,url',
             ])
             ->orderBy('name')

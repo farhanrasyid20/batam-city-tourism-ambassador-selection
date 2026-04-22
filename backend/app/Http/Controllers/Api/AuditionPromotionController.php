@@ -66,7 +66,8 @@ class AuditionPromotionController extends Controller
                     ->orWhereIn('selection_status', self::PREVIEW_STATUSES);
             })
             ->with([
-                'participantProfile:user_id,participant_code,audition_number,participant_number,gender,nickname,selection_status',
+                'participantProfile:user_id,participant_code,audition_number,participant_number,gender,selection_status',
+                'participantProfile.identity:participant_profile_id,nickname',
             ])
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -85,7 +86,8 @@ class AuditionPromotionController extends Controller
                     ->orWhereIn('selection_status', self::APPLY_STATUSES);
             })
             ->with([
-                'participantProfile:user_id,participant_code,audition_number,participant_number,gender,nickname,selection_status',
+                'participantProfile:user_id,participant_code,audition_number,participant_number,gender,selection_status',
+                'participantProfile.identity:participant_profile_id,nickname',
             ])
             ->orderBy('name')
             ->get(['id', 'name']);
