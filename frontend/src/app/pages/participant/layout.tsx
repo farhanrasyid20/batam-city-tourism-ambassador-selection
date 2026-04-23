@@ -151,7 +151,7 @@ export default function ParticipantPagesLayout({
       if (syncLockRef.current) return;
       syncLockRef.current = true;
       try {
-        const response = await fetchParticipantBiodata(token);
+        const response = await fetchParticipantBiodata(token, { force: true, maxAgeMs: 0 });
         if (disposed) return;
 
         const data = response.data;
@@ -266,7 +266,7 @@ export default function ParticipantPagesLayout({
     };
 
     const onFocus = () => void syncProfile();
-    const intervalId = window.setInterval(() => void syncProfile(), 120000);
+    const intervalId = window.setInterval(() => void syncProfile(), 15000);
     window.addEventListener("focus", onFocus);
 
     void syncProfile();

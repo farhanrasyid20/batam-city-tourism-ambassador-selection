@@ -15,10 +15,9 @@ import {
   type Participant,
   type Judge,
   type NewsItem,
-  type ScoreRecord, // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ INI YANG BENAR (bukan Score)
-  mockParticipants,
+  type ScoreRecord, // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ INI YANG BENAR (bukan Score)
 } from "../data/mockData";
-import { faqItems, type FAQItem } from "../data/faqData";
+import { type FAQItem } from "../data/faqData";
 import {
   fetchPublicFaqs,
   fetchPublicNews,
@@ -202,7 +201,7 @@ type AppContextType = {
   newsList: NewsItem[];
   setNewsList: React.Dispatch<React.SetStateAction<NewsItem[]>>;
 
-  scoreList: ScoreRecord[]; // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ INI YANG BENAR
+  scoreList: ScoreRecord[]; // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ INI YANG BENAR
   setScoreList: React.Dispatch<React.SetStateAction<ScoreRecord[]>>;
 
   currentParticipant: Participant | null;
@@ -325,7 +324,7 @@ const defaultLandingPageContent: LandingPageContent = {
     titleLine3: "KOTA BATAM 2026",
     description:
       "Platform digital resmi pemilihan Encik & Puan Duta Wisata Kota Batam 2026. Daftarkan diri Anda dan jadilah representasi terbaik Kota Batam!",
-    primaryButtonLabel: "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ Daftar Sekarang",
+    primaryButtonLabel: "Daftar Sekarang",
     secondaryButtonLabel: "Login Peserta",
   },
   about: {
@@ -358,45 +357,6 @@ const defaultLandingPageContent: LandingPageContent = {
   },
 };
 
-const FAQ_STORAGE_KEY = "duta-wisata-faq-list";
-const PARTICIPANT_LIST_STORAGE_KEY = "duta-wisata-participant-list";
-const PARTICIPANT_RESOURCES_STORAGE_KEY = "duta-wisata-participant-resources";
-const LANDING_PAGE_CONTENT_STORAGE_KEY = "duta-wisata-landing-page-content";
-const VOTE_CANDIDATE_LIST_STORAGE_KEY = "duta-wisata-vote-candidate-list";
-const VOTE_TOP_LIST_STORAGE_KEY = "duta-wisata-vote-top-list";
-const VOTE_TOP_PUBLISHED_STORAGE_KEY = "duta-wisata-vote-top-published";
-const VOTE_RANKING_PUBLISHED_STORAGE_KEY = "duta-wisata-vote-ranking-published";
-const JUDGE_ENCIK_WINNERS_STORAGE_KEY = "duta-wisata-judge-encik-winners";
-const JUDGE_PUAN_WINNERS_STORAGE_KEY = "duta-wisata-judge-puan-winners";
-const JUDGE_PAIR_RANKING_STORAGE_KEY = "duta-wisata-judge-pair-ranking";
-const JUDGE_ENCIK_PUBLISHED_STORAGE_KEY = "duta-wisata-judge-encik-published";
-const JUDGE_PUAN_PUBLISHED_STORAGE_KEY = "duta-wisata-judge-puan-published";
-const JUDGE_PAIR_PUBLISHED_STORAGE_KEY = "duta-wisata-judge-pair-published";
-const JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY = "duta-wisata-judge-encik-display-mode";
-const JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY = "duta-wisata-judge-puan-display-mode";
-const JUDGE_WINNERS_PUBLISHED_STORAGE_KEY = "duta-wisata-judge-winners-published";
-const JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY = "duta-wisata-judge-winners-display-mode";
-
-const storageFallbackMemory = new Map<string, unknown>();
-
-function readStoredJson<T>(key: string): T | null {
-  if (storageFallbackMemory.has(key)) {
-    return storageFallbackMemory.get(key) as T;
-  }
-
-  if (typeof window === "undefined") return null;
-
-  const raw = window.localStorage.getItem(key);
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    window.localStorage.removeItem(key);
-    return null;
-  }
-}
-
 function normalizeInstagram(raw: string) {
   const value = raw.trim();
   if (!value) {
@@ -428,72 +388,6 @@ function normalizeInstagram(raw: string) {
     handle: handle ? `@${handle}` : "",
     profileUrl: handle ? `https://instagram.com/${handle}` : "",
     originalValue: value,
-  };
-}
-
-function isQuotaExceededError(error: unknown) {
-  if (!(error instanceof DOMException)) return false;
-  return (
-    error.code === 22 ||
-    error.code === 1014 ||
-    error.name === "QuotaExceededError" ||
-    error.name === "NS_ERROR_DOM_QUOTA_REACHED"
-  );
-}
-
-function setStoredJsonSafely(key: string, value: unknown) {
-  storageFallbackMemory.set(key, value);
-
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    // Prevent runtime crash when storage quota is exceeded.
-    // Do not remove existing key value, to avoid losing published/status flags.
-    if (isQuotaExceededError(error)) return;
-  }
-}
-
-function stripInlineImage(value?: string | null) {
-  const normalized = value?.trim() ?? "";
-  if (!normalized) return "/default-avatar.svg";
-  if (normalized.startsWith("data:image")) return "/default-avatar.svg";
-  return normalized;
-}
-
-function compactVoteCandidatesForStorage(list: VotePublicCandidate[]) {
-  return list.map((item) => ({
-    ...item,
-    photo: stripInlineImage(item.photo),
-  }));
-}
-
-function compactVoteTopForStorage(list: VoteTopItem[]) {
-  return list.map((item) => ({
-    ...item,
-    photo: stripInlineImage(item.photo),
-  }));
-}
-
-function compactJudgeWinnersForStorage(list: JudgeWinnerItem[]) {
-  return list.map((item) => ({
-    ...item,
-    photo: stripInlineImage(item.photo),
-  }));
-}
-
-function compactResourceDocumentForStorage(document: ResourceDocument): ResourceDocument {
-  return {
-    ...document,
-    // Avoid quota issues from large inline base64 in localStorage.
-    fileDataUrl: document.fileDataUrl?.startsWith("data:") ? "" : document.fileDataUrl,
-  };
-}
-
-function compactResourceImageForStorage(image: ResourceImage): ResourceImage {
-  return {
-    ...image,
-    imageUrl: stripInlineImage(image.imageUrl),
   };
 }
 
@@ -543,23 +437,6 @@ function normalizeParticipantResourcesForUi(resources: ParticipantResources): Pa
     whatsappThumbnail: normalizeResourceImageForUi(resources.whatsappThumbnail),
     closeUpExamples: resources.closeUpExamples.map(normalizeResourceImageForUi),
     fullBodyExamples: resources.fullBodyExamples.map(normalizeResourceImageForUi),
-  };
-}
-
-function compactParticipantResourcesForStorage(resources: ParticipantResources): ParticipantResources {
-  return {
-    ...resources,
-    guideDocument: compactResourceDocumentForStorage(resources.guideDocument),
-    submissionDocument: compactResourceDocumentForStorage(resources.submissionDocument),
-    formS1Document: compactResourceDocumentForStorage(resources.formS1Document),
-    formS2Document: compactResourceDocumentForStorage(resources.formS2Document),
-    formS3Document: compactResourceDocumentForStorage(resources.formS3Document),
-    formS4Document: compactResourceDocumentForStorage(resources.formS4Document),
-    twibbonDocument: compactResourceDocumentForStorage(resources.twibbonDocument),
-    twibbonThumbnail: compactResourceImageForStorage(resources.twibbonThumbnail),
-    whatsappThumbnail: compactResourceImageForStorage(resources.whatsappThumbnail),
-    closeUpExamples: resources.closeUpExamples.map(compactResourceImageForStorage),
-    fullBodyExamples: resources.fullBodyExamples.map(compactResourceImageForStorage),
   };
 }
 
@@ -918,7 +795,7 @@ function mapJudgeParticipantToParticipant(item: JudgeParticipantListItem): Parti
 
 /**
  * Provider global aplikasi.
- * Bertanggung jawab menginisialisasi state, sinkronisasi storage lokal,
+ * Bertanggung jawab menginisialisasi state runtime,
  * memuat data publik dari backend, serta menyediakan aksi mutasi ke seluruh komponen.
  */
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -935,12 +812,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [newsList, setNewsList] = useState<NewsItem[]>([]);
 
-  // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ mockScores itu array ScoreRecord, bukan Score
+  // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ mockScores itu array ScoreRecord, bukan Score
   const [scoreList, setScoreList] = useState<ScoreRecord[]>([]);
 
   const [currentParticipant, setCurrentParticipant] =
     useState<Participant | null>(null);
-  const [faqList, setFaqList] = useState<FAQItem[]>(faqItems);
+  const [faqList, setFaqList] = useState<FAQItem[]>([]);
 
   const [voteCandidateList, setVoteCandidateList] = useState<VotePublicCandidate[]>([]);
   const [voteTopList, setVoteTopList] = useState<VoteTopItem[]>([]);
@@ -969,110 +846,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
-      const bootstrap = getStoredParticipantBootstrap(mockParticipants);
+      const bootstrap = getStoredParticipantBootstrap([]);
       setUser(bootstrap.user);
       setCurrentParticipant(bootstrap.participant);
-
-      const storedFaq = readStoredJson<FAQItem[]>(FAQ_STORAGE_KEY);
-      const storedParticipantResources = readStoredJson<ParticipantResources>(PARTICIPANT_RESOURCES_STORAGE_KEY);
-      const storedLandingPageContent = readStoredJson<LandingPageContent>(LANDING_PAGE_CONTENT_STORAGE_KEY);
-      const storedVoteTopPublished = readStoredJson<boolean>(VOTE_TOP_PUBLISHED_STORAGE_KEY);
-      const storedVoteRankingPublished = readStoredJson<boolean>(VOTE_RANKING_PUBLISHED_STORAGE_KEY);
-      const storedJudgeEncikWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_ENCIK_WINNERS_STORAGE_KEY);
-      const storedJudgePuanWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_PUAN_WINNERS_STORAGE_KEY);
-      const storedJudgePairRankingList = readStoredJson<JudgePairRankingItem[]>(JUDGE_PAIR_RANKING_STORAGE_KEY);
-      const storedJudgeEncikPublished = readStoredJson<boolean>(JUDGE_ENCIK_PUBLISHED_STORAGE_KEY);
-      const storedJudgePuanPublished = readStoredJson<boolean>(JUDGE_PUAN_PUBLISHED_STORAGE_KEY);
-      const storedJudgePairPublished = readStoredJson<boolean>(JUDGE_PAIR_PUBLISHED_STORAGE_KEY);
-      const storedJudgeEncikDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY);
-      const storedJudgePuanDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY);
-      const storedJudgeWinnersPublished = readStoredJson<boolean>(JUDGE_WINNERS_PUBLISHED_STORAGE_KEY);
-      const storedJudgeWinnersDisplayMode =
-        readStoredJson<JudgeWinnerDisplayMode>(JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY);
-
-      if (storedFaq) setFaqList(storedFaq);
-      if (storedParticipantResources) {
-        setParticipantResources(normalizeParticipantResourcesForUi(storedParticipantResources));
-      }
-      if (typeof storedVoteTopPublished === "boolean") setVoteTopPublished(storedVoteTopPublished);
-      if (typeof storedVoteRankingPublished === "boolean") setVoteRankingPublished(storedVoteRankingPublished);
-      if (storedJudgeEncikWinnerList?.length) setJudgeEncikWinnerList(storedJudgeEncikWinnerList);
-      if (storedJudgePuanWinnerList?.length) setJudgePuanWinnerList(storedJudgePuanWinnerList);
-      if (storedJudgePairRankingList?.length) setJudgePairRankingList(storedJudgePairRankingList);
-      if (typeof storedJudgeEncikPublished === "boolean") setJudgeEncikPublished(storedJudgeEncikPublished);
-      if (typeof storedJudgePuanPublished === "boolean") setJudgePuanPublished(storedJudgePuanPublished);
-      if (typeof storedJudgePairPublished === "boolean") setJudgePairPublished(storedJudgePairPublished);
-      if (typeof storedJudgeWinnersPublished === "boolean") setJudgeWinnersPublished(storedJudgeWinnersPublished);
-      if (
-        storedJudgeEncikDisplayMode === "name_only" ||
-        storedJudgeEncikDisplayMode === "name_with_score"
-      ) {
-        setJudgeEncikDisplayMode(storedJudgeEncikDisplayMode);
-      }
-      if (
-        storedJudgePuanDisplayMode === "name_only" ||
-        storedJudgePuanDisplayMode === "name_with_score"
-      ) {
-        setJudgePuanDisplayMode(storedJudgePuanDisplayMode);
-      }
-      if (
-        storedJudgeWinnersDisplayMode === "name_only" ||
-        storedJudgeWinnersDisplayMode === "name_with_score"
-      ) {
-        setJudgeWinnerDisplayMode(storedJudgeWinnersDisplayMode);
-      }
-
-      // Backward compatibility: when old aggregate publish/mode exists and new keys are absent.
-      if (
-        typeof storedJudgeWinnersPublished === "boolean" &&
-        typeof storedJudgeEncikPublished !== "boolean" &&
-        typeof storedJudgePuanPublished !== "boolean" &&
-        typeof storedJudgePairPublished !== "boolean"
-      ) {
-        setJudgeEncikPublished(storedJudgeWinnersPublished);
-        setJudgePuanPublished(storedJudgeWinnersPublished);
-        setJudgePairPublished(storedJudgeWinnersPublished);
-      }
-      if (
-        (storedJudgeWinnersDisplayMode === "name_only" || storedJudgeWinnersDisplayMode === "name_with_score") &&
-        storedJudgeEncikDisplayMode !== "name_only" &&
-        storedJudgeEncikDisplayMode !== "name_with_score" &&
-        storedJudgePuanDisplayMode !== "name_only" &&
-        storedJudgePuanDisplayMode !== "name_with_score"
-      ) {
-        setJudgeEncikDisplayMode(storedJudgeWinnersDisplayMode);
-        setJudgePuanDisplayMode(storedJudgeWinnersDisplayMode);
-      }
-      if (storedLandingPageContent) {
-        setLandingPageContent({
-          ...defaultLandingPageContent,
-          ...storedLandingPageContent,
-          hero: {
-            ...defaultLandingPageContent.hero,
-            ...storedLandingPageContent.hero,
-          },
-          about: {
-            ...defaultLandingPageContent.about,
-            ...storedLandingPageContent.about,
-            missionItems:
-              storedLandingPageContent.about?.missionItems?.length
-                ? storedLandingPageContent.about.missionItems
-                : defaultLandingPageContent.about.missionItems,
-          },
-          registration: {
-            ...defaultLandingPageContent.registration,
-            ...storedLandingPageContent.registration,
-            steps:
-              storedLandingPageContent.registration?.steps?.length
-                ? storedLandingPageContent.registration.steps
-                : defaultLandingPageContent.registration.steps,
-            scheduleItems:
-              storedLandingPageContent.registration?.scheduleItems?.length
-                ? storedLandingPageContent.registration.scheduleItems
-                : defaultLandingPageContent.registration.scheduleItems,
-          },
-        });
-      }
 
       setAuthInitialized(true);
     });
@@ -1133,8 +909,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     void loadParticipants();
+    const intervalId = window.setInterval(() => {
+      void loadParticipants();
+    }, 15000);
+    const handleWindowFocus = () => {
+      void loadParticipants();
+    };
+    window.addEventListener("focus", handleWindowFocus);
+
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
     };
   }, [authInitialized, user?.role]);
 
@@ -1203,7 +989,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           );
         }
       } catch {
-        // fallback to local storage / defaults
+        // fallback ke default in-memory
       }
     };
 
@@ -1214,69 +1000,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-
-    const syncJuryPublishSettings = () => {
-      const storedJudgeEncikWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_ENCIK_WINNERS_STORAGE_KEY);
-      const storedJudgePuanWinnerList = readStoredJson<JudgeWinnerItem[]>(JUDGE_PUAN_WINNERS_STORAGE_KEY);
-      const storedJudgePairRankingList = readStoredJson<JudgePairRankingItem[]>(JUDGE_PAIR_RANKING_STORAGE_KEY);
-      const storedEncikPublished = readStoredJson<boolean>(JUDGE_ENCIK_PUBLISHED_STORAGE_KEY);
-      const storedPuanPublished = readStoredJson<boolean>(JUDGE_PUAN_PUBLISHED_STORAGE_KEY);
-      const storedPairPublished = readStoredJson<boolean>(JUDGE_PAIR_PUBLISHED_STORAGE_KEY);
-      const storedEncikDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY);
-      const storedPuanDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY);
-      const storedJudgeWinnersPublished = readStoredJson<boolean>(JUDGE_WINNERS_PUBLISHED_STORAGE_KEY);
-      const storedJudgeWinnersDisplayMode = readStoredJson<JudgeWinnerDisplayMode>(JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY);
-
-      if (Array.isArray(storedJudgeEncikWinnerList)) setJudgeEncikWinnerList(storedJudgeEncikWinnerList);
-      if (Array.isArray(storedJudgePuanWinnerList)) setJudgePuanWinnerList(storedJudgePuanWinnerList);
-      if (Array.isArray(storedJudgePairRankingList)) setJudgePairRankingList(storedJudgePairRankingList);
-
-      if (typeof storedEncikPublished === "boolean") setJudgeEncikPublished(storedEncikPublished);
-      if (typeof storedPuanPublished === "boolean") setJudgePuanPublished(storedPuanPublished);
-      if (typeof storedPairPublished === "boolean") setJudgePairPublished(storedPairPublished);
-      if (typeof storedJudgeWinnersPublished === "boolean") setJudgeWinnersPublished(storedJudgeWinnersPublished);
-
-      if (storedEncikDisplayMode === "name_only" || storedEncikDisplayMode === "name_with_score") {
-        setJudgeEncikDisplayMode(storedEncikDisplayMode);
-      }
-      if (storedPuanDisplayMode === "name_only" || storedPuanDisplayMode === "name_with_score") {
-        setJudgePuanDisplayMode(storedPuanDisplayMode);
-      }
-      if (
-        storedJudgeWinnersDisplayMode === "name_only" ||
-        storedJudgeWinnersDisplayMode === "name_with_score"
-      ) {
-        setJudgeWinnerDisplayMode(storedJudgeWinnersDisplayMode);
-      }
-    };
-
-    const onStorage = (event: StorageEvent) => {
-      if (!event.key) return;
-      if (
-        event.key === JUDGE_ENCIK_WINNERS_STORAGE_KEY ||
-        event.key === JUDGE_PUAN_WINNERS_STORAGE_KEY ||
-        event.key === JUDGE_PAIR_RANKING_STORAGE_KEY ||
-        event.key === JUDGE_ENCIK_PUBLISHED_STORAGE_KEY ||
-        event.key === JUDGE_PUAN_PUBLISHED_STORAGE_KEY ||
-        event.key === JUDGE_PAIR_PUBLISHED_STORAGE_KEY ||
-        event.key === JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY ||
-        event.key === JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY ||
-        event.key === JUDGE_WINNERS_PUBLISHED_STORAGE_KEY ||
-        event.key === JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY
-      ) {
-        syncJuryPublishSettings();
-      }
-    };
-
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      window.removeEventListener("storage", onStorage);
-    };
-  }, [authInitialized]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1348,115 +1071,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(FAQ_STORAGE_KEY, faqList);
-  }, [authInitialized, faqList]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(PARTICIPANT_LIST_STORAGE_KEY, participantList);
-  }, [authInitialized, participantList]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(
-      PARTICIPANT_RESOURCES_STORAGE_KEY,
-      compactParticipantResourcesForStorage(participantResources)
-    );
-  }, [authInitialized, participantResources]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(LANDING_PAGE_CONTENT_STORAGE_KEY, landingPageContent);
-  }, [authInitialized, landingPageContent]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(
-      VOTE_CANDIDATE_LIST_STORAGE_KEY,
-      compactVoteCandidatesForStorage(voteCandidateList)
-    );
-  }, [authInitialized, voteCandidateList]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(VOTE_TOP_LIST_STORAGE_KEY, compactVoteTopForStorage(voteTopList));
-  }, [authInitialized, voteTopList]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(VOTE_TOP_PUBLISHED_STORAGE_KEY, voteTopPublished);
-  }, [authInitialized, voteTopPublished]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(VOTE_RANKING_PUBLISHED_STORAGE_KEY, voteRankingPublished);
-  }, [authInitialized, voteRankingPublished]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(
-      JUDGE_ENCIK_WINNERS_STORAGE_KEY,
-      compactJudgeWinnersForStorage(judgeEncikWinnerList)
-    );
-  }, [authInitialized, judgeEncikWinnerList]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(
-      JUDGE_PUAN_WINNERS_STORAGE_KEY,
-      compactJudgeWinnersForStorage(judgePuanWinnerList)
-    );
-  }, [authInitialized, judgePuanWinnerList]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(JUDGE_PAIR_RANKING_STORAGE_KEY, judgePairRankingList);
-  }, [authInitialized, judgePairRankingList]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(JUDGE_ENCIK_PUBLISHED_STORAGE_KEY, judgeEncikPublished);
-  }, [authInitialized, judgeEncikPublished]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(JUDGE_PUAN_PUBLISHED_STORAGE_KEY, judgePuanPublished);
-  }, [authInitialized, judgePuanPublished]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(JUDGE_PAIR_PUBLISHED_STORAGE_KEY, judgePairPublished);
-  }, [authInitialized, judgePairPublished]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(JUDGE_ENCIK_DISPLAY_MODE_STORAGE_KEY, judgeEncikDisplayMode);
-  }, [authInitialized, judgeEncikDisplayMode]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    setStoredJsonSafely(JUDGE_PUAN_DISPLAY_MODE_STORAGE_KEY, judgePuanDisplayMode);
-  }, [authInitialized, judgePuanDisplayMode]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    const aggregatePublished =
-      judgeWinnersPublished || judgeEncikPublished || judgePuanPublished || judgePairPublished;
-    setStoredJsonSafely(JUDGE_WINNERS_PUBLISHED_STORAGE_KEY, aggregatePublished);
-  }, [authInitialized, judgeWinnersPublished, judgeEncikPublished, judgePuanPublished, judgePairPublished]);
-
-  useEffect(() => {
-    if (!authInitialized || typeof window === "undefined") return;
-    const aggregateDisplayMode: JudgeWinnerDisplayMode =
-      judgeWinnerDisplayMode ||
-      (judgeEncikDisplayMode === "name_with_score" || judgePuanDisplayMode === "name_with_score"
-        ? "name_with_score"
-        : "name_only");
-    setStoredJsonSafely(JUDGE_WINNERS_DISPLAY_MODE_STORAGE_KEY, aggregateDisplayMode);
-  }, [authInitialized, judgeWinnerDisplayMode, judgeEncikDisplayMode, judgePuanDisplayMode]);
-
-  useEffect(() => {
     if (!authInitialized) return;
     if (applyingRemoteJurySyncRef.current) return;
     const channel = jurySyncChannelRef.current;
@@ -1492,173 +1106,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     judgeWinnerDisplayMode,
   ]);
 
-  const [passwordStore, setPasswordStore] = useState<Record<string, string>>({
-    "admin@dutawisatabatam.id": "admin123",
-    "juri1@dutawisatabatam.id": "demo123",
-    "ahmadrizky@email.com": "demo123",
-  });
-
-  const getDefaultPasswordByRole = useCallback((role: Role) => {
-    if (role === "super_admin") return "SuperAdmin123!";
-    if (role === "admin") return "admin123";
-    return "demo123";
+  const setPasswordForEmail = useCallback((_email: string, _password: string) => {
+    void _email;
+    void _password;
   }, []);
 
-  const resolveStoredPassword = useCallback(
-    (email: string, role: Role) => {
-      return passwordStore[email] ?? getDefaultPasswordByRole(role);
+  const requestPasswordReset = useCallback((_email: string): boolean => {
+    void _email;
+    return false;
+  }, []);
+
+  const resetPasswordWithOtp = useCallback(
+    (_email: string, _otp: string, _newPassword: string): boolean => {
+      void _email;
+      void _otp;
+      void _newPassword;
+      return false;
     },
-    [passwordStore, getDefaultPasswordByRole]
+    []
   );
-
-  const setPasswordForEmail = useCallback((email: string, password: string) => {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized) return;
-    setPasswordStore((prev) => ({ ...prev, [normalized]: password }));
-  }, []);
-
-  const requestPasswordReset = useCallback((email: string): boolean => {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized) return false;
-
-    const emailKnown =
-      Boolean(participantList.find((p) => p.email.toLowerCase() === normalized)) ||
-      Boolean(judgeList.find((j) => (j.email ?? "").toLowerCase() === normalized)) ||
-      normalized === "admin@dutawisatabatam.id" ||
-      Boolean(passwordStore[normalized]);
-
-    return emailKnown;
-  }, [participantList, judgeList, passwordStore]);
-
-  const resetPasswordWithOtp = useCallback((email: string, _otp: string, newPassword: string): boolean => {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized || newPassword.length < 8) return false;
-    setPasswordStore((prev) => ({ ...prev, [normalized]: newPassword }));
-    return true;
-  }, []);
 
   const changePassword = useCallback(
-    (email: string, currentPassword: string, newPassword: string): boolean => {
-      const normalized = email.trim().toLowerCase();
-      if (!normalized || newPassword.length < 8) return false;
-
-      const knownRole = normalized === "admin@dutawisatabatam.id"
-        ? "admin"
-        : judgeList.some((j) => (j.email ?? "").toLowerCase() === normalized)
-        ? "judge"
-        : "participant";
-      const activePassword = resolveStoredPassword(normalized, knownRole);
-      if (activePassword !== currentPassword) return false;
-
-      setPasswordStore((prev) => ({ ...prev, [normalized]: newPassword }));
-      return true;
+    (_email: string, _currentPassword: string, _newPassword: string): boolean => {
+      void _email;
+      void _currentPassword;
+      void _newPassword;
+      return false;
     },
-    [judgeList, resolveStoredPassword]
+    []
   );
 
-  const login = useCallback((email: string, password: string, role: Role): boolean => {
-    const normalizedEmail = email.trim().toLowerCase();
-    const activePassword = resolveStoredPassword(normalizedEmail, role);
-    if (activePassword !== password) {
-      return false;
-    }
-
-    if (role === "super_admin") {
-      setUser({ id: "superadmin001", name: "Super Administrator", email: normalizedEmail, role: "super_admin" });
-      return true;
-    }
-
-    // ADMIN (demo)
-    if (role === "admin") {
-      setUser({ id: "admin001", name: "Administrator", email: normalizedEmail, role: "admin" });
-      return true;
-    }
-
-    // JUDGE (demo)
-    if (role === "judge") {
-      const judge = judgeList.find((j) => (j.email ?? "").toLowerCase() === normalizedEmail);
-
-      if (judge) {
-        setUser({
-          id: judge.id,
-          name: judge.name,
-          email: normalizedEmail,
-          role: "judge",
-          judgeId: judge.id,
-        });
-        return true;
-      }
-
-      // fallback demo
-      setUser({
-        id: "J001",
-        name: "Judge Demo",
-        email: normalizedEmail,
-        role: "judge",
-        judgeId: "J001",
-      });
-      return true;
-    }
-
-    // PARTICIPANT (demo)
-    if (role === "participant") {
-      const participant = participantList.find((p) => p.email.toLowerCase() === normalizedEmail);
-
-      if (participant) {
-        setUser({
-          id: participant.id,
-          name: participant.name,
-          email: normalizedEmail,
-          role: "participant",
-          participantId: participant.id,
-        });
-        setCurrentParticipant(participant);
-        return true;
-      }
-
-      // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ create demo participant session (HARUS sesuai type Participant)
-      const newParticipant: Participant = {
-        id: "P_DEMO",
-        number: "-",
-        name: "Demo Participant",
-
-        gender: "Encik", // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ HARUS "Encik" / "Puan", BUKAN "Male"
-
-        nationalId: "",
-        birthPlace: "",
-        birthDate: "",
-        heightCm: 0, // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ field bener: heightCm (bukan height)
-        education: "",
-        instagram: "",
-        phone: "",
-        email: normalizedEmail,
-
-        photo: "",
-
-        status: "Pending",
-        registeredAt: new Date().toISOString().slice(0, 10),
-
-        scores: [], // ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ WAJIB ada (sesuai interface Participant)
-      };
-
-      setUser({
-        id: newParticipant.id,
-        name: newParticipant.name,
-        email: normalizedEmail,
-        role: "participant",
-        participantId: newParticipant.id,
-      });
-
-      setCurrentParticipant(newParticipant);
-
-      // optional: kalau mau muncul di admin list
-      // setParticipantList((prev) => [newParticipant, ...prev]);
-
-      return true;
-    }
-
+  const login = useCallback((_email: string, _password: string, _role: Role): boolean => {
+    void _email;
+    void _password;
+    void _role;
     return false;
-  }, [resolveStoredPassword, judgeList, participantList]);
+  }, []);
 
   const setAuthenticatedUser = useCallback((nextUser: AuthUser | null) => {
     setUser(nextUser);
@@ -1810,4 +1293,5 @@ export function useApp() {
   if (!ctx) throw new Error("useApp must be used within AppProvider");
   return ctx;
 }
+
 

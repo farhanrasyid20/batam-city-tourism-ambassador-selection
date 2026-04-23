@@ -23,10 +23,10 @@ class ParticipantDocumentController extends Controller
         'identityCard' => ['label' => 'KTP / SIM / Paspor / Kartu Pelajar', 'required' => true, 'max_kb' => 5120],
         'closeUpPhoto' => ['label' => 'Foto Close Up 4R', 'required' => true, 'max_kb' => 3072],
         'fullBodyPhoto' => ['label' => 'Foto Full Body 4R', 'required' => true, 'max_kb' => 3072],
-        'formS01' => ['label' => 'Formulir S-01', 'required' => true, 'max_kb' => 5120],
-        'formS02' => ['label' => 'Formulir S-02', 'required' => true, 'max_kb' => 5120],
-        'formS03' => ['label' => 'Formulir S-03', 'required' => true, 'max_kb' => 5120],
-        'formS04' => ['label' => 'Formulir S-04', 'required' => true, 'max_kb' => 5120],
+        'formS01' => ['label' => 'Formulir S-01', 'required' => false, 'max_kb' => 5120],
+        'formS02' => ['label' => 'Formulir S-02', 'required' => false, 'max_kb' => 5120],
+        'formS03' => ['label' => 'Formulir S-03', 'required' => false, 'max_kb' => 5120],
+        'formS04' => ['label' => 'Formulir S-04', 'required' => false, 'max_kb' => 5120],
         'certificate' => ['label' => 'Sertifikat / Piagam Prestasi', 'required' => false, 'max_kb' => 5120],
     ];
 

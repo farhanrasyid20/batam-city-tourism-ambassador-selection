@@ -26,7 +26,6 @@ import {
   getParticipantSelectionStage,
   getStageCriteria,
   getStageScoreRecords,
-  mockParticipantStageNotes,
   type JudgeAssignedStageKey,
   type ParticipantStageNote,
   type ScoreRecord,
@@ -172,9 +171,7 @@ export default function JudgeScoringPage() {
   const token = useMemo(() => getParticipantAuthSession()?.token ?? "", []);
   const [activeStage, setActiveStage] = useState<JudgeAssignedStageKey>(assignedStages[0] ?? "Audition");
   const [scoreInputs, setScoreInputs] = useState<Record<string, ScoreInputState>>({});
-  const [participantNotes, setParticipantNotes] = useState<FrontendParticipantStageNote[]>(
-    mockParticipantStageNotes,
-  );
+  const [participantNotes, setParticipantNotes] = useState<FrontendParticipantStageNote[]>([]);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [activeParticipantId, setActiveParticipantId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);

@@ -20,6 +20,12 @@ import { useApp } from "../../../../context/AppContext";
 import { statusLabelsId, type Participant, type StageStatus } from "../../../../data/mockData";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
+import {
+  submitParticipantDocuments,
+  type ParticipantDocumentsResponse,
+} from "../../../../lib/auth-api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import { getReadableApiError, resolveApiAssetUrl } from "../../../../lib/api";
 
 /**
  * Mengubah rasio menjadi persentase integer.
@@ -78,6 +84,7 @@ export default function ParticipantDashboardPage() {
   const [submitInfoType, setSubmitInfoType] = useState<"success" | "error">("error");
   const [dismissedAlertId, setDismissedAlertId] = useState("");
   const [resubmittedKeys, setResubmittedKeys] = useState<string[]>([]);
+  const [isSubmittingToAdmin, setIsSubmittingToAdmin] = useState(false);
 
   // Peserta aktif, fallback ke data pertama untuk mode demo.
   const participant = currentParticipant;
@@ -124,10 +131,6 @@ export default function ParticipantDashboardPage() {
         { label: "KTP / NIK", done: uploadedDocumentKeys.has("identityCard") },
         { label: "Foto Close Up", done: uploadedDocumentKeys.has("closeUpPhoto") },
         { label: "Foto Full Body", done: uploadedDocumentKeys.has("fullBodyPhoto") },
-        { label: "Formulir S-01", done: uploadedDocumentKeys.has("formS01") },
-        { label: "Formulir S-02", done: uploadedDocumentKeys.has("formS02") },
-        { label: "Formulir S-03", done: uploadedDocumentKeys.has("formS03") },
-        { label: "Formulir S-04", done: uploadedDocumentKeys.has("formS04") },
       ]
     : [];
 
@@ -164,8 +167,24 @@ export default function ParticipantDashboardPage() {
     Boolean(participant) && profileProgress === 100 && documentProgress === 100 && !alreadySubmitted;
   const canResubmitToAdmin =
     Boolean(participant) && profileProgress === 100 && documentProgress === 100 && allRevisionItemsReady;
+  const canSubmitEditAfterSent =
+    Boolean(participant) &&
+    alreadySubmitted &&
+    profileProgress === 100 &&
+    documentProgress === 100 &&
+    !hasVerificationIssues;
   const canSubmitToAdmin =
-    (hasVerificationIssues ? canResubmitToAdmin : canSubmitFresh) && !participant?.eliminatedInAudition;
+    (hasVerificationIssues ? canResubmitToAdmin : canSubmitFresh || canSubmitEditAfterSent) &&
+    !participant?.eliminatedInAudition;
+  const submitButtonLabel = hasVerificationIssues
+    ? "Kirim Ulang ke Admin"
+    : alreadySubmitted
+    ? "Kirim Editan ke Admin"
+    : canSubmitToAdmin
+    ? "Kirim Seleksi Admin"
+    : profileProgress < 100
+    ? "Lengkapi Biodata Dulu"
+    : "Lengkapi Berkas Dulu";
 
   const statusValue = participant?.status ?? "Pending";
   const statusInfo = statusConfig[statusValue];
@@ -300,6 +319,43 @@ export default function ParticipantDashboardPage() {
     },
   ];
 
+  const syncAfterSubmit = (data: ParticipantDocumentsResponse["data"]) => {
+    const normalizedDocs =
+      data.documents?.map((doc) => ({
+        key: doc.key,
+        label: doc.label,
+        status:
+          doc.status === "verified" || doc.status === "revision_required" || doc.status === "missing"
+            ? doc.status
+            : ("submitted" as const),
+        note: doc.note ?? undefined,
+        url: resolveApiAssetUrl(doc.url) ?? doc.url ?? undefined,
+        mimeType: doc.mime_type ?? undefined,
+        originalName: doc.original_name ?? undefined,
+      })) ?? [];
+
+    const updateParticipant = (base: Participant): Participant => {
+      const auditionNumber = data.audition_number ?? data.participant_number ?? base.auditionNumber ?? base.number;
+      const participantCode = data.participant_code ?? base.participantCode;
+      return {
+        ...base,
+        number: participantCode ?? auditionNumber ?? base.number ?? "-",
+        auditionNumber: auditionNumber ?? base.auditionNumber ?? base.number ?? "-",
+        participantCode,
+        documents: normalizedDocs,
+        submittedToAdmin: data.submitted_to_admin,
+        eliminatedInAudition: data.eliminated_in_audition ?? base.eliminatedInAudition ?? false,
+      };
+    };
+
+    setCurrentParticipant((prev) => (prev ? updateParticipant(prev) : prev));
+    setParticipantList((prev) =>
+      prev.map((item) =>
+        item.id === participant?.id ? updateParticipant(item) : item
+      )
+    );
+  };
+
   // Toast submit admin akan hilang otomatis.
   useEffect(() => {
     if (!submitInfo) return;
@@ -308,7 +364,9 @@ export default function ParticipantDashboardPage() {
   }, [submitInfo]);
 
   // Kirim data peserta ke admin jika semua syarat lengkap.
-  function handleSubmitToAdmin() {
+  async function handleSubmitToAdmin() {
+    if (isSubmittingToAdmin) return;
+
     if (participant?.eliminatedInAudition) {
       setSubmitInfoType("error");
       setSubmitInfo("Anda tereliminasi di tahap audisi dan tidak bisa melanjutkan ke tahap berikutnya.");
@@ -321,34 +379,55 @@ export default function ParticipantDashboardPage() {
       return;
     }
 
-    if (alreadySubmitted && !hasVerificationIssues) {
-      setSubmitInfoType("success");
-      setSubmitInfo("Anda sudah mengirim data Anda. Mohon tunggu verifikasi admin.");
-      return;
-    }
-
     if (!participant || !canSubmitToAdmin) {
       setSubmitInfoType("error");
+      if (!participant) {
+        setSubmitInfo("Data peserta belum tersedia. Silakan refresh halaman.");
+        return;
+      }
+
+      if (profileProgress < 100) {
+        setSubmitInfo(`Biodata baru ${profileProgress}%. Lengkapi biodata dulu sebelum kirim ke admin.`);
+        router.push("/pages/participant/biodata");
+        return;
+      }
+
+      if (documentProgress < 100) {
+        setSubmitInfo(
+          `Upload berkas wajib baru ${documentProgress}%. Lengkapi KTP, foto close up, dan foto full body dulu.`
+        );
+        router.push("/pages/participant/dokumen");
+        return;
+      }
+
       setSubmitInfo("Lengkapi biodata dan dokumen sampai 100% sebelum kirim ke admin.");
       return;
     }
 
-    const updatedParticipant = {
-      ...participant,
-      status: "Pending" as const,
-      submittedToAdmin: true,
-    };
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setSubmitInfoType("error");
+      setSubmitInfo("Sesi login tidak ditemukan. Silakan login ulang.");
+      return;
+    }
 
-    setCurrentParticipant(updatedParticipant);
-    setParticipantList((prev) =>
-      prev.map((item) => (item.id === updatedParticipant.id ? updatedParticipant : item))
-    );
-    setSubmitInfoType("success");
-    setSubmitInfo(
-      hasVerificationIssues
-        ? "Perbaikan berhasil dikirim kembali ke admin. Mohon tunggu verifikasi ulang panitia."
-        : "Data berhasil dikirim ke admin. Silakan tunggu proses verifikasi."
-    );
+    setIsSubmittingToAdmin(true);
+    try {
+      const isEditResubmission = alreadySubmitted && !hasVerificationIssues;
+      const response = await submitParticipantDocuments(token);
+      syncAfterSubmit(response.data);
+      setSubmitInfoType("success");
+      setSubmitInfo(
+        isEditResubmission
+          ? "Perubahan data berhasil dikirim ulang ke admin."
+          : response.message || "Data berhasil dikirim ke admin."
+      );
+    } catch (error) {
+      setSubmitInfoType("error");
+      setSubmitInfo(getReadableApiError(error));
+    } finally {
+      setIsSubmittingToAdmin(false);
+    }
   }
 
   return (
@@ -651,13 +730,13 @@ export default function ParticipantDashboardPage() {
             <GoldButton variant="outline" size="sm" onClick={() => router.push("/pages/participant/dokumen")}>
               {hasVerificationIssues ? "Perbaiki Berkas" : "Upload Berkas"}
             </GoldButton>
-            <GoldButton variant="primary" size="sm" onClick={handleSubmitToAdmin} disabled={!canSubmitToAdmin}>
-              {hasVerificationIssues ? "Kirim Ulang ke Admin" : "Kirim Seleksi Admin"}
+            <GoldButton variant="primary" size="sm" onClick={handleSubmitToAdmin} disabled={isSubmittingToAdmin}>
+              {isSubmittingToAdmin ? "Mengirim..." : submitButtonLabel}
             </GoldButton>
           </div>
           {!canSubmitToAdmin && !alreadySubmitted && !hasVerificationIssues ? (
             <p className="mt-2 text-xs" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-              Tombol aktif jika Biodata 100% dan Upload Berkas Wajib 100%.
+              Kirim seleksi akan diproses saat Biodata 100% dan Upload Berkas Wajib 100%. Jika belum lengkap, Anda akan diarahkan ke halaman yang perlu dilengkapi.
             </p>
           ) : null}
           {hasVerificationIssues ? (
@@ -674,7 +753,7 @@ export default function ParticipantDashboardPage() {
             </p>
           ) : alreadySubmitted ? (
             <p className="mt-2 text-xs" style={{ color: "#22c55e", fontFamily: "var(--font-poppins)" }}>
-              Data sudah dikirim ke admin dan sedang menunggu verifikasi.
+              Data sudah dikirim ke admin. Jika Anda memperbarui biodata/berkas, klik tombol Kirim Editan ke Admin untuk mengirim versi terbaru.
             </p>
           ) : null}
         </GoldCard>

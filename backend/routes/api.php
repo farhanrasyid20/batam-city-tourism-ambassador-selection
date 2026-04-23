@@ -88,6 +88,7 @@ Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])
     Route::patch('/users/{id}/activate', [UserManagementController::class, 'activate']);
     Route::delete('/users/{id}', [UserManagementController::class, 'destroy']);
     Route::patch('/participants/{id}/selection-status', [UserManagementController::class, 'updateParticipantSelectionStatus']);
+    Route::patch('/participants/{id}/profile-photo', [UserManagementController::class, 'updateParticipantProfilePhoto']);
     Route::patch('/participants/{id}/document-reviews', [UserManagementController::class, 'updateParticipantDocumentReviews']);
     Route::post('/participants/pdf', [ParticipantPdfController::class, 'store']);
     Route::post('/participants/pdf-bulk', [ParticipantPdfController::class, 'storeBulk']);

@@ -358,7 +358,7 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['required', 'string', 'max:30'],
             'gender' => ['required', 'string', 'in:Encik,Puan,encik,puan'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'confirmed'],
         ]);
 
         if ($validator->fails()) {
@@ -533,12 +533,20 @@ class AuthController extends Controller
             ], 422);
         }
 
-        /** @var User|null $user */
-        $user = User::query()->where('email', $request->string('email')->toString())->first();
+        $inputEmail = strtolower(trim($request->string('email')->toString()));
 
-        if (! $user || ! Hash::check($request->string('password')->toString(), $user->password)) {
+        /** @var User|null $user */
+        $user = User::query()->where('email', $inputEmail)->first();
+
+        if (! $user) {
             return response()->json([
-                'message' => 'Email atau password salah.',
+                'message' => "Email {$inputEmail} tidak terdaftar.",
+            ], 404);
+        }
+
+        if (! Hash::check($request->string('password')->toString(), $user->password)) {
+            return response()->json([
+                'message' => 'Password salah.',
             ], 401);
         }
 

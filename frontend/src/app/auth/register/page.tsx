@@ -13,12 +13,12 @@ import { resolveBrandingAssetUrl, useSiteBrandingContent } from "../../../lib/si
 
 /**
  * Halaman registrasi peserta.
- * Membuat akun baru, lalu auto-login dan menyimpan sesi autentikasi ke storage lokal.
+ * Membuat akun baru, lalu auto-login via backend dan menyimpan sesi autentikasi.
  */
 export default function RegisterPage() {
   const branding = useSiteBrandingContent();
   const router = useRouter();
-  const { login, setPasswordForEmail, setAuthenticatedUser } = useApp();
+  const { setAuthenticatedUser } = useApp();
 
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
@@ -35,16 +35,9 @@ export default function RegisterPage() {
     kategori: "encik",
   });
 
-  const hasMinLength = form.password.length >= 8;
-  const hasLetter = /[A-Za-z]/.test(form.password);
-  const hasNumber = /\d/.test(form.password);
-  const passwordScore = [hasMinLength, hasLetter, hasNumber].filter(Boolean).length;
-  const passwordStrengthLabel =
-    passwordScore <= 1 ? "Lemah" : passwordScore === 2 ? "Sedang" : "Kuat";
-
   /**
    * Menangani submit form registrasi peserta.
-   * Meliputi validasi password, registrasi ke API, dan login otomatis setelah berhasil.
+   * Meliputi validasi password, registrasi ke API, dan login backend otomatis setelah berhasil.
    */
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,14 +46,6 @@ export default function RegisterPage() {
 
     if (form.password !== form.confirmPassword) {
       setError("Password tidak cocok!");
-      return;
-    }
-    if (form.password.length < 8) {
-      setError("Password minimal 8 karakter!");
-      return;
-    }
-    if (!hasLetter || !hasNumber) {
-      setError("Password harus mengandung huruf dan angka.");
       return;
     }
 
@@ -95,8 +80,6 @@ export default function RegisterPage() {
         role: "participant",
       });
 
-      setPasswordForEmail(form.email, form.password);
-      login(form.email, form.password, "participant");
       setSuccess(true);
       setInfo("Registrasi berhasil. Akun Anda aktif dan siap digunakan.");
 
@@ -261,7 +244,7 @@ export default function RegisterPage() {
                     type={showPass ? "text" : "password"}
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder="Minimal 8 karakter (huruf + angka)"
+                    placeholder="Masukkan password"
                     required
                     className="w-full rounded-xl px-4 py-3 pr-12 text-sm outline-none"
                     style={{ background: "#111", border: "1px solid rgba(200,162,77,0.25)", color: "#F5E6C8", fontFamily: "var(--font-poppins)" }}
@@ -274,26 +257,6 @@ export default function RegisterPage() {
                   >
                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
-                </div>
-                <div className="mt-2">
-                  <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${(passwordScore / 3) * 100}%`,
-                        background:
-                          passwordScore <= 1
-                            ? "linear-gradient(90deg,#ef4444,#f97316)"
-                            : passwordScore === 2
-                            ? "linear-gradient(90deg,#f59e0b,#facc15)"
-                            : "linear-gradient(90deg,#22c55e,#16a34a)",
-                      }}
-                    />
-                  </div>
-                  <p className="text-[11px] mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
-                    Kekuatan password: <strong style={{ color: "#C8A24D" }}>{passwordStrengthLabel}</strong>
-                    {" | "}Gunakan minimal 8 karakter, huruf, dan angka.
-                  </p>
                 </div>
               </div>
 

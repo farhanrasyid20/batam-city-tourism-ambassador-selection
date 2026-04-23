@@ -235,7 +235,7 @@ export default function VoteSection() {
               const igHandle = candidate.instagramHandle.replace("@", "");
               const instagramTarget = candidate.instagramProfileUrl || `https://instagram.com/${igHandle}`;
               const officialPostTarget =
-                candidate.instagramPostUrl || `${OFFICIAL_ACCOUNT_URL}/p/${candidate.participantId.toLowerCase()}-demo/`;
+                candidate.instagramPostUrl || OFFICIAL_ACCOUNT_URL;
               const officialLikeCount = candidate.officialLikeCount ?? 0;
               const candidateUpdatedAt = formatWibCompact(candidate.likeUpdatedAt);
               const candidatePhoto = resolveDisplayPhoto(candidate.photo);

@@ -151,7 +151,6 @@ export default function AdminVerificationPage() {
     currentParticipant,
     setCurrentParticipant,
     participantResources,
-    voteCandidateList,
   } = useApp();
   const [activeTab, setActiveTab] = useState<VerificationTab["key"]>("Pending");
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
@@ -183,31 +182,8 @@ export default function AdminVerificationPage() {
     }
   };
 
-  const voteCandidateByParticipantId = useMemo(
-    () => new Map(voteCandidateList.map((item) => [item.participantId, item] as const)),
-    [voteCandidateList]
-  );
-
-  const voteCandidateByNumber = useMemo(
-    () => new Map(voteCandidateList.map((item) => [item.number, item] as const)),
-    [voteCandidateList]
-  );
-
-  const resolveVoteCandidate = (participant: Participant) => {
-    return (
-      voteCandidateByParticipantId.get(participant.id) ||
-      voteCandidateByParticipantId.get(`P_API_${participant.id}`) ||
-      voteCandidateByNumber.get((participant.participantCode ?? participant.number ?? "").trim())
-    );
-  };
-
-  const resolveVerificationPhotoWithVote = (participant: Participant): string => {
-    const profilePhoto = resolveVerificationPhotoSrc(participant.photo);
-    if (!profilePhoto.includes("/default-avatar.svg")) return profilePhoto;
-    const candidate = resolveVoteCandidate(participant);
-    if (!candidate?.photo) return profilePhoto;
-    return resolveVerificationPhotoSrc(candidate.photo);
-  };
+  const resolveVerificationPhotoWithVote = (participant: Participant): string =>
+    resolveVerificationPhotoSrc(participant.photo);
 
   const verificationMap = useMemo<Record<string, VerificationStatus>>(() => {
     const result: Record<string, VerificationStatus> = {};

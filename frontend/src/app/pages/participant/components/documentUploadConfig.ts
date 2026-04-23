@@ -55,10 +55,17 @@ export const requiredDocuments: DocumentItem[] = [
       "Latar putih polos. Putra: sepatu pantofel hitam. Putri: heels hitam.",
     icon: "image",
   },
+];
+
+// Daftar dokumen OPSIONAL (bisa menyusul).
+/**
+ * Konfigurasi daftar dokumen opsional peserta.
+ */
+export const optionalDocuments: DocumentItem[] = [
   {
     key: "formS01",
     label: "Formulir S-01",
-    required: true,
+    required: false,
     accept: "image/*,.pdf",
     maxSize: "5 MB",
     description: "Formulir pendaftaran resmi yang sudah diisi dan ditandatangani.",
@@ -69,7 +76,7 @@ export const requiredDocuments: DocumentItem[] = [
   {
     key: "formS02",
     label: "Formulir S-02",
-    required: true,
+    required: false,
     accept: "image/*,.pdf",
     maxSize: "5 MB",
     description: "Surat izin orang tua/wali yang sudah ditandatangani.",
@@ -80,7 +87,7 @@ export const requiredDocuments: DocumentItem[] = [
   {
     key: "formS03",
     label: "Formulir S-03",
-    required: true,
+    required: false,
     accept: "image/*,.pdf",
     maxSize: "5 MB",
     description: "Surat pernyataan bersedia menjadi Duta Wisata.",
@@ -91,7 +98,7 @@ export const requiredDocuments: DocumentItem[] = [
   {
     key: "formS04",
     label: "Formulir S-04",
-    required: true,
+    required: false,
     accept: "image/*,.pdf",
     maxSize: "5 MB",
     description: "Surat kesanggupan mengikuti seluruh rangkaian kegiatan.",
@@ -99,13 +106,6 @@ export const requiredDocuments: DocumentItem[] = [
     templatePath: "/participant-resources/S-04-Kesanggupan-Mengikuti-Rangkaian-Kegiatan-2026.pdf",
     templateLabel: "Unduh Form S-04",
   },
-];
-
-// Daftar dokumen OPSIONAL (nilai tambah).
-/**
- * Konfigurasi daftar dokumen opsional peserta.
- */
-export const optionalDocuments: DocumentItem[] = [
   {
     key: "certificate",
     label: "Sertifikat / Piagam Prestasi",

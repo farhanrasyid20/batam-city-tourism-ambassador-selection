@@ -2,15 +2,16 @@
 
 import React, { useState } from "react";
 import { Eye, EyeOff, KeyRound, CheckCircle, AlertCircle } from "lucide-react";
-import { useApp } from "../../../../context/AppContext";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { GoldButton } from "../../../../components/ui/GoldButton";
+import { getReadableApiError } from "../../../../lib/api";
+import { changeAuthenticatedPassword } from "../../../../lib/auth-api";
+import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 
 /**
  * Halaman ubah password peserta tanpa OTP.
  */
 export default function ChangePasswordPage() {
-  const { user, changePassword } = useApp();
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
@@ -44,19 +45,29 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    const ok = changePassword(user?.email ?? "", form.currentPassword, form.newPassword);
-    setLoading(false);
-    if (!ok) {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
       setNoticeType("error");
-      setNotice("Password lama salah atau data tidak valid.");
+      setNotice("Sesi login tidak ditemukan. Silakan login ulang.");
       return;
     }
 
-    setNoticeType("success");
-    setNotice("Password berhasil diubah.");
-    setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setLoading(true);
+    try {
+      await changeAuthenticatedPassword(token, {
+        current_password: form.currentPassword,
+        password: form.newPassword,
+        password_confirmation: form.confirmPassword,
+      });
+      setNoticeType("success");
+      setNotice("Password berhasil diubah.");
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error) {
+      setNoticeType("error");
+      setNotice(getReadableApiError(error));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

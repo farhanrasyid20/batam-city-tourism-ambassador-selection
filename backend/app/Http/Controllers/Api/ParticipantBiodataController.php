@@ -22,37 +22,10 @@ class ParticipantBiodataController extends Controller
     private function resolveProfilePhoto(?ParticipantProfile $profile, User $user): ?string
     {
         $photo = is_string($profile?->photo) ? trim($profile->photo) : '';
-        if ($photo !== '') {
-            if (! str_starts_with($photo, '/storage/')) {
-                return $photo;
-            }
-
-            $storagePath = Str::after($photo, '/storage/');
-            if (Storage::disk('public')->exists($storagePath)) {
-                return $photo;
-            }
+        if ($photo !== '' && str_contains($photo, '/participant-documents/')) {
+            // Jangan pernah gunakan foto dari berkas dokumen sebagai foto profil.
+            return null;
         }
-
-        $fallbackDocument = $user->participantDocuments()
-            ->whereIn('document_key', ['closeUpPhoto', 'fullBodyPhoto'])
-            ->orderByRaw("CASE document_key WHEN 'closeUpPhoto' THEN 0 ELSE 1 END")
-            ->orderByDesc('id')
-            ->first();
-
-        if (! $fallbackDocument) {
-            return $photo !== '' ? $photo : null;
-        }
-
-        $rawUrl = is_string($fallbackDocument->url) ? trim($fallbackDocument->url) : '';
-        if ($rawUrl !== '') {
-            return $rawUrl;
-        }
-
-        $rawPath = is_string($fallbackDocument->path) ? trim($fallbackDocument->path) : '';
-        if ($rawPath !== '') {
-            return '/storage/'.ltrim($rawPath, '/');
-        }
-
         return $photo !== '' ? $photo : null;
     }
 
@@ -72,6 +45,12 @@ class ParticipantBiodataController extends Controller
         $photo = trim($photo);
         if ($photo === '') {
             return null;
+        }
+
+        if (str_contains($photo, '/participant-documents/')) {
+            throw ValidationException::withMessages([
+                'photo' => ['Foto profil tidak boleh menggunakan file dokumen pendaftaran.'],
+            ]);
         }
 
         if (! str_starts_with($photo, 'data:image/')) {

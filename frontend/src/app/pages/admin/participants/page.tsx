@@ -6,13 +6,14 @@
  */
 
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Search, Filter, Eye, Instagram, FileCheck2, ClipboardList, MessageSquareMore, ImagePlus, X, ExternalLink, FileSpreadsheet, FileText } from "lucide-react";
 import GoldCard from "../../../../components/dashboard/GoldCard";
 import { useApp } from "../../../../context/AppContext";
-import { API_BASE_URL, resolveApiAssetUrl } from "../../../../lib/api";
+import { API_BASE_URL, getReadableApiError, resolveApiAssetUrl } from "../../../../lib/api";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
+import { updateParticipantProfilePhoto } from "../../../../lib/auth-api";
 import {
   getParticipantSelectionStage,
   getParticipantVerificationStatus,
@@ -223,6 +224,28 @@ function getDisplayNumber(participant: Participant) {
   return (participant.participantCode ?? "").trim() || participant.number;
 }
 
+function parseParticipantUserId(participantId: string): number | null {
+  const apiIdMatch = participantId.match(/^P_API_(\d+)$/);
+  if (apiIdMatch) {
+    const parsed = Number(apiIdMatch[1]);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  const parsed = Number(participantId);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file foto."));
+    reader.readAsDataURL(file);
+  });
+}
+
 const stageFilterOptions: Array<{ value: StageFilterValue; label: string }> = [
   { value: "all", label: "Semua Tahap" },
   { value: "Verification", label: selectionStageLabels.Verification },
@@ -251,6 +274,8 @@ export default function AdminParticipantsPage() {
   const [participantPhotoMenuOpen, setParticipantPhotoMenuOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; name: string } | null>(null);
   const participantPhotoInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUpdatingParticipantPhoto, setIsUpdatingParticipantPhoto] = useState(false);
+  const [photoUpdateNotice, setPhotoUpdateNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const voteCandidateByParticipantId = useMemo(
     () => new Map(voteCandidateList.map((item) => [item.participantId, item] as const)),
@@ -271,11 +296,7 @@ export default function AdminParticipantsPage() {
   };
 
   const resolveParticipantPhotoWithVote = (participant: Participant) => {
-    const profilePhoto = resolveParticipantPhoto(participant.photo);
-    const isDefault = profilePhoto.includes("/default-avatar.svg");
-    const candidate = resolveVoteCandidate(participant);
-    if (!isDefault || !candidate?.photo) return profilePhoto;
-    return resolveApiAssetUrl(candidate.photo) ?? candidate.photo ?? profilePhoto;
+    return resolveParticipantPhoto(participant.photo);
   };
 
   const resolveInstagramWithVote = (participant: Participant) => {
@@ -314,21 +335,72 @@ export default function AdminParticipantsPage() {
     ? participantList.find((participant) => participant.id === selectedId) ?? null
     : null;
 
-  const handleParticipantPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    setPhotoUpdateNotice(null);
+  }, [selectedId]);
+
+  const handleParticipantPhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedParticipant) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
+    if (!file.type.startsWith("image/")) {
+      setPhotoUpdateNotice({ type: "error", message: "File harus berupa gambar (JPG/PNG/WEBP)." });
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoUpdateNotice({ type: "error", message: "Ukuran foto maksimal 5 MB." });
+      event.target.value = "";
+      return;
+    }
+
+    const token = getParticipantAuthSession()?.token;
+    if (!token) {
+      setPhotoUpdateNotice({ type: "error", message: "Sesi login tidak ditemukan. Silakan login ulang." });
+      event.target.value = "";
+      return;
+    }
+
+    const participantUserId = parseParticipantUserId(selectedParticipant.id);
+    if (!participantUserId) {
+      setPhotoUpdateNotice({ type: "error", message: "ID peserta tidak valid." });
+      event.target.value = "";
+      return;
+    }
+
+    setIsUpdatingParticipantPhoto(true);
+    setPhotoUpdateNotice(null);
+    try {
+      const photoDataUrl = await readFileAsDataUrl(file);
+      if (!photoDataUrl) {
+        throw new Error("File foto tidak dapat diproses.");
+      }
+
+      const response = await updateParticipantProfilePhoto(token, participantUserId, {
+        photo: photoDataUrl,
+      });
+      const persistedPhoto = (response.data.photo ?? "").trim() || photoDataUrl;
+
       setParticipantList((prev) =>
         prev.map((participant) =>
-          participant.id === selectedParticipant.id ? { ...participant, photo: result } : participant
+          participant.id === selectedParticipant.id ? { ...participant, photo: persistedPhoto } : participant
         )
       );
       setParticipantPhotoMenuOpen(false);
-    };
-    reader.readAsDataURL(file);
+      setPhotoUpdateNotice({
+        type: "success",
+        message: "Foto profil peserta berhasil diperbarui.",
+      });
+    } catch (error) {
+      setPhotoUpdateNotice({
+        type: "error",
+        message: getReadableApiError(error),
+      });
+    } finally {
+      setIsUpdatingParticipantPhoto(false);
+    }
+
     event.target.value = "";
   };
 
@@ -457,7 +529,7 @@ export default function AdminParticipantsPage() {
       motivationStatement: firstFilled(extended.motivationStatement),
       contributionIdea: firstFilled(extended.contributionIdea),
       publicSpeakingExperience: firstFilled(extended.publicSpeakingExperience),
-      photo: normalizePhotoForPdf(resolveVoteCandidate(participant)?.photo || participant.photo),
+      photo: normalizePhotoForPdf(participant.photo),
       documentLabels,
       verifikasi: verificationLabel,
       tahap: stageLabel,
@@ -1120,12 +1192,24 @@ export default function AdminParticipantsPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => participantPhotoInputRef.current?.click()}
+                        onClick={() => {
+                          if (!isUpdatingParticipantPhoto) {
+                            participantPhotoInputRef.current?.click();
+                          }
+                        }}
                         className="w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2"
-                        style={{ color: "#D4AF37", fontFamily: "var(--font-poppins)", background: "transparent", border: "none", cursor: "pointer" }}
+                        disabled={isUpdatingParticipantPhoto}
+                        style={{
+                          color: "#D4AF37",
+                          fontFamily: "var(--font-poppins)",
+                          background: "transparent",
+                          border: "none",
+                          cursor: isUpdatingParticipantPhoto ? "not-allowed" : "pointer",
+                          opacity: isUpdatingParticipantPhoto ? 0.7 : 1,
+                        }}
                       >
                         <ImagePlus size={13} />
-                        Pilih Foto Baru
+                        {isUpdatingParticipantPhoto ? "Mengunggah..." : "Pilih Foto Baru"}
                       </button>
                     </div>
                   ) : null}
@@ -1147,6 +1231,17 @@ export default function AdminParticipantsPage() {
                 <p className="text-xs mt-1" style={{ color: "#BDBDBD", fontFamily: "var(--font-poppins)" }}>
                   Nama asli: {getParticipantFullName(selectedParticipant as ParticipantExtended)}
                 </p>
+                {photoUpdateNotice ? (
+                  <p
+                    className="text-xs mt-2"
+                    style={{
+                      color: photoUpdateNotice.type === "success" ? "#22c55e" : "#ef4444",
+                      fontFamily: "var(--font-poppins)",
+                    }}
+                  >
+                    {photoUpdateNotice.message}
+                  </p>
+                ) : null}
                 <div className="mt-3 flex justify-center">
                   <button
                     type="button"

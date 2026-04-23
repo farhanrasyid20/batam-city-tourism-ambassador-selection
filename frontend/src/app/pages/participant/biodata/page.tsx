@@ -563,7 +563,7 @@ export default function BiodataPage() {
     const syncBiodata = async () => {
       setIsSyncingBiodata(true);
       try {
-        const response = await fetchParticipantBiodata(token);
+        const response = await fetchParticipantBiodata(token, { force: true, maxAgeMs: 0 });
         if (cancelled) return;
         const data = response.data;
 

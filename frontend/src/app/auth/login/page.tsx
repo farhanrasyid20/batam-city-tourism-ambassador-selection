@@ -11,6 +11,8 @@ import {
   Shield,
   Gavel,
   ArrowLeft,
+  KeyRound,
+  UserPlus,
 } from "lucide-react";
 import { useApp } from "../../../context/AppContext";
 import { GoldButton } from "../../../components/ui/GoldButton";
@@ -65,7 +67,7 @@ const roles = [
 export default function LoginPage() {
   const branding = useSiteBrandingContent();
   const router = useRouter();
-  const { setPasswordForEmail, setAuthenticatedUser } = useApp();
+  const { setAuthenticatedUser } = useApp();
 
   const [role, setRole] = useState<LocalRole>("peserta");
   const [email, setEmail] = useState("");
@@ -73,7 +75,17 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const canQuickReset = role === "peserta" && email.trim().length > 0;
+  const normalizedErrorText = error.trim().toLowerCase();
+  const isEmailNotFound =
+    normalizedErrorText.includes("tidak terdaftar") ||
+    normalizedErrorText.includes("email tidak ditemukan");
+  const isWrongPassword = normalizedErrorText.includes("password salah");
+  const isCredentialError =
+    normalizedErrorText.includes("email atau password salah") ||
+    isWrongPassword;
+  const canQuickReset =
+    role === "peserta" && email.trim().length > 0 && (isWrongPassword || isCredentialError);
+  const canQuickRegister = role === "peserta" && email.trim().length > 0 && isEmailNotFound;
 
   /**
    * Mengarahkan pengguna ke dashboard sesuai role yang aktif.
@@ -122,7 +134,6 @@ export default function LoginPage() {
           role: "participant",
         });
 
-        setPasswordForEmail(email, password);
         redirectByRole("peserta");
         return;
       }
@@ -385,9 +396,9 @@ export default function LoginPage() {
                       `/auth/forgot-password${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ""}`
                     )
                   }
-                  className="text-xs"
+                  className="text-xs inline-flex items-center gap-1 underline underline-offset-4"
                   style={{
-                    color: "#C8A24D",
+                    color: "#F5D06F",
                     fontFamily: "var(--font-poppins)",
                     background: "none",
                     border: "none",
@@ -395,33 +406,66 @@ export default function LoginPage() {
                     fontWeight: 600,
                   }}
                 >
+                  <KeyRound size={13} />
                   Lupa password?
                 </button>
               </div>
             </div>
 
             {error ? (
-              <div>
-                <p className="text-xs text-red-400" style={{ fontFamily: "var(--font-poppins)" }}>
+              <div
+                className="rounded-xl border px-3 py-2"
+                style={{ borderColor: "rgba(248,113,113,0.4)", background: "rgba(127,29,29,0.12)" }}
+              >
+                <p className="text-xs text-red-400" style={{ fontFamily: "var(--font-poppins)", fontWeight: 600 }}>
                   {error}
                 </p>
+                {isCredentialError ? (
+                  <p className="text-[11px] mt-1" style={{ color: "#F5D06F", fontFamily: "var(--font-poppins)" }}>
+                    Periksa kembali email dan password. Jika lupa password, klik tombol reset di bawah.
+                  </p>
+                ) : null}
+                {isEmailNotFound ? (
+                  <p className="text-[11px] mt-1" style={{ color: "#F5D06F", fontFamily: "var(--font-poppins)" }}>
+                    Email belum terdaftar. Silakan buat akun peserta baru.
+                  </p>
+                ) : null}
                 {canQuickReset ? (
                   <button
                     type="button"
                     onClick={() =>
                       router.push(`/auth/forgot-password?email=${encodeURIComponent(email.trim())}`)
                     }
-                    className="text-xs mt-2"
+                    className="text-xs mt-2 inline-flex items-center gap-1 rounded-lg px-3 py-1.5"
                     style={{
-                      color: "#F5D06F",
+                      color: "#0F0F0F",
                       fontFamily: "var(--font-poppins)",
-                      background: "none",
-                      border: "none",
+                      background: "#F5D06F",
+                      border: "1px solid rgba(200,162,77,0.55)",
                       cursor: "pointer",
                       fontWeight: 600,
                     }}
                   >
-                    Password salah? Ganti password sekarang
+                    <KeyRound size={13} />
+                    Password salah atau lupa? Ganti password sekarang
+                  </button>
+                ) : null}
+                {canQuickRegister ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/auth/register")}
+                    className="text-xs mt-2 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 ml-2"
+                    style={{
+                      color: "#0F0F0F",
+                      fontFamily: "var(--font-poppins)",
+                      background: "#7CFC92",
+                      border: "1px solid rgba(34,197,94,0.5)",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <UserPlus size={13} />
+                    Email belum ada? Daftar sekarang
                   </button>
                 ) : null}
               </div>

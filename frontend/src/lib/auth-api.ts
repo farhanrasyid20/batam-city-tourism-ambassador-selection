@@ -463,6 +463,18 @@ export type UpdateParticipantSelectionStatusResponse = {
   };
 };
 
+export type UpdateParticipantProfilePhotoPayload = {
+  photo: string;
+};
+
+export type UpdateParticipantProfilePhotoResponse = {
+  message: string;
+  data: {
+    user_id: number;
+    photo?: string | null;
+  };
+};
+
 export type AuditionTop20Candidate = {
   rank?: number;
   user_id: number;
@@ -1181,6 +1193,24 @@ export function updateParticipantSelectionStatus(
 ) {
   return apiRequest<UpdateParticipantSelectionStatusResponse>(
     `/super-admin/participants/${participantUserId}/selection-status`,
+    {
+      method: "PATCH",
+      token,
+      body: payload,
+    }
+  );
+}
+
+/**
+ * Memperbarui foto profil peserta dari panel admin/super admin.
+ */
+export function updateParticipantProfilePhoto(
+  token: string,
+  participantUserId: number,
+  payload: UpdateParticipantProfilePhotoPayload
+) {
+  return apiRequest<UpdateParticipantProfilePhotoResponse>(
+    `/super-admin/participants/${participantUserId}/profile-photo`,
     {
       method: "PATCH",
       token,

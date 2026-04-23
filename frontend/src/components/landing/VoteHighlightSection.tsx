@@ -604,7 +604,7 @@ export default function VoteHighlightSection() {
                         : idx === 0;
                     const officialPostUrl =
                       voteMetaByParticipantId.get(item.id)?.instagramPostUrl ||
-                      `${OFFICIAL_ACCOUNT_URL}/p/${item.id.toLowerCase()}-demo/`;
+                      OFFICIAL_ACCOUNT_URL;
                     return (
                       <div
                         key={`${item.id}-${idx}`}

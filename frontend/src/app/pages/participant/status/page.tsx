@@ -293,7 +293,7 @@ export default function ParticipantStatusPage() {
     let cancelled = false;
     const syncStatus = async () => {
       try {
-        const response = await fetchParticipantBiodata(token);
+        const response = await fetchParticipantBiodata(token, { force: true, maxAgeMs: 0 });
         if (cancelled) return;
 
         const data = response.data;

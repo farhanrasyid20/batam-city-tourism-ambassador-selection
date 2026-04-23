@@ -28,7 +28,6 @@ import {
   getStageCriteria,
   getStageScoreRecords,
   isParticipantEligibleForScoreStage,
-  mockParticipantStageNotes,
   participantProgressStages,
   type AdminScoreStage,
   type JudgeAssignedStageKey,
@@ -341,7 +340,7 @@ export default function AdminScoresPage() {
   >(null);
   const [participantNotes, setParticipantNotes] = useState<
     ParticipantStageNote[]
-  >(mockParticipantStageNotes);
+  >([]);
   const [noteDraft, setNoteDraft] = useState<NoteDraft>(() =>
     createDraft("Grand Final"),
   );
@@ -383,7 +382,8 @@ export default function AdminScoresPage() {
         setParticipantNotes(mappedNotes);
       } catch {
         if (disposed) return;
-        setParticipantNotes(mockParticipantStageNotes);
+        setParticipantNotes([]);
+        setSyncMessage("Catatan juri dari backend belum bisa dimuat.");
       }
     };
 

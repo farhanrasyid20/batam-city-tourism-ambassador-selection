@@ -6,8 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 /**
  * Controller layer entrypoint.
  * Handles HTTP request/response orchestration for this module.
@@ -15,14 +13,15 @@ use Illuminate\Support\Str;
 
 class JudgeParticipantController extends Controller
 {
-    private const REQUIRED_DOCUMENTS = [
-        'identityCard' => 'KTP / SIM / Paspor / Kartu Pelajar',
-        'closeUpPhoto' => 'Foto Close Up 4R',
-        'fullBodyPhoto' => 'Foto Full Body 4R',
-        'formS01' => 'Formulir S-01',
-        'formS02' => 'Formulir S-02',
-        'formS03' => 'Formulir S-03',
-        'formS04' => 'Formulir S-04',
+    private const DOCUMENT_DEFINITIONS = [
+        'identityCard' => ['label' => 'KTP / SIM / Paspor / Kartu Pelajar', 'required' => true],
+        'closeUpPhoto' => ['label' => 'Foto Close Up 4R', 'required' => true],
+        'fullBodyPhoto' => ['label' => 'Foto Full Body 4R', 'required' => true],
+        'formS01' => ['label' => 'Formulir S-01', 'required' => false],
+        'formS02' => ['label' => 'Formulir S-02', 'required' => false],
+        'formS03' => ['label' => 'Formulir S-03', 'required' => false],
+        'formS04' => ['label' => 'Formulir S-04', 'required' => false],
+        'certificate' => ['label' => 'Sertifikat / Piagam Prestasi', 'required' => false],
     ];
 
     private function mapSelectionStage(?string $selectionStatus, bool $eliminatedInAudition = false): string
@@ -45,36 +44,10 @@ class JudgeParticipantController extends Controller
     private function resolveProfilePhoto(User $user): ?string
     {
         $photo = is_string($user->participantProfile?->photo) ? trim($user->participantProfile->photo) : '';
-        if ($photo !== '') {
-            if (! str_starts_with($photo, '/storage/')) {
-                return $photo;
-            }
-
-            $storagePath = Str::after($photo, '/storage/');
-            if (Storage::disk('public')->exists($storagePath)) {
-                return $photo;
-            }
+        if ($photo !== '' && str_contains($photo, '/participant-documents/')) {
+            // Jangan pernah gunakan foto dari dokumen pendaftaran sebagai foto profil.
+            return null;
         }
-
-        $fallbackDocument = $user->participantDocuments
-            ->sortByDesc('id')
-            ->sortBy(fn ($doc) => $doc->document_key === 'closeUpPhoto' ? 0 : ($doc->document_key === 'fullBodyPhoto' ? 1 : 2))
-            ->first(fn ($doc) => in_array($doc->document_key, ['closeUpPhoto', 'fullBodyPhoto'], true));
-
-        if (! $fallbackDocument) {
-            return $photo !== '' ? $photo : null;
-        }
-
-        $rawUrl = is_string($fallbackDocument->url) ? trim($fallbackDocument->url) : '';
-        if ($rawUrl !== '') {
-            return $rawUrl;
-        }
-
-        $rawPath = is_string($fallbackDocument->path) ? trim($fallbackDocument->path) : '';
-        if ($rawPath !== '') {
-            return '/storage/'.ltrim($rawPath, '/');
-        }
-
         return $photo !== '' ? $photo : null;
     }
 
@@ -83,7 +56,7 @@ class JudgeParticipantController extends Controller
         $participants = User::query()
             ->where('role', 'participant')
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,selection_status,selection_status_note,eliminated_in_audition,eliminated_at,submitted_to_admin,submitted_to_admin_at',
+                'participantProfile:id,user_id,participant_number,audition_number,participant_code,gender,selection_status,selection_status_note,eliminated_in_audition,eliminated_at,submitted_to_admin,submitted_to_admin_at',
                 'participantProfile.identity:participant_profile_id,nickname,religion,national_id,current_status,birth_place,birth_date,domicile_address,ktp_address,instagram,tiktok,parent_phone,father_name,mother_name,photo',
                 'participantProfile.measurement:participant_profile_id,height_cm,weight_kg,shirt_size,chest_circumference_cm,waist_circumference_cm,hip_circumference_cm,pants_size,shoe_size',
                 'participantProfile.background:participant_profile_id,education_category,education_institution,education_degree,education_major,occupation,skills,hobbies,languages',
@@ -118,7 +91,7 @@ class JudgeParticipantController extends Controller
 
                     return [
                         'key' => $key,
-                        'label' => $doc->label ?: (self::REQUIRED_DOCUMENTS[$key] ?? $key),
+                        'label' => $doc->label ?: (self::DOCUMENT_DEFINITIONS[$key]['label'] ?? $key),
                         'required' => (bool) $doc->is_required,
                         'status' => $normalizedStatus,
                         'original_name' => $doc->original_name,
@@ -132,12 +105,12 @@ class JudgeParticipantController extends Controller
                 })
                 ->keyBy('key');
 
-            foreach (self::REQUIRED_DOCUMENTS as $key => $label) {
+            foreach (self::DOCUMENT_DEFINITIONS as $key => $meta) {
                 if (! $documents->has($key)) {
                     $documents->put($key, [
                         'key' => $key,
-                        'label' => $label,
-                        'required' => true,
+                        'label' => $meta['label'],
+                        'required' => (bool) $meta['required'],
                         'status' => 'missing',
                         'original_name' => null,
                         'size_bytes' => null,

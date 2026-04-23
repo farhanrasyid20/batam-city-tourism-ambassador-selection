@@ -9,8 +9,11 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 /**
  * Controller layer entrypoint.
  * Handles HTTP request/response orchestration for this module.
@@ -22,10 +25,10 @@ class UserManagementController extends Controller
         'identityCard' => ['label' => 'KTP / SIM / Paspor / Kartu Pelajar', 'required' => true],
         'closeUpPhoto' => ['label' => 'Foto Close Up 4R', 'required' => true],
         'fullBodyPhoto' => ['label' => 'Foto Full Body 4R', 'required' => true],
-        'formS01' => ['label' => 'Formulir S-01', 'required' => true],
-        'formS02' => ['label' => 'Formulir S-02', 'required' => true],
-        'formS03' => ['label' => 'Formulir S-03', 'required' => true],
-        'formS04' => ['label' => 'Formulir S-04', 'required' => true],
+        'formS01' => ['label' => 'Formulir S-01', 'required' => false],
+        'formS02' => ['label' => 'Formulir S-02', 'required' => false],
+        'formS03' => ['label' => 'Formulir S-03', 'required' => false],
+        'formS04' => ['label' => 'Formulir S-04', 'required' => false],
         'certificate' => ['label' => 'Sertifikat / Piagam Prestasi', 'required' => false],
     ];
 
@@ -64,6 +67,71 @@ class UserManagementController extends Controller
     private function isParticipantCodeEligibleStatus(string $status): bool
     {
         return in_array($status, self::PARTICIPANT_CODE_ELIGIBLE_STATUSES, true);
+    }
+
+    private function normalizeParticipantPhotoInput(?string $photo, ?string $existingPhoto = null): ?string
+    {
+        if ($photo === null) {
+            return null;
+        }
+
+        $photo = trim($photo);
+        if ($photo === '') {
+            return null;
+        }
+
+        // Foto profil tidak boleh menunjuk ke berkas dokumen pendaftaran.
+        if (str_contains($photo, '/participant-documents/')) {
+            throw ValidationException::withMessages([
+                'photo' => ['Foto profil harus diupload khusus dari menu biodata/admin foto profil, bukan dari dokumen pendaftaran.'],
+            ]);
+        }
+
+        if (! str_starts_with($photo, 'data:image/')) {
+            return $photo;
+        }
+
+        if (! preg_match('/^data:image\/([a-zA-Z0-9.+-]+);base64,(.+)$/', $photo, $matches)) {
+            throw ValidationException::withMessages([
+                'photo' => ['Format foto profil tidak valid.'],
+            ]);
+        }
+
+        $rawExt = strtolower($matches[1]);
+        $extension = match ($rawExt) {
+            'jpeg' => 'jpg',
+            'jpg', 'png', 'webp' => $rawExt,
+            default => null,
+        };
+
+        if (! $extension) {
+            throw ValidationException::withMessages([
+                'photo' => ['Format foto profil harus JPG, PNG, atau WEBP.'],
+            ]);
+        }
+
+        $binary = base64_decode($matches[2], true);
+        if ($binary === false) {
+            throw ValidationException::withMessages([
+                'photo' => ['Data foto profil tidak dapat diproses.'],
+            ]);
+        }
+
+        if (strlen($binary) > 5 * 1024 * 1024) {
+            throw ValidationException::withMessages([
+                'photo' => ['Ukuran foto profil maksimal 5 MB.'],
+            ]);
+        }
+
+        $path = 'participant-photos/'.Str::uuid().'.'.$extension;
+        Storage::disk('public')->put($path, $binary);
+
+        if ($existingPhoto && str_starts_with($existingPhoto, '/storage/participant-photos/')) {
+            $oldPath = Str::after($existingPhoto, '/storage/');
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        return '/storage/'.$path;
     }
 
     /**
@@ -460,6 +528,52 @@ class UserManagementController extends Controller
                 'participant_code' => $profile->participant_code,
                 'eliminated_in_audition' => (bool) $profile->eliminated_in_audition,
                 'eliminated_at' => $profile->eliminated_at?->toISOString(),
+            ],
+        ]);
+    }
+
+    public function updateParticipantProfilePhoto(Request $request, int $id): JsonResponse
+    {
+        /** @var User|null $participant */
+        $participant = User::query()
+            ->where('role', 'participant')
+            ->find($id);
+
+        if (! $participant) {
+            return response()->json([
+                'message' => 'Peserta tidak ditemukan.',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'photo' => ['required', 'string'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $payload = $validator->validated();
+
+        /** @var ParticipantProfile $profile */
+        $profile = $participant->participantProfile()->firstOrCreate([
+            'user_id' => $participant->id,
+        ]);
+
+        $profile->photo = $this->normalizeParticipantPhotoInput(
+            $payload['photo'],
+            is_string($profile->photo) ? $profile->photo : null
+        );
+        $profile->save();
+
+        return response()->json([
+            'message' => 'Foto profil peserta berhasil diperbarui.',
+            'data' => [
+                'user_id' => $participant->id,
+                'photo' => $profile->photo,
             ],
         ]);
     }
