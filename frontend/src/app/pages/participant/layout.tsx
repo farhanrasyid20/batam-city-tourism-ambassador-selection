@@ -137,7 +137,7 @@ export default function ParticipantPagesLayout({
     }
 
     router.replace("/");
-  }, [authInitialized, router, user]);
+  }, [authInitialized, router, user?.role]);
 
   useEffect(() => {
     if (!authInitialized || !user || user.role !== "participant") return;
@@ -276,7 +276,7 @@ export default function ParticipantPagesLayout({
       window.clearInterval(intervalId);
       window.removeEventListener("focus", onFocus);
     };
-  }, [authInitialized, setAuthenticatedUser, setCurrentParticipant, setParticipantList, user]);
+  }, [authInitialized, setAuthenticatedUser, setCurrentParticipant, setParticipantList, user?.role]);
 
   // Wrapper layout seluruh halaman /pages/participant/*
   if (!authInitialized) return null;

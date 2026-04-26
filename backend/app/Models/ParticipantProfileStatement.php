@@ -17,7 +17,6 @@ class ParticipantProfileStatement extends Model
         'mission',
         'experience',
         'achievement',
-        'intro_video_url',
         'agreement_no_agency',
         'agency_name',
         'agreement_parent_permission',

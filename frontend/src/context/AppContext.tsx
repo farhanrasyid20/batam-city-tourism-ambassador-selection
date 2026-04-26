@@ -682,6 +682,12 @@ function getStoredParticipantBootstrap(participants: Participant[]) {
 }
 
 function mapJudgeParticipantToParticipant(item: JudgeParticipantListItem): Participant {
+  const normalizeOptionalString = (value: string | number | null | undefined): string | undefined => {
+    if (value === null || value === undefined) return undefined;
+    const normalized = String(value).trim();
+    return normalized === "" ? undefined : normalized;
+  };
+
   const education = [
     item.education_category?.trim(),
     item.education_institution?.trim(),
@@ -742,11 +748,11 @@ function mapJudgeParticipantToParticipant(item: JudgeParticipantListItem): Parti
     domicileAddress: item.domicile_address ?? undefined,
     ktpAddress: item.ktp_address ?? undefined,
     heightCm: typeof item.height_cm === "number" ? item.height_cm : Number(item.height_cm ?? 0),
-    weightKg: item.weight_kg ?? undefined,
+    weightKg: normalizeOptionalString(item.weight_kg),
     shirtSize: item.shirt_size ?? undefined,
-    chestCircumferenceCm: item.chest_circumference_cm ?? undefined,
-    waistCircumferenceCm: item.waist_circumference_cm ?? undefined,
-    hipCircumferenceCm: item.hip_circumference_cm ?? undefined,
+    chestCircumferenceCm: normalizeOptionalString(item.chest_circumference_cm),
+    waistCircumferenceCm: normalizeOptionalString(item.waist_circumference_cm),
+    hipCircumferenceCm: normalizeOptionalString(item.hip_circumference_cm),
     pantsSize: item.pants_size ?? undefined,
     shoeSize: item.shoe_size ?? undefined,
     education: education || "-",
@@ -1144,7 +1150,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setAuthenticatedUser = useCallback((nextUser: AuthUser | null) => {
-    setUser(nextUser);
+    setUser((prev) => {
+      if (!prev && !nextUser) return prev;
+
+      if (
+        prev &&
+        nextUser &&
+        prev.id === nextUser.id &&
+        prev.name === nextUser.name &&
+        prev.email === nextUser.email &&
+        prev.role === nextUser.role
+      ) {
+        return prev;
+      }
+
+      return nextUser;
+    });
+
     if (!nextUser || nextUser.role !== "participant") {
       setCurrentParticipant(null);
     }

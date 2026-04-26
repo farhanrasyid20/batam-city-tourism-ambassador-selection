@@ -64,7 +64,6 @@ export type ParticipantBiodata = {
   mission?: string | null;
   experience?: string | null;
   achievement?: string | null;
-  intro_video_url?: string | null;
   agreement_no_agency?: "yes" | "no" | null;
   agency_name?: string | null;
   agreement_parent_permission?: "yes" | "no" | null;
@@ -151,7 +150,6 @@ export type UpdateParticipantBiodataPayload = Partial<{
   mission: string;
   experience: string;
   achievement: string;
-  intro_video_url: string;
   agreement_no_agency: "yes" | "no";
   agency_name: string;
   agreement_parent_permission: "yes" | "no";
