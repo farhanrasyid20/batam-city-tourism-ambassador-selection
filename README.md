@@ -21,3 +21,12 @@ Solusi Digital Pemilihan Duta Wisata Kota Batam Tahun 2026 berupa aplikasi Pemil
 | --- | --- | --- | --- | --- | --- |
 | 1 | Farhan Rasyid | 3312411075 | Teknik Informatika | IF 4A Malam - Web | Ketua |
 | 2 | Ardhitya Danur Siswondo | 3312411099 | Teknik Informatika | IF 4A Malam - Web | Anggota |
+
+
+Link Laporan: https://docs.google.com/document/d/1El2k3kuEd5ap7fKdlxgRjclZwP20ngS9/edit?usp=drive_link&ouid=106980338201162093965&rtpof=true&sd=true
+
+Link Vidio Presentasi ATS: https://drive.google.com/file/d/1EWSYVM8WnPKBguOs-HcwnZuzr49tfosr/view?usp=sharing
+
+Link GitHub: https://github.com/ardhitya13/Solusi-Digital-Pemilihan-Duta-Wisata-Kota-Batam-Tahun-2026.git
+
+Link Figma: https://www.figma.com/design/HUx6lyNKYhWSaj76p83tts/Duta-Wisata-Kota-Batam-tahun-2026?node-id=52-2&t=KToJYOuirDV91mtk-1
