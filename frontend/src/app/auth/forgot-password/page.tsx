@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
     setError("");
     setInfo("");
 
-    if (!email.trim()) {
+    if (!email.trim()) {``
       setError("Email wajib diisi.");
       return;
     }

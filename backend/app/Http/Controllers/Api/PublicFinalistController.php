@@ -7,7 +7,6 @@ use App\Models\PublicVoteCandidateSetting;
 use App\Models\PublicVoteSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 /**
  * Controller layer entrypoint.
@@ -19,8 +18,9 @@ class PublicFinalistController extends Controller
     private function resolveVotePhoto(User $user, ?string $publicationPhoto): ?string
     {
         $profile = $user->participantProfile;
+        $identityPhoto = is_string($profile?->identity?->photo) ? trim($profile->identity->photo) : null;
 
-        foreach ([$publicationPhoto, $profile?->photo] as $candidate) {
+        foreach ([$publicationPhoto, $identityPhoto, $profile?->photo] as $candidate) {
             $value = trim((string) $candidate);
             if ($value === '') {
                 continue;
@@ -30,10 +30,7 @@ class PublicFinalistController extends Controller
                 return $value;
             }
 
-            $storagePath = ltrim(Str::after($value, '/storage/'), '/');
-            if ($storagePath !== '' && Storage::disk('public')->exists($storagePath)) {
-                return $value;
-            }
+            return $value;
         }
 
         $document = $user->participantDocuments->firstWhere('document_key', 'closeUpPhoto')
@@ -72,7 +69,7 @@ class PublicFinalistController extends Controller
                     });
             })
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,selection_status,eliminated_in_audition',
+                'participantProfile:id,user_id,participant_number,audition_number,participant_code,gender,selection_status,eliminated_in_audition',
                 'participantProfile.identity:participant_profile_id,photo,instagram',
                 'participantProfile.background:participant_profile_id,education_category,education_institution,education_degree,education_major',
                 'participantDocuments:user_id,document_key,path,url',
@@ -91,6 +88,8 @@ class PublicFinalistController extends Controller
             $profile = $user->participantProfile;
             $setting = $settingsByParticipant->get($user->id);
             $photo = $this->resolveVotePhoto($user, $setting?->publication_photo);
+            $identity = $profile?->identity;
+            $background = $profile?->background;
 
             return [
                 'id' => $user->id,
@@ -100,11 +99,11 @@ class PublicFinalistController extends Controller
                 'participant_code' => $profile?->participant_code,
                 'gender' => $profile?->gender,
                 'photo' => $photo,
-                'instagram' => $profile?->instagram,
-                'education_category' => $profile?->education_category,
-                'education_institution' => $profile?->education_institution,
-                'education_degree' => $profile?->education_degree,
-                'education_major' => $profile?->education_major,
+                'instagram' => $identity?->instagram ?? $profile?->instagram,
+                'education_category' => $background?->education_category ?? $profile?->education_category,
+                'education_institution' => $background?->education_institution ?? $profile?->education_institution,
+                'education_degree' => $background?->education_degree ?? $profile?->education_degree,
+                'education_major' => $background?->education_major ?? $profile?->education_major,
                 'selection_status' => $profile?->selection_status,
                 'vote_instagram_profile_url' => $setting?->instagram_profile_url,
                 'vote_instagram_post_url' => $setting?->instagram_post_url,
