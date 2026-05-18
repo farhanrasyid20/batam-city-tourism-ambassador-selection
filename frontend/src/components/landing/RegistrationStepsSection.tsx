@@ -38,7 +38,7 @@ export default function RegistrationStepsSection() {
             {registrationContent.sectionTitle}
           </h2>
           <div
-            className="w-24 h-[2px] mx-auto mt-4"
+            className="w-24 h-0.5 mx-auto mt-4"
             style={{
               background: "linear-gradient(90deg, transparent, #C8A24D, transparent)",
             }}
