@@ -15,7 +15,7 @@ Solusi Digital Pemilihan Duta Wisata Kota Batam Tahun 2026 berupa aplikasi Pemil
 - Pengusul: Dwi Amalia Purnamasari, S.T., M.Cs.
 - Narahubung: Dwi Amalia Purnamasari
 
-## Tim Pengembang (Kelompok 7)
+## Tim Pengembang (Kelompok 2)
 
 | No | Nama | NIM | Program Studi | Kelas | Peran |
 | --- | --- | --- | --- | --- | --- |

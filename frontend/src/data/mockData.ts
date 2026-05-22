@@ -700,7 +700,7 @@ export const statusLabelsId: Record<StageStatus, string> = {
   Verified: "Terverifikasi",
   TechnicalMeeting: "Technical Meeting",
   Rejected: "Ditolak",
-  Audition: "Lolos Administrasi â€“ Audisi",
+  Audition: "Lolos Administrasi - Audisi",
   Top20: "Top 20",
   PreCamp: "Pra-Karantina",
   Camp: "Karantina",
