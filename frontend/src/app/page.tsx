@@ -12,7 +12,7 @@ import FAQList from "./faq/components/FAQList";
  */
 export default function HomePage() {
   return (
-    <div className="home-page">
+    <div className="home-page hide-scrollbar">
       <section id="hero">
         <Hero />
       </section>

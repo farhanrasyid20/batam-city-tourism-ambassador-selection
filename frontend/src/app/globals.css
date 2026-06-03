@@ -117,12 +117,16 @@ body {
 }
 
 /* Dashboard scrollbar tuning: hide sidebar bar, keep main bar dark/gold */
-.hide-scrollbar {
+.hide-scrollbar,
+html.hide-scrollbar,
+body.hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.hide-scrollbar::-webkit-scrollbar {
+.hide-scrollbar::-webkit-scrollbar,
+html.hide-scrollbar::-webkit-scrollbar,
+body.hide-scrollbar::-webkit-scrollbar {
   width: 0;
   height: 0;
 }

@@ -65,6 +65,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const shouldHideScrollbars = showPublicLayout || pathname.startsWith(AUTH_ROUTE_PREFIX);
+
+    if (shouldHideScrollbars) {
+      html.classList.add("hide-scrollbar");
+      body.classList.add("hide-scrollbar");
+    } else {
+      html.classList.remove("hide-scrollbar");
+      body.classList.remove("hide-scrollbar");
+    }
+
+    return () => {
+      html.classList.remove("hide-scrollbar");
+      body.classList.remove("hide-scrollbar");
+    };
+  }, [pathname, showPublicLayout]);
+
   return (
     <>
       {showPublicLayout ? <Navbar /> : null}

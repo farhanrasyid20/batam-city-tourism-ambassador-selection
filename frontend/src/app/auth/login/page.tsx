@@ -212,7 +212,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden"
+      className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden hide-scrollbar"
       style={{ background: "#0F0F0F" }}
     >
       <div className="absolute inset-0 pointer-events-none">
