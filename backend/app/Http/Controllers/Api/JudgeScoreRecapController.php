@@ -19,7 +19,7 @@ use Illuminate\Validation\Rule;
 
 class JudgeScoreRecapController extends Controller
 {
-    private const STAGES = ['Audition', 'Camp', 'Grand Final'];
+    private const STAGES = ['Audition', 'Pre Camp', 'Camp', 'Grand Final'];
 
     private const GENDER_VALUES = ['Encik', 'Puan'];
 
@@ -33,19 +33,29 @@ class JudgeScoreRecapController extends Controller
             'auditionCommunicationForeignLanguage',
             'auditionTalent',
         ],
+        'Pre Camp' => [
+            'preCampAdministrationCompleteness',
+            'preCampEssayMotivation',
+            'preCampBatamKnowledge',
+            'preCampCommunicationPublicSpeaking',
+            'preCampEthicsPersonalityAppearance',
+            'preCampDigitalLiteracy',
+            'preCampCommitmentDiscipline',
+        ],
         'Camp' => [
             'campDisciplinePunctuality',
             'campAttitudeEthics',
-            'campTeamwork',
-            'campActivenessInitiative',
-            'campTaskResponsibility',
+            'campTourismCultureKnowledge',
+            'campPublicSpeakingStorytelling',
+            'campForeignLanguage',
+            'campTalentCreativity',
+            'campPersonalBrandingContent',
+            'campProblemSolving',
         ],
         'Grand Final' => [
-            'grandFinalAppearancePersonality',
-            'grandFinalTourismCultureInsight',
-            'grandFinalCommunicationPublicSpeaking',
-            'grandFinalIntelligenceAttitude',
-            'grandFinalDutaPotential',
+            'grandFinalAppearanceConfidence',
+            'grandFinalCultureTourismKnowledge',
+            'grandFinalPublicSpeaking',
         ],
     ];
 
@@ -197,8 +207,14 @@ class JudgeScoreRecapController extends Controller
             $profile = $participant->participantProfile;
 
             $participantIdApi = 'P_API_'.$participant->id;
+            // Menambahkan variasi ID yang ditemukan di database Anda (seperti P_031 atau P_31)
+            $participantIdLegacy = 'P_'.str_pad((string)$participant->id, 3, '0', STR_PAD_LEFT);
+            $participantIdSimple = 'P_'.$participant->id;
+
             $candidateKeys = array_values(array_filter([
                 $participantIdApi,
+                $participantIdLegacy,
+                $participantIdSimple,
                 $profile?->participant_code,
                 $profile?->audition_number,
                 $profile?->participant_number,
@@ -212,6 +228,13 @@ class JudgeScoreRecapController extends Controller
             $auditionCriteria = $this->summarizeCriteriaAverage(
                 $participantScores->where('stage', 'Audition')->values(),
                 'Audition'
+            );
+            $preCamp = $this->summarizeStage(
+                $participantScores->where('stage', 'Pre Camp')->values()
+            );
+            $preCampCriteria = $this->summarizeCriteriaAverage(
+                $participantScores->where('stage', 'Pre Camp')->values(),
+                'Pre Camp'
             );
             $camp = $this->summarizeStage(
                 $participantScores->where('stage', 'Camp')->values()
@@ -244,12 +267,16 @@ class JudgeScoreRecapController extends Controller
                 'gender' => $profile?->gender,
                 'audition' => $audition,
                 'audition_criteria_average' => $auditionCriteria,
+                'pre_camp' => $preCamp,
+                'pre_camp_criteria_average' => $preCampCriteria,
                 'camp' => $camp,
                 'camp_criteria_average' => $campCriteria,
                 'grand_final' => $grandFinal,
                 'grand_final_criteria_average' => $grandFinalCriteria,
                 'audition_total' => $audition['total'],
                 'audition_average' => $audition['average'],
+                'pre_camp_total' => $preCamp['total'],
+                'pre_camp_average' => $preCamp['average'],
                 'camp_total' => $camp['total'],
                 'camp_average' => $camp['average'],
                 'grand_final_total' => $grandFinal['total'],
@@ -262,6 +289,7 @@ class JudgeScoreRecapController extends Controller
                 'admin_score_adjustment_updated_at' => $profile?->admin_score_adjustment_updated_at?->toIso8601String(),
                 'final_score' => $finalScore,
                 'audition_rank' => null,
+                'pre_camp_rank' => null,
                 'camp_rank' => null,
                 'grand_final_rank' => null,
                 'final_rank' => null,
@@ -287,12 +315,14 @@ class JudgeScoreRecapController extends Controller
         };
 
         $rows = $setRanks($rows, 'audition_average', 'audition_rank');
+        $rows = $setRanks($rows, 'pre_camp_average', 'pre_camp_rank');
         $rows = $setRanks($rows, 'camp_average', 'camp_rank');
         $rows = $setRanks($rows, 'grand_final_average', 'grand_final_rank');
         $rows = $setRanks($rows, 'final_score', 'final_rank');
 
         $maxJudgeCount = [
             'audition' => (int) $rows->max(static fn (array $row): int => (int) ($row['audition']['judges_count'] ?? 0)),
+            'pre_camp' => (int) $rows->max(static fn (array $row): int => (int) ($row['pre_camp']['judges_count'] ?? 0)),
             'camp' => (int) $rows->max(static fn (array $row): int => (int) ($row['camp']['judges_count'] ?? 0)),
             'grand_final' => (int) $rows->max(static fn (array $row): int => (int) ($row['grand_final']['judges_count'] ?? 0)),
         ];

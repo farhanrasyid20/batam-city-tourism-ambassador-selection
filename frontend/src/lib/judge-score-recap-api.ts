@@ -21,18 +21,23 @@ export type JudgeScoreRecapItem = {
   gender?: "Encik" | "Puan" | null;
   audition: StageSummary;
   audition_criteria_average?: StageCriteriaAverage;
+  pre_camp: StageSummary;
+  pre_camp_criteria_average?: StageCriteriaAverage;
   camp: StageSummary;
   camp_criteria_average?: StageCriteriaAverage;
   grand_final: StageSummary;
   grand_final_criteria_average?: StageCriteriaAverage;
   audition_total: number;
   audition_average: number;
+  pre_camp_total: number;
+  pre_camp_average: number;
   camp_total: number;
   camp_average: number;
   grand_final_total: number;
   grand_final_average: number;
   final_score_base?: number;
-  camp_weighted_30: number;
+  pre_camp_and_camp_combined: number;
+  pre_camp_and_camp_weighted_30: number;
   grand_final_weighted_70: number;
   admin_score_adjustment?: number;
   admin_score_adjustment_note?: string | null;
@@ -53,11 +58,13 @@ export type JudgeScoreRecapResponse = {
     };
     max_judges: {
       audition: number;
+      pre_camp: number;
       camp: number;
       grand_final: number;
     };
     criteria_keys?: {
       Audition?: string[];
+      "Pre Camp"?: string[];
       Camp?: string[];
       "Grand Final"?: string[];
     };

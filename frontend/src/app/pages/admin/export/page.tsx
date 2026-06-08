@@ -34,7 +34,7 @@ import {
 } from "../../../../lib/judge-score-recap-api";
 
 type GenderFilter = "Semua" | "Encik" | "Puan";
-type ExportStage = "Audition" | "Camp" | "Grand Final" | "Final Result";
+type ExportStage = "Audition" | "Pre Camp" | "Camp" | "Grand Final" | "Final Result";
 type PdfPaperSize = "A4" | "A3" | "A2" | "A1" | "LETTER" | "LEGAL";
 type PdfOrientation = "landscape" | "portrait";
 
@@ -150,8 +150,11 @@ function getPdfColumnWidths(headers: string[]): number[] {
     if (header === "Total" || header === "Rata-rata" || header.startsWith("Juri ")) return 52;
     if (
       header === "Audisi" ||
+      header === "Pra Karantina" ||
       header === "Karantina" ||
       header === "Grand Final" ||
+      header === "(Pra + Karantina)/2 × 30%" ||
+      header === "Grand Final × 70%" ||
       header === "Karantina 30%" ||
       header === "Grand Final 70%" ||
       header === "Nilai Akhir"
@@ -270,6 +273,7 @@ function JuryReportDocument(props: {
 
 const stageLabels: Record<ExportStage, string> = {
   Audition: "Audisi",
+  "Pre Camp": "Pra Karantina",
   Camp: "Karantina",
   "Grand Final": "Grand Final",
   "Final Result": "Nilai Akhir",
@@ -277,28 +281,37 @@ const stageLabels: Record<ExportStage, string> = {
 
 const sheetNameMap: Record<ExportStage, string> = {
   Audition: "AUDISI",
+  "Pre Camp": "PRA KARANTINA",
   Camp: "KARANTINA",
   "Grand Final": "GRAND FINAL",
   "Final Result": "NILAI AKHIR",
 };
 
-const exportStages: ExportStage[] = ["Audition", "Camp", "Grand Final", "Final Result"];
+const exportStages: ExportStage[] = ["Audition", "Pre Camp", "Camp", "Grand Final", "Final Result"];
 
 const criteriaLabelMap: Record<string, string> = {
   auditionAppearanceEthicsConfidence: "Penampilan, Etika & Kepercayaan Diri",
   auditionCultureTourismKnowledge: "Pengetahuan Kebudayaan & Pariwisata",
   auditionCommunicationForeignLanguage: "Kemampuan Komunikasi & Bahasa Asing",
   auditionTalent: "Bakat",
-  campDisciplinePunctuality: "Disiplin & Ketepatan Waktu",
-  campAttitudeEthics: "Sikap & Etika",
-  campTeamwork: "Kerja Sama & Teamwork",
-  campActivenessInitiative: "Keaktifan & Inisiatif",
-  campTaskResponsibility: "Tanggung Jawab Tugas",
-  grandFinalAppearancePersonality: "Penampilan & Kepribadian",
-  grandFinalTourismCultureInsight: "Wawasan Pariwisata & Budaya",
-  grandFinalCommunicationPublicSpeaking: "Komunikasi & Public Speaking",
-  grandFinalIntelligenceAttitude: "Intelegensi & Sikap",
-  grandFinalDutaPotential: "Potensi Duta Wisata",
+  preCampAdministrationCompleteness: "Kelengkapan Administrasi",
+  preCampEssayMotivation: "Esai/Motivasi Mengikuti Pemilihan",
+  preCampBatamKnowledge: "Pengetahuan Dasar Batam & Kepri",
+  preCampCommunicationPublicSpeaking: "Komunikasi & Public Speaking Awal",
+  preCampEthicsPersonalityAppearance: "Etika, Kepribadian & Penampilan",
+  preCampDigitalLiteracy: "Literasi Digital & Media Sosial",
+  preCampCommitmentDiscipline: "Komitmen & Kedisiplinan Awal",
+  campDisciplinePunctuality: "Kedisiplinan & Kehadiran",
+  campAttitudeEthics: "Sikap, Etika & Kerja Sama",
+  campTourismCultureKnowledge: "Pengetahuan Pariwisata & Budaya",
+  campPublicSpeakingStorytelling: "Public Speaking & Storytelling",
+  campForeignLanguage: "Kemampuan Bahasa Asing",
+  campTalentCreativity: "Bakat/Unjuk Kreativitas",
+  campPersonalBrandingContent: "Personal Branding & Konten Digital",
+  campProblemSolving: "Problem Solving & Critical Thinking",
+  grandFinalAppearanceConfidence: "Penampilan & Kepercayaan Diri",
+  grandFinalCultureTourismKnowledge: "Pengetahuan Umum, Kebudayaan, dan Pariwisata Kota Batam",
+  grandFinalPublicSpeaking: "Public Speaking",
 };
 
 function toXmlSafe(value: string | number) {
@@ -400,9 +413,11 @@ function getStageCriteriaKeys(
   const fromMeta =
     stage === "Audition"
       ? recap?.meta.criteria_keys?.Audition
-      : stage === "Camp"
-        ? recap?.meta.criteria_keys?.Camp
-        : recap?.meta.criteria_keys?.["Grand Final"];
+      : stage === "Pre Camp"
+        ? recap?.meta.criteria_keys?.["Pre Camp"]
+        : stage === "Camp"
+          ? recap?.meta.criteria_keys?.Camp
+          : recap?.meta.criteria_keys?.["Grand Final"];
 
   return fromMeta ?? [];
 }
@@ -412,6 +427,7 @@ function getStageCriteriaAverage(
   row: JudgeScoreRecapResponse["data"][number]
 ) {
   if (stage === "Audition") return row.audition_criteria_average ?? {};
+  if (stage === "Pre Camp") return row.pre_camp_criteria_average ?? {};
   if (stage === "Camp") return row.camp_criteria_average ?? {};
   return row.grand_final_criteria_average ?? {};
 }
@@ -546,10 +562,11 @@ export default function AdminExportPage() {
         "Nama",
         "Kategori",
         "Audisi",
+        "Pra Karantina",
         "Karantina",
         "Grand Final",
-        "Karantina 30%",
-        "Grand Final 70%",
+        "(Pra + Karantina)/2 x 30%",
+        "Grand Final x 70%",
         "Nilai Akhir",
       ];
     }
@@ -557,9 +574,11 @@ export default function AdminExportPage() {
     const stageJudgeCount =
       selectedStage === "Audition"
         ? maxJudges?.audition ?? 0
-        : selectedStage === "Camp"
-          ? maxJudges?.camp ?? 0
-          : maxJudges?.grand_final ?? 0;
+        : selectedStage === "Pre Camp"
+          ? maxJudges?.pre_camp ?? 0
+          : selectedStage === "Camp"
+            ? maxJudges?.camp ?? 0
+            : maxJudges?.grand_final ?? 0;
 
     const criteriaKeys = getStageCriteriaKeys(selectedStage, recap);
     const criteriaHeaders = criteriaKeys.map(
@@ -583,15 +602,17 @@ export default function AdminExportPage() {
   const workbookSheets = useMemo<WorkbookSheet[]>(() => {
     const maxJudges = recap?.meta.max_judges;
 
-    const buildStageSheet = (stage: "Audition" | "Camp" | "Grand Final"): WorkbookSheet => {
+    const buildStageSheet = (stage: "Audition" | "Pre Camp" | "Camp" | "Grand Final"): WorkbookSheet => {
       const stageRows = [...rows]
         .filter((row) => {
           if (stage === "Audition") return row.audition_average > 0;
+          if (stage === "Pre Camp") return row.pre_camp_average > 0;
           if (stage === "Camp") return row.camp_average > 0;
           return row.grand_final_average > 0;
         })
         .sort((a, b) => {
           if (stage === "Audition") return b.audition_average - a.audition_average;
+          if (stage === "Pre Camp") return b.pre_camp_average - a.pre_camp_average;
           if (stage === "Camp") return b.camp_average - a.camp_average;
           return b.grand_final_average - a.grand_final_average;
         });
@@ -599,9 +620,11 @@ export default function AdminExportPage() {
       const judgeCount =
         stage === "Audition"
           ? maxJudges?.audition ?? 0
-          : stage === "Camp"
-            ? maxJudges?.camp ?? 0
-            : maxJudges?.grand_final ?? 0;
+          : stage === "Pre Camp"
+            ? maxJudges?.pre_camp ?? 0
+            : stage === "Camp"
+              ? maxJudges?.camp ?? 0
+              : maxJudges?.grand_final ?? 0;
 
       const judgeHeaders = Array.from({ length: judgeCount }, (_, index) => `Juri ${index + 1}`);
       const criteriaKeys = getStageCriteriaKeys(stage, recap);
@@ -610,7 +633,7 @@ export default function AdminExportPage() {
       );
 
       const sheetRows = stageRows.map((row, index) => {
-        const summary = stage === "Audition" ? row.audition : stage === "Camp" ? row.camp : row.grand_final;
+        const summary = stage === "Audition" ? row.audition : stage === "Pre Camp" ? row.pre_camp : stage === "Camp" ? row.camp : row.grand_final;
         const criteriaAverage = getStageCriteriaAverage(stage, row);
         const criteriaValues = criteriaKeys.map((key) =>
           Number(((criteriaAverage[key] ?? 0) as number).toFixed(2))
@@ -653,15 +676,17 @@ export default function AdminExportPage() {
         toDisplayParticipantName(row.participant_name, row.gender),
         row.gender ?? "-",
         Number(row.audition_average.toFixed(2)),
+        Number(row.pre_camp_average.toFixed(2)),
         Number(row.camp_average.toFixed(2)),
         Number(row.grand_final_average.toFixed(2)),
-        Number(row.camp_weighted_30.toFixed(2)),
+        Number(row.pre_camp_and_camp_weighted_30.toFixed(2)),
         Number(row.grand_final_weighted_70.toFixed(2)),
         Number(row.final_score.toFixed(2)),
       ]);
 
     return [
       buildStageSheet("Audition"),
+      buildStageSheet("Pre Camp"),
       buildStageSheet("Camp"),
       buildStageSheet("Grand Final"),
       {
@@ -672,10 +697,11 @@ export default function AdminExportPage() {
           "Nama",
           "Kategori",
           "Audisi",
+          "Pra Karantina",
           "Karantina",
           "Grand Final",
-          "Karantina 30%",
-          "Grand Final 70%",
+          "(Pra + Karantina)/2 × 30%",
+          "Grand Final × 70%",
           "Nilai Akhir",
         ],
         rows: finalRows,
@@ -1146,13 +1172,16 @@ export default function AdminExportPage() {
                           {row.audition_average.toFixed(2)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
+                          {row.pre_camp_average.toFixed(2)}
+                        </td>
+                        <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
                           {row.camp_average.toFixed(2)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
                           {row.grand_final_average.toFixed(2)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
-                          {row.camp_weighted_30.toFixed(2)}
+                          {row.pre_camp_and_camp_weighted_30.toFixed(2)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
                           {row.grand_final_weighted_70.toFixed(2)}
@@ -1170,9 +1199,11 @@ export default function AdminExportPage() {
                   const summary =
                     selectedStage === "Audition"
                       ? row.audition
-                      : selectedStage === "Camp"
-                        ? row.camp
-                        : row.grand_final;
+                      : selectedStage === "Pre Camp"
+                        ? row.pre_camp
+                        : selectedStage === "Camp"
+                          ? row.camp
+                          : row.grand_final;
 
                   const criteriaKeys = getStageCriteriaKeys(selectedStage, recap);
                   const criteriaAverage = getStageCriteriaAverage(selectedStage, row);
@@ -1189,9 +1220,11 @@ export default function AdminExportPage() {
                   const judgeCount =
                     selectedStage === "Audition"
                       ? recap?.meta.max_judges.audition ?? 0
-                      : selectedStage === "Camp"
-                        ? recap?.meta.max_judges.camp ?? 0
-                        : recap?.meta.max_judges.grand_final ?? 0;
+                      : selectedStage === "Pre Camp"
+                        ? recap?.meta.max_judges.pre_camp ?? 0
+                        : selectedStage === "Camp"
+                          ? recap?.meta.max_judges.camp ?? 0
+                          : recap?.meta.max_judges.grand_final ?? 0;
 
                   const judgeCells = padJudgeScores(summary.judge_scores, judgeCount).map(
                     (score, judgeIndex) => (

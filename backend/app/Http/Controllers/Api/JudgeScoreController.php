@@ -18,7 +18,7 @@ use Illuminate\Validation\Rule;
 
 class JudgeScoreController extends Controller
 {
-    private const ALLOWED_STAGES = ['Audition', 'Camp', 'Grand Final'];
+    private const ALLOWED_STAGES = ['Audition', 'Pre Camp', 'Camp', 'Grand Final'];
 
     private const ALLOWED_SCORE_TYPES = ['official', 'mentor_observation'];
 
@@ -31,19 +31,29 @@ class JudgeScoreController extends Controller
             ['key' => 'auditionCommunicationForeignLanguage', 'weight' => 25],
             ['key' => 'auditionTalent', 'weight' => 25],
         ],
+        'Pre Camp' => [
+            ['key' => 'preCampAdministrationCompleteness', 'weight' => 10],
+            ['key' => 'preCampEssayMotivation', 'weight' => 15],
+            ['key' => 'preCampBatamKnowledge', 'weight' => 20],
+            ['key' => 'preCampCommunicationPublicSpeaking', 'weight' => 20],
+            ['key' => 'preCampEthicsPersonalityAppearance', 'weight' => 15],
+            ['key' => 'preCampDigitalLiteracy', 'weight' => 10],
+            ['key' => 'preCampCommitmentDiscipline', 'weight' => 10],
+        ],
         'Camp' => [
-            ['key' => 'campDisciplinePunctuality', 'weight' => 20],
-            ['key' => 'campAttitudeEthics', 'weight' => 20],
-            ['key' => 'campTeamwork', 'weight' => 20],
-            ['key' => 'campActivenessInitiative', 'weight' => 20],
-            ['key' => 'campTaskResponsibility', 'weight' => 20],
+            ['key' => 'campDisciplinePunctuality', 'weight' => 10],
+            ['key' => 'campAttitudeEthics', 'weight' => 15],
+            ['key' => 'campTourismCultureKnowledge', 'weight' => 20],
+            ['key' => 'campPublicSpeakingStorytelling', 'weight' => 20],
+            ['key' => 'campForeignLanguage', 'weight' => 10],
+            ['key' => 'campTalentCreativity', 'weight' => 10],
+            ['key' => 'campPersonalBrandingContent', 'weight' => 10],
+            ['key' => 'campProblemSolving', 'weight' => 5],
         ],
         'Grand Final' => [
-            ['key' => 'grandFinalAppearancePersonality', 'weight' => 20],
-            ['key' => 'grandFinalTourismCultureInsight', 'weight' => 20],
-            ['key' => 'grandFinalCommunicationPublicSpeaking', 'weight' => 20],
-            ['key' => 'grandFinalIntelligenceAttitude', 'weight' => 20],
-            ['key' => 'grandFinalDutaPotential', 'weight' => 20],
+            ['key' => 'grandFinalAppearanceConfidence', 'weight' => 30],
+            ['key' => 'grandFinalCultureTourismKnowledge', 'weight' => 40],
+            ['key' => 'grandFinalPublicSpeaking', 'weight' => 30],
         ],
     ];
 

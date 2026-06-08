@@ -542,9 +542,9 @@ export default function AdminScoresPage() {
         | "Encik"
         | "Puan";
       const resolvedName = matched?.name ?? candidate.name ?? "Peserta";
-
-      return {
-        ...(matched ?? {
+      const rankedParticipant =
+        matched ??
+        ({
           id: participantId,
           number:
             candidate.audition_number ??
@@ -553,6 +553,10 @@ export default function AdminScoresPage() {
           name: resolvedName,
           nickname: candidate.nickname ?? "",
           gender: resolvedGender,
+          nationalId: "",
+          birthPlace: "",
+          birthDate: "",
+          heightCm: 0,
           photo: "/default-avatar.svg",
           education: "-",
           instagram: "",
@@ -571,7 +575,10 @@ export default function AdminScoresPage() {
             Camp: false,
             "Grand Final": false,
           },
-        }),
+        } satisfies Participant);
+
+      return {
+        ...rankedParticipant,
         number: matched
           ? getDisplayNumberByStage(matched, "Audition")
           : candidate.audition_number ?? candidate.participant_code ?? candidate.participant_id,
@@ -848,9 +855,11 @@ export default function AdminScoresPage() {
       return;
     }
 
-    const draftEntries =
+    const draftEntries: Array<readonly [string, ParticipantStageProgress]> =
       Object.keys(progressDrafts).length > 0
-        ? Object.entries(progressDrafts)
+        ? Object.entries(progressDrafts).filter(
+            (entry): entry is [string, ParticipantStageProgress] => Boolean(entry[1]),
+          )
         : participants.map((participant) => [
             participant.id,
             getDraftProgress(participant),

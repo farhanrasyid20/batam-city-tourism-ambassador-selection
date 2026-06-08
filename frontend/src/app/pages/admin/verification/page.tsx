@@ -20,6 +20,7 @@ import {
   getParticipantVerificationStatus,
   verificationStatusLabels,
   type Participant,
+  type ParticipantDocumentItem,
   type VerificationStatus,
   type ParticipantVerificationIssue,
   type SelectionStageKey,
@@ -315,8 +316,8 @@ export default function AdminVerificationPage() {
             : item
         ) ?? [];
 
-      const documents =
-        participant.documents?.map((document) => {
+      const documents: ParticipantDocumentItem[] =
+        participant.documents?.map((document): ParticipantDocumentItem => {
           const linkedItem = reviewItems.find((item) => item.target === document.key || item.label === document.label);
           if (!linkedItem) return document;
 
@@ -325,11 +326,11 @@ export default function AdminVerificationPage() {
             status: linkedItem.status === "revision_required" ? "revision_required" : "verified",
             note: linkedItem.status === "revision_required" ? linkedItem.note : "",
           };
-        }) ?? participant.documents;
+        }) ?? [];
 
       const hasRevisionItems = reviewItems.some((item) => item.status === "revision_required");
       const draftNote = noteDraftById[participantId]?.trim();
-      const verificationIssues = buildVerificationIssuesFromDocuments(participant, documents ?? []);
+      const verificationIssues = buildVerificationIssuesFromDocuments(participant, documents);
 
       return {
         ...participant,

@@ -20,6 +20,7 @@ import {
   selectionStageLabels,
   verificationStatusLabels,
   type Participant,
+  type ParticipantDocumentItem,
   type SelectionStageKey,
   type VerificationStatus,
 } from "../../../../data/mockData";
@@ -27,6 +28,10 @@ import {
 type StageFilterValue = "all" | SelectionStageKey;
 type VerificationFilterValue = "all" | VerificationStatus;
 type GenderFilterValue = "all" | "Encik" | "Puan";
+
+type AdminParticipantDocument = ParticipantDocumentItem & {
+  original_name?: string | null;
+};
 
 type ParticipantExtended = Participant & {
   nickname?: string | null;
@@ -45,18 +50,22 @@ type ParticipantExtended = Participant & {
   waistCircumferenceCm?: string | number | null;
   hip_circumference_cm?: string | number | null;
   hipCircumferenceCm?: string | number | null;
-  documents?: Array<{
-    key: string;
-    label: string;
-    status: "submitted" | "verified" | "revision_required" | "missing";
-    note?: string;
-    url?: string;
-    original_name?: string;
-    originalName?: string;
-  }>;
+  documents?: AdminParticipantDocument[];
 };
 
-function hasUploadedDocument(document: NonNullable<ParticipantExtended["documents"]>[number]) {
+function getAdminDocuments(participant: Participant): AdminParticipantDocument[] {
+  return (participant.documents ?? []) as AdminParticipantDocument[];
+}
+
+function getAdminParticipantVerificationStatus(participant: ParticipantExtended): VerificationStatus {
+  const currentStatus = getParticipantVerificationStatus(participant);
+  if (currentStatus === "Rejected") return currentStatus;
+
+  const needsRevision = participant.documents?.some((document) => document.status === "revision_required");
+  return needsRevision ? "NeedsRevision" : currentStatus;
+}
+
+function hasUploadedDocument(document: AdminParticipantDocument) {
   const url = (document.url ?? "").trim();
   const originalName = (document.original_name ?? document.originalName ?? "").trim();
   return Boolean(url || originalName);
@@ -108,7 +117,7 @@ function getBiodataFieldBadge(isVerifiedByAdmin: boolean, value: string) {
 }
 
 function getDocumentBadgeMeta(
-  document: NonNullable<ParticipantExtended["documents"]>[number],
+  document: AdminParticipantDocument,
   isParticipantVerifiedByAdmin: boolean
 ) {
   const isUploaded = hasUploadedDocument(document);
@@ -249,6 +258,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 const stageFilterOptions: Array<{ value: StageFilterValue; label: string }> = [
   { value: "all", label: "Semua Tahap" },
   { value: "Verification", label: selectionStageLabels.Verification },
+  { value: "Technical Meeting", label: selectionStageLabels["Technical Meeting"] },
   { value: "Audition", label: selectionStageLabels.Audition },
   { value: "Pre Camp", label: selectionStageLabels["Pre Camp"] },
   { value: "Camp", label: selectionStageLabels.Camp },
@@ -309,13 +319,16 @@ export default function AdminParticipantsPage() {
     const filtered = participantList.filter((participant) => {
       const normalizedSearch = searchKeyword.toLowerCase();
       const selectionStage = getParticipantSelectionStage(participant);
-      const verificationStatus = getParticipantVerificationStatus(participant);
+      const verificationStatus = getAdminParticipantVerificationStatus(participant as ParticipantExtended);
       const matchSearch =
         getParticipantDisplayName(participant as ParticipantExtended).toLowerCase().includes(normalizedSearch) ||
         participant.name.toLowerCase().includes(normalizedSearch) ||
         participant.number.toLowerCase().includes(normalizedSearch) ||
         participant.email.toLowerCase().includes(normalizedSearch);
-      const matchStage = stageFilter === "all" || selectionStage === stageFilter;
+      const matchStage =
+        stageFilter === "all" ||
+        selectionStage === stageFilter ||
+        (stageFilter === "Grand Final" && selectionStage === "Final Result");
       const matchVerification = verificationFilter === "all" || verificationStatus === verificationFilter;
       const matchGender = genderFilter === "all" || participant.gender === genderFilter;
       return matchSearch && matchStage && matchVerification && matchGender;
@@ -405,16 +418,15 @@ export default function AdminParticipantsPage() {
   };
 
   const getDocumentSummary = (participant: Participant) => {
-    const documents = participant.documents ?? [];
+    const documents = getAdminDocuments(participant);
     const revisionCount = documents.filter((item) => item.status === "revision_required").length;
 
     return {
       total: documents.length,
       revisionCount,
-      readyCount: documents.filter((item) => {
-        const document = item as ParticipantExtended["documents"][number];
-        return hasUploadedDocument(document) && (item.status === "submitted" || item.status === "verified");
-      }).length,
+      readyCount: documents.filter((item) =>
+        hasUploadedDocument(item) && (item.status === "submitted" || item.status === "verified")
+      ).length,
     };
   };
 
@@ -441,7 +453,7 @@ export default function AdminParticipantsPage() {
     key: keyof typeof documentLabels,
     isParticipantVerifiedByAdmin: boolean
   ) => {
-    const document = (participant.documents ?? []).find((item) => item.key === key);
+    const document = getAdminDocuments(participant).find((item) => item.key === key);
     if (!document) {
       return {
         statusLabel: "Belum ada",
@@ -470,7 +482,7 @@ export default function AdminParticipantsPage() {
 
   const buildExportRow = (participant: Participant, index: number) => {
     const extended = participant as ParticipantExtended;
-    const verificationStatus = getParticipantVerificationStatus(participant);
+    const verificationStatus = getAdminParticipantVerificationStatus(participant as ParticipantExtended);
     const isParticipantVerifiedByAdmin = verificationStatus === "Verified";
     const selectionStage = getParticipantSelectionStage(participant);
     const isEliminated = Boolean(participant.eliminatedInAudition);
@@ -1028,7 +1040,7 @@ export default function AdminParticipantsPage() {
                 </thead>
                 <tbody>
                   {filteredParticipants.map((participant, index) => {
-                    const verificationStatus = getParticipantVerificationStatus(participant);
+                    const verificationStatus = getAdminParticipantVerificationStatus(participant as ParticipantExtended);
                     const selectionStage = getParticipantSelectionStage(participant);
                     const isEliminated = Boolean(participant.eliminatedInAudition);
                     const stageLabel = isEliminated ? "Tereliminasi (Audisi)" : selectionStageLabels[selectionStage];
@@ -1263,7 +1275,7 @@ export default function AdminParticipantsPage() {
 
               <div className="space-y-2 text-xs" style={{ fontFamily: "var(--font-poppins)" }}>
                 {(() => {
-                  const verificationStatus = getParticipantVerificationStatus(selectedParticipant);
+                  const verificationStatus = getAdminParticipantVerificationStatus(selectedParticipant as ParticipantExtended);
                   const isVerifiedByAdmin = verificationStatus === "Verified";
                   const biodataRows = [
                   { label: "Kategori", value: selectedParticipant.gender },
@@ -1497,11 +1509,11 @@ export default function AdminParticipantsPage() {
                   </p>
                   <div className="space-y-2">
                     {(() => {
-                      const verificationStatus = getParticipantVerificationStatus(selectedParticipant);
+                      const verificationStatus = getAdminParticipantVerificationStatus(selectedParticipant as ParticipantExtended);
                       const isParticipantVerifiedByAdmin = verificationStatus === "Verified";
                       return (
                         <>
-                    {(selectedParticipant.documents ?? []).map((document) => (
+                    {getAdminDocuments(selectedParticipant).map((document) => (
                       <div
                         key={`${selectedParticipant.id}-${document.key}`}
                         className="rounded-xl p-3"
@@ -1509,7 +1521,7 @@ export default function AdminParticipantsPage() {
                       >
                         {(() => {
                           const badge = getDocumentBadgeMeta(
-                            document as ParticipantExtended["documents"][number],
+                            document,
                             isParticipantVerifiedByAdmin
                           );
                           return (
@@ -1542,9 +1554,9 @@ export default function AdminParticipantsPage() {
                             Lihat dokumen
                           </a>
                         ) : null}
-                        {(document as ParticipantExtended["documents"][number]).original_name || (document as ParticipantExtended["documents"][number]).originalName ? (
+                        {document.original_name || document.originalName ? (
                           <p className="text-xs mt-1" style={{ color: "#888", fontFamily: "var(--font-poppins)" }}>
-                            File: {(document as ParticipantExtended["documents"][number]).original_name ?? (document as ParticipantExtended["documents"][number]).originalName}
+                            File: {document.original_name ?? document.originalName}
                           </p>
                         ) : null}
                         {document.note ? (

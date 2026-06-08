@@ -19,6 +19,15 @@ type VerificationDocumentLinkProps = {
   title?: string;
 };
 
+type VerificationPreviewType = "image" | "pdf" | "file";
+
+type VerificationDocumentMeta = {
+  href: string;
+  fileName: string;
+  mimeType: string;
+  previewType: VerificationPreviewType;
+};
+
 function resolveOfficialDocumentHref(documentKey: string, participantResources: ReturnType<typeof useApp>["participantResources"]) {
   switch (documentKey) {
     case "guide-form":
@@ -40,7 +49,7 @@ export function getVerificationDocumentMeta(
   participant: Participant,
   document: ParticipantDocumentItem,
   participantResources: ReturnType<typeof useApp>["participantResources"]
-) {
+): VerificationDocumentMeta {
   const href =
     document.url ||
     (((document.key === "close-up" || document.key === "full-body") && participant.photo) ? participant.photo : "") ||
@@ -63,7 +72,7 @@ export function getVerificationDocumentMeta(
       ? "image/webp"
       : "");
 
-  const previewType = mimeType.startsWith("image/")
+  const previewType: VerificationPreviewType = mimeType.startsWith("image/")
     ? "image"
     : mimeType === "application/pdf"
     ? "pdf"
