@@ -35,7 +35,7 @@ function normalizeComparableText(value: string) {
  */
 export default function NewsDetailPage() {
   const params = useParams<{ id: string }>();
-  const { newsList } = useApp();
+  const { newsList, newsLoading } = useApp();
   const id = params?.id ?? "";
   const news = newsList.find((item) => item.id === id) ?? null;
   const articleBody: NewsBlock[] =
@@ -55,6 +55,14 @@ export default function NewsDetailPage() {
     return true;
   });
   const shouldShowExcerpt = !news?.contentHtml?.trim() && Boolean(news?.excerpt?.trim());
+
+  if (newsLoading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-24" style={{ color: "#F5E6C8" }}>
+        <p style={{ fontFamily: "var(--font-poppins)" }}>Memuat berita...</p>
+      </div>
+    );
+  }
 
   if (!news) {
     return (

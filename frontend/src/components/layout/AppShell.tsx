@@ -27,6 +27,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const branding = useSiteBrandingContent();
   const showPublicLayout = isPublicRoute(pathname);
+  const useSeamlessNewsBackground = pathname === "/news";
 
   React.useEffect(() => {
     if (typeof document === "undefined") return;
@@ -87,10 +88,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, showPublicLayout]);
 
   return (
-    <>
+    <div className={`min-h-screen flex flex-col ${useSeamlessNewsBackground ? "warm-champagne-bg" : ""}`}>
       {showPublicLayout ? <Navbar /> : null}
-      <main className={showPublicLayout ? "pt-20" : ""}>{children}</main>
+      <main className={`flex-1 ${showPublicLayout ? "pt-20" : ""}`}>{children}</main>
       {showPublicLayout ? <Footer /> : null}
-    </>
+    </div>
   );
 }

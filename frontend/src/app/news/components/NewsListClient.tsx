@@ -11,7 +11,7 @@ import { resolveApiAssetUrl } from "../../../lib/api";
  * Menampilkan kartu berita, metadata tanggal, kategori, dan tautan detail.
  */
 export default function NewsListClient() {
-  const { newsList } = useApp();
+  const { newsList, newsLoading } = useApp();
 
   /**
    * Mengubah tanggal ISO menjadi format tanggal Indonesia yang ramah baca.
@@ -25,7 +25,7 @@ export default function NewsListClient() {
   };
 
   return (
-    <section className="py-20 lg:py-32 warm-champagne-bg">
+    <section className="py-20 lg:py-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header (Figma style) */}
         <div className="text-center mb-14">
@@ -60,8 +60,23 @@ export default function NewsListClient() {
         </div>
 
         {/* Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {newsList.map((news) => (
+        {newsLoading ? (
+          <p
+            className="text-center text-sm"
+            style={{ color: "#CBB998", fontFamily: "var(--font-poppins)" }}
+          >
+            Memuat berita...
+          </p>
+        ) : newsList.length === 0 ? (
+          <p
+            className="text-center text-sm"
+            style={{ color: "#CBB998", fontFamily: "var(--font-poppins)" }}
+          >
+            Belum ada berita yang tersedia.
+          </p>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {newsList.map((news) => (
             <Link
               key={news.id}
               href={`/news/${news.id}`}
@@ -159,8 +174,9 @@ export default function NewsListClient() {
                 </div>
               </div>
             </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
