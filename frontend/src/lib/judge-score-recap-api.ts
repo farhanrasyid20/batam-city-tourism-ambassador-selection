@@ -14,6 +14,13 @@ type StageSummary = {
 
 type StageCriteriaAverage = Record<string, number>;
 
+export type RecapStageJudge = {
+  id: number;
+  name: string;
+  title?: string | null;
+  organization?: string | null;
+};
+
 export type JudgeScoreRecapItem = {
   participant_id: string;
   participant_number: string;
@@ -36,8 +43,7 @@ export type JudgeScoreRecapItem = {
   grand_final_total: number;
   grand_final_average: number;
   final_score_base?: number;
-  pre_camp_and_camp_combined: number;
-  pre_camp_and_camp_weighted_30: number;
+  camp_weighted_30: number;
   grand_final_weighted_70: number;
   admin_score_adjustment?: number;
   admin_score_adjustment_note?: string | null;
@@ -61,6 +67,12 @@ export type JudgeScoreRecapResponse = {
       pre_camp: number;
       camp: number;
       grand_final: number;
+    };
+    stage_judges?: {
+      Audition?: RecapStageJudge[];
+      "Pre Camp"?: RecapStageJudge[];
+      Camp?: RecapStageJudge[];
+      "Grand Final"?: RecapStageJudge[];
     };
     criteria_keys?: {
       Audition?: string[];

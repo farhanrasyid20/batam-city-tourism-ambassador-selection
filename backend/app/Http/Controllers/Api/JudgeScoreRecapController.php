@@ -200,6 +200,34 @@ class JudgeScoreRecapController extends Controller
                 'submitted_at',
             ]);
 
+        $judgeUsers = User::query()
+            ->whereIn('id', $allScores->pluck('judge_user_id')->unique()->values())
+            ->get(['id', 'name', 'judge_title', 'judge_organization'])
+            ->keyBy('id');
+
+        $stageJudges = collect(self::STAGES)
+            ->mapWithKeys(function (string $stage) use ($allScores, $judgeUsers): array {
+                $judges = $allScores
+                    ->where('stage', $stage)
+                    ->sortBy('judge_user_id')
+                    ->unique('judge_user_id')
+                    ->map(function (JudgeScore $score) use ($judgeUsers): array {
+                        $judge = $judgeUsers->get($score->judge_user_id);
+
+                        return [
+                            'id' => (int) $score->judge_user_id,
+                            'name' => $judge?->name ?? 'Juri '.$score->judge_user_id,
+                            'title' => $judge?->judge_title,
+                            'organization' => $judge?->judge_organization,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+
+                return [$stage => $judges];
+            })
+            ->all();
+
         /** @var array<string, Collection<int, JudgeScore>> $scoreGroups */
         $scoreGroups = $allScores->groupBy('participant_id')->all();
 
@@ -207,14 +235,9 @@ class JudgeScoreRecapController extends Controller
             $profile = $participant->participantProfile;
 
             $participantIdApi = 'P_API_'.$participant->id;
-            // Menambahkan variasi ID yang ditemukan di database Anda (seperti P_031 atau P_31)
-            $participantIdLegacy = 'P_'.str_pad((string)$participant->id, 3, '0', STR_PAD_LEFT);
-            $participantIdSimple = 'P_'.$participant->id;
 
             $candidateKeys = array_values(array_filter([
                 $participantIdApi,
-                $participantIdLegacy,
-                $participantIdSimple,
                 $profile?->participant_code,
                 $profile?->audition_number,
                 $profile?->participant_number,
@@ -335,6 +358,7 @@ class JudgeScoreRecapController extends Controller
                     'grand_final' => 0.70,
                 ],
                 'max_judges' => $maxJudgeCount,
+                'stage_judges' => $stageJudges,
                 'criteria_keys' => self::STAGE_CRITERIA_KEYS,
             ],
             'data' => $rows,

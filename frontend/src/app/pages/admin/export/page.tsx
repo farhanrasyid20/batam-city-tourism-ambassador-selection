@@ -30,6 +30,7 @@ import { getReadableApiError } from "../../../../lib/api";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 import {
   fetchJudgeScoreRecap,
+  type RecapStageJudge,
   type JudgeScoreRecapResponse,
 } from "../../../../lib/judge-score-recap-api";
 
@@ -122,11 +123,13 @@ const juryPdfStyles = StyleSheet.create({
   signatureRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    flexWrap: "wrap",
+    gap: 10,
   },
   signatureCol: {
-    flex: 1,
+    width: "31%",
     alignItems: "center",
+    marginBottom: 12,
   },
   signatureLine: {
     marginTop: 40,
@@ -138,6 +141,13 @@ const juryPdfStyles = StyleSheet.create({
   signatureLabel: {
     marginTop: 4,
     fontSize: 8,
+    textAlign: "center",
+  },
+  signatureMeta: {
+    marginTop: 2,
+    fontSize: 7,
+    color: "#4b5563",
+    textAlign: "center",
   },
 });
 
@@ -153,7 +163,7 @@ function getPdfColumnWidths(headers: string[]): number[] {
       header === "Pra Karantina" ||
       header === "Karantina" ||
       header === "Grand Final" ||
-      header === "(Pra + Karantina)/2 × 30%" ||
+      header === "Karantina × 30%" ||
       header === "Grand Final × 70%" ||
       header === "Karantina 30%" ||
       header === "Grand Final 70%" ||
@@ -173,6 +183,7 @@ function JuryReportDocument(props: {
   generatedAtLabel: string;
   paperSize: PdfPaperSize;
   orientation: PdfOrientation;
+  judges: RecapStageJudge[];
   logoUrl?: string;
 }) {
   const {
@@ -183,6 +194,7 @@ function JuryReportDocument(props: {
     generatedAtLabel,
     paperSize,
     orientation,
+    judges,
     logoUrl,
   } = props;
   const columnWidths = getPdfColumnWidths(headers);
@@ -252,18 +264,15 @@ function JuryReportDocument(props: {
             Verifikasi Dewan Juri (tanda tangan):
           </Text>
           <View style={juryPdfStyles.signatureRow}>
-            <View style={juryPdfStyles.signatureCol}>
-              <View style={juryPdfStyles.signatureLine} />
-              <Text style={juryPdfStyles.signatureLabel}>Ketua Dewan Juri</Text>
-            </View>
-            <View style={juryPdfStyles.signatureCol}>
-              <View style={juryPdfStyles.signatureLine} />
-              <Text style={juryPdfStyles.signatureLabel}>Anggota Juri 1</Text>
-            </View>
-            <View style={juryPdfStyles.signatureCol}>
-              <View style={juryPdfStyles.signatureLine} />
-              <Text style={juryPdfStyles.signatureLabel}>Anggota Juri 2</Text>
-            </View>
+            {judges.map((judge, index) => (
+              <View key={judge.id} style={juryPdfStyles.signatureCol}>
+                <View style={juryPdfStyles.signatureLine} />
+                <Text style={juryPdfStyles.signatureLabel}>{judge.name}</Text>
+                <Text style={juryPdfStyles.signatureMeta}>
+                  {judge.title || judge.organization || `Juri ${index + 1}`}
+                </Text>
+              </View>
+            ))}
           </View>
         </View>
       </Page>
@@ -371,6 +380,14 @@ function padJudgeScores(scores: number[], max: number): Array<number | string> {
   return values;
 }
 
+function toRoundedScore(value: number | null | undefined) {
+  return Number(Number(value ?? 0).toFixed(2));
+}
+
+function toFormattedScore(value: number | null | undefined) {
+  return Number(value ?? 0).toFixed(2);
+}
+
 function toTitleCase(value: string) {
   return value
     .split(" ")
@@ -430,6 +447,14 @@ function getStageCriteriaAverage(
   if (stage === "Pre Camp") return row.pre_camp_criteria_average ?? {};
   if (stage === "Camp") return row.camp_criteria_average ?? {};
   return row.grand_final_criteria_average ?? {};
+}
+
+function getStageJudges(stage: ExportStage, recap: JudgeScoreRecapResponse | null) {
+  const stageJudges = recap?.meta.stage_judges;
+  if (stage === "Audition") return stageJudges?.Audition ?? [];
+  if (stage === "Pre Camp") return stageJudges?.["Pre Camp"] ?? [];
+  if (stage === "Camp") return stageJudges?.Camp ?? [];
+  return stageJudges?.["Grand Final"] ?? [];
 }
 
 export default function AdminExportPage() {
@@ -565,7 +590,7 @@ export default function AdminExportPage() {
         "Pra Karantina",
         "Karantina",
         "Grand Final",
-        "(Pra + Karantina)/2 x 30%",
+        "Karantina x 30%",
         "Grand Final x 70%",
         "Nilai Akhir",
       ];
@@ -675,13 +700,13 @@ export default function AdminExportPage() {
         normalizeParticipantCode(row.participant_number),
         toDisplayParticipantName(row.participant_name, row.gender),
         row.gender ?? "-",
-        Number(row.audition_average.toFixed(2)),
-        Number(row.pre_camp_average.toFixed(2)),
-        Number(row.camp_average.toFixed(2)),
-        Number(row.grand_final_average.toFixed(2)),
-        Number(row.pre_camp_and_camp_weighted_30.toFixed(2)),
-        Number(row.grand_final_weighted_70.toFixed(2)),
-        Number(row.final_score.toFixed(2)),
+        toRoundedScore(row.audition_average),
+        toRoundedScore(row.pre_camp_average),
+        toRoundedScore(row.camp_average),
+        toRoundedScore(row.grand_final_average),
+        toRoundedScore(row.camp_weighted_30),
+        toRoundedScore(row.grand_final_weighted_70),
+        toRoundedScore(row.final_score),
       ]);
 
     return [
@@ -700,7 +725,7 @@ export default function AdminExportPage() {
           "Pra Karantina",
           "Karantina",
           "Grand Final",
-          "(Pra + Karantina)/2 × 30%",
+          "Karantina × 30%",
           "Grand Final × 70%",
           "Nilai Akhir",
         ],
@@ -756,6 +781,7 @@ export default function AdminExportPage() {
           generatedAtLabel={generatedAt}
           paperSize={pdfPaperSize}
           orientation={pdfOrientation}
+          judges={getStageJudges(selectedStage, recap)}
           logoUrl={`${window.location.origin}/logo.png`}
         />
       ).toBlob();
@@ -1169,28 +1195,28 @@ export default function AdminExportPage() {
                       >
                         {baseCells}
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
-                          {row.audition_average.toFixed(2)}
+                          {toFormattedScore(row.audition_average)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
-                          {row.pre_camp_average.toFixed(2)}
+                          {toFormattedScore(row.pre_camp_average)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
-                          {row.camp_average.toFixed(2)}
+                          {toFormattedScore(row.camp_average)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
-                          {row.grand_final_average.toFixed(2)}
+                          {toFormattedScore(row.grand_final_average)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
-                          {row.pre_camp_and_camp_weighted_30.toFixed(2)}
+                          {toFormattedScore(row.camp_weighted_30)}
                         </td>
                         <td className="px-3 py-2.5 text-center" style={{ color: "#BDBDBD" }}>
-                          {row.grand_final_weighted_70.toFixed(2)}
+                          {toFormattedScore(row.grand_final_weighted_70)}
                         </td>
                         <td
                           className="px-3 py-2.5 text-center"
                           style={{ color: "#D4AF37", fontWeight: 700 }}
                         >
-                          {row.final_score.toFixed(2)}
+                          {toFormattedScore(row.final_score)}
                         </td>
                       </tr>
                     );
