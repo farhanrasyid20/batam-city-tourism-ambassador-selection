@@ -48,7 +48,19 @@ class JudgeParticipantController extends Controller
             // Jangan pernah gunakan foto dari dokumen pendaftaran sebagai foto profil.
             return null;
         }
-        return $photo !== '' ? $photo : null;
+
+        if ($photo !== '') {
+            return $photo;
+        }
+
+        $identityPhoto = is_string($user->participantProfile?->identity?->photo)
+            ? trim($user->participantProfile->identity->photo)
+            : '';
+        if ($identityPhoto !== '' && str_contains($identityPhoto, '/participant-documents/')) {
+            return null;
+        }
+
+        return $identityPhoto !== '' ? $identityPhoto : null;
     }
 
     public function index(Request $request): JsonResponse
