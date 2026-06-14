@@ -798,7 +798,7 @@ export default function AdminExportPage() {
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-8">
         <h1
           style={{
@@ -849,7 +849,7 @@ export default function AdminExportPage() {
             color: error ? "#ef4444" : "#22c55e",
           },
         ].map((item) => (
-          <GoldCard key={item.label}>
+          <GoldCard key={item.label} className="p-4 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p
@@ -882,9 +882,9 @@ export default function AdminExportPage() {
         ))}
       </div>
 
-      <GoldCard glow className="mb-6">
+      <GoldCard glow className="mb-6 p-4 sm:p-6">
         <div
-          className="mb-4 rounded-xl px-4 py-3"
+          className="mb-4 rounded-xl px-3 py-3 sm:px-4"
           style={{
             border: "1px solid rgba(212,175,55,0.2)",
             background: "rgba(212,175,55,0.05)",
@@ -907,8 +907,8 @@ export default function AdminExportPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
+        <div className="grid grid-cols-2 gap-4 sm:flex sm:flex-wrap sm:items-end">
+          <div className="min-w-0">
             <label
               className="block text-xs mb-2"
               style={{
@@ -922,7 +922,7 @@ export default function AdminExportPage() {
             <select
               value={pdfPaperSize}
               onChange={(event) => setPdfPaperSize(event.target.value as PdfPaperSize)}
-              className="px-3 py-2 rounded-xl text-xs"
+              className="w-full px-3 py-2 rounded-xl text-xs sm:w-auto"
               style={{
                 background: "#141414",
                 border: "1px solid rgba(212,175,55,0.25)",
@@ -939,7 +939,7 @@ export default function AdminExportPage() {
             </select>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label
               className="block text-xs mb-2"
               style={{
@@ -955,7 +955,7 @@ export default function AdminExportPage() {
               onChange={(event) =>
                 setPdfOrientation(event.target.value as PdfOrientation)
               }
-              className="px-3 py-2 rounded-xl text-xs"
+              className="w-full px-3 py-2 rounded-xl text-xs sm:w-auto"
               style={{
                 background: "#141414",
                 border: "1px solid rgba(212,175,55,0.25)",
@@ -968,7 +968,7 @@ export default function AdminExportPage() {
             </select>
           </div>
 
-          <div>
+          <div className="col-span-2 sm:col-auto">
             <label
               className="block text-xs mb-2"
               style={{
@@ -979,12 +979,14 @@ export default function AdminExportPage() {
             >
               Filter Tahap
             </label>
-            <div className="flex gap-2 flex-wrap">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               {exportStages.map((stage) => (
                 <button
                   key={stage}
                   onClick={() => setSelectedStage(stage)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+                  className={`min-w-0 px-3 py-2 rounded-xl text-xs font-semibold transition-all sm:px-4 ${
+                    stage === "Final Result" ? "col-span-2 sm:col-auto" : ""
+                  }`}
                   style={{
                     background:
                       selectedStage === stage
@@ -1007,7 +1009,7 @@ export default function AdminExportPage() {
             </div>
           </div>
 
-          <div>
+          <div className="col-span-2 sm:col-auto">
             <label
               className="block text-xs mb-2"
               style={{
@@ -1018,12 +1020,12 @@ export default function AdminExportPage() {
             >
               Filter Kategori
             </label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:flex">
               {(["Semua", "Encik", "Puan"] as const).map((gender) => (
                 <button
                   key={gender}
                   onClick={() => setSelectedGender(gender)}
-                  className="px-4 py-2 rounded-xl text-xs transition-all"
+                  className="min-w-0 px-3 py-2 rounded-xl text-xs transition-all sm:px-4"
                   style={{
                     background:
                       selectedGender === gender
@@ -1046,11 +1048,12 @@ export default function AdminExportPage() {
             </div>
           </div>
 
-          <div className="ml-auto flex gap-2">
+          <div className="col-span-2 grid grid-cols-1 gap-2 sm:ml-auto sm:flex">
             <GoldButton
               variant="outline"
               onClick={() => exportWorkbook(true)}
               disabled={loading || Boolean(error)}
+              className="w-full whitespace-normal px-4 text-sm sm:w-auto sm:whitespace-nowrap sm:px-6 sm:text-base"
             >
               {done === "single" ? (
                 <CheckCircle size={16} />
@@ -1063,6 +1066,7 @@ export default function AdminExportPage() {
               variant="primary"
               onClick={() => exportWorkbook(false)}
               disabled={loading || Boolean(error)}
+              className="w-full whitespace-normal px-4 text-sm sm:w-auto sm:whitespace-nowrap sm:px-6 sm:text-base"
             >
               {done === "all" ? (
                 <CheckCircle size={16} />
@@ -1074,6 +1078,7 @@ export default function AdminExportPage() {
             <GoldButton
               variant="outline"
               onClick={exportJuryPdf}
+              className="w-full whitespace-normal px-4 text-sm sm:w-auto sm:whitespace-nowrap sm:px-6 sm:text-base"
               disabled={
                 loading ||
                 Boolean(error) ||
@@ -1089,8 +1094,8 @@ export default function AdminExportPage() {
         </div>
       </GoldCard>
 
-      <GoldCard>
-        <div className="flex items-center justify-between mb-4">
+      <GoldCard className="p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h3
             className="text-sm font-bold"
             style={{ color: "#D4AF37", fontFamily: "var(--font-cinzel)" }}
