@@ -21,6 +21,7 @@ import {
   Heart,
   MessageSquare,
   BookOpen,
+  CalendarRange,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "../../../components/dashboard/DashboardLayout";
@@ -28,6 +29,7 @@ import { useApp } from "../../../context/AppContext";
 
 const adminNavItems = [
   { label: "Dashboard", href: "/pages/admin/dashboard", icon: <LayoutDashboard size={16} /> },
+  { label: "Edisi Lomba", href: "/pages/admin/editions", icon: <CalendarRange size={16} /> },
   {
     label: "Manajemen Peserta",
     icon: <Users size={16} />,

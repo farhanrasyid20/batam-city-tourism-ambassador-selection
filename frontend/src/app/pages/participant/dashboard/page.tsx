@@ -15,6 +15,7 @@ import {
   Send,
   ShieldCheck,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { useApp } from "../../../../context/AppContext";
 import { statusLabelsId, type Participant, type StageStatus } from "../../../../data/mockData";
@@ -26,6 +27,12 @@ import {
 } from "../../../../lib/auth-api";
 import { getParticipantAuthSession } from "../../../../lib/auth-storage";
 import { getReadableApiError, resolveApiAssetUrl } from "../../../../lib/api";
+import {
+  fetchParticipantRegistration,
+  startParticipantRegistration,
+  type CompetitionEdition,
+  type ParticipantEditionRegistration,
+} from "../../../../lib/competition-edition-api";
 
 /**
  * Mengubah rasio menjadi persentase integer.
@@ -85,6 +92,39 @@ export default function ParticipantDashboardPage() {
   const [dismissedAlertId, setDismissedAlertId] = useState("");
   const [resubmittedKeys, setResubmittedKeys] = useState<string[]>([]);
   const [isSubmittingToAdmin, setIsSubmittingToAdmin] = useState(false);
+  const [activeEdition, setActiveEdition] = useState<CompetitionEdition | null>(null);
+  const [editionRegistration, setEditionRegistration] = useState<ParticipantEditionRegistration | null>(null);
+  const [startingRegistration, setStartingRegistration] = useState(false);
+
+  useEffect(() => {
+    const token = getParticipantAuthSession()?.token;
+    if (!token) return;
+    fetchParticipantRegistration(token)
+      .then((response) => {
+        setActiveEdition(response.edition);
+        setEditionRegistration(response.registration);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function handleStartEditionRegistration() {
+    const token = getParticipantAuthSession()?.token;
+    if (!token || startingRegistration) return;
+    setStartingRegistration(true);
+    try {
+      const response = await startParticipantRegistration(token);
+      setActiveEdition(response.edition);
+      setEditionRegistration(response.registration);
+      setSubmitInfoType("success");
+      setSubmitInfo(response.message);
+      router.push("/pages/participant/biodata");
+    } catch (error) {
+      setSubmitInfoType("error");
+      setSubmitInfo(getReadableApiError(error));
+    } finally {
+      setStartingRegistration(false);
+    }
+  }
 
   // Peserta aktif, fallback ke data pertama untuk mode demo.
   const participant = currentParticipant;
@@ -448,6 +488,31 @@ export default function ParticipantDashboardPage() {
           Selamat datang, <strong style={{ color: "#F5E6C8" }}>{greetingName}</strong>!
         </p>
       </div>
+
+      {activeEdition && !editionRegistration ? (
+        <div className="rounded-2xl p-5 mb-6 flex flex-wrap items-center justify-between gap-4" style={{ background: "rgba(212,175,55,.09)", border: "1px solid rgba(212,175,55,.35)" }}>
+          <div className="flex gap-3">
+            <CalendarDays size={22} color="#F5D06F" />
+            <div>
+              <p className="font-bold" style={{ color: "#F5E6C8" }}>{activeEdition.name}</p>
+              <p className="text-sm mt-1" style={{ color: "#BDBDBD" }}>
+                {activeEdition.registration_is_open
+                  ? "Pendaftaran dibuka. Biodata akun Anda akan digunakan kembali dan dapat diperbarui sebelum submit."
+                  : "Anda belum terdaftar pada edisi ini dan pendaftaran sedang ditutup."}
+              </p>
+            </div>
+          </div>
+          {activeEdition.registration_is_open && (
+            <GoldButton onClick={handleStartEditionRegistration} disabled={startingRegistration}>
+              {startingRegistration ? "Memulai..." : `Daftar Edisi ${activeEdition.year}`}
+            </GoldButton>
+          )}
+        </div>
+      ) : activeEdition && editionRegistration ? (
+        <div className="rounded-xl px-4 py-3 mb-6 text-sm" style={{ background: "rgba(34,197,94,.07)", border: "1px solid rgba(34,197,94,.25)", color: "#86efac" }}>
+          Pendaftaran {activeEdition.year}: <strong>{editionRegistration.status === "submitted" ? "Sudah disubmit" : "Draft — periksa biodata dan dokumen, lalu submit"}</strong>
+        </div>
+      ) : null}
 
       {participant && statusInfo ? (
         <div

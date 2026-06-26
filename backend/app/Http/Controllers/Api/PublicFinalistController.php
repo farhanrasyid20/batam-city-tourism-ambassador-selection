@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PublicVoteCandidateSetting;
 use App\Models\PublicVoteSetting;
 use App\Models\User;
+use App\Models\CompetitionEdition;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 /**
@@ -55,12 +56,14 @@ class PublicFinalistController extends Controller
 
     public function index(): JsonResponse
     {
+        $edition = CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Belum ada edisi lomba aktif.', 'data' => [], 'total' => 0]);
         $participants = User::query()
             ->where('role', 'participant')
-            ->whereHas('participantProfile', function ($query): void {
+            ->whereHas('participantRegistrations', function ($query) use ($edition): void {
                 // Untuk kebutuhan halaman vote publik, tampilkan peserta yang sudah lolos audisi
                 // (minimal Top 20) hingga tahap final.
-                $query
+                $query->where('edition_id', $edition->id)
                     ->whereIn('selection_status', ['Top20', 'PreCamp', 'Camp', 'GrandFinal', 'Winner'])
                     ->where(function ($inner): void {
                         $inner
@@ -72,20 +75,23 @@ class PublicFinalistController extends Controller
                 'participantProfile:id,user_id,participant_number,audition_number,participant_code,gender,selection_status,eliminated_in_audition',
                 'participantProfile.identity:participant_profile_id,photo,instagram',
                 'participantProfile.background:participant_profile_id,education_category,education_institution,education_degree,education_major',
-                'participantDocuments:user_id,document_key,path,url',
+                'participantDocuments' => fn ($query) => $query->where('edition_id', $edition->id),
+                'participantRegistrations' => fn ($query) => $query->where('edition_id', $edition->id),
             ])
             ->orderBy('name')
             ->get(['id', 'name']);
 
         $settingsByParticipant = PublicVoteCandidateSetting::query()
+            ->where('edition_id', $edition->id)
             ->whereIn('participant_user_id', $participants->pluck('id')->all())
             ->get()
             ->keyBy('participant_user_id');
 
-        $publicationSetting = PublicVoteSetting::query()->find(1);
+        $publicationSetting = PublicVoteSetting::query()->where('edition_id', $edition->id)->first();
 
         $data = $participants->map(function (User $user) use ($settingsByParticipant): array {
             $profile = $user->participantProfile;
+            $registration = $user->participantRegistrations->first();
             $setting = $settingsByParticipant->get($user->id);
             $photo = $this->resolveVotePhoto($user, $setting?->publication_photo);
             $identity = $profile?->identity;
@@ -94,17 +100,17 @@ class PublicFinalistController extends Controller
             return [
                 'id' => $user->id,
                 'name' => $user->name,
-                'participant_number' => $profile?->participant_number,
-                'audition_number' => $profile?->audition_number,
-                'participant_code' => $profile?->participant_code,
-                'gender' => $profile?->gender,
+                'participant_number' => $registration?->participant_number,
+                'audition_number' => $registration?->audition_number,
+                'participant_code' => $registration?->participant_code,
+                'gender' => $registration?->gender ?? $profile?->gender,
                 'photo' => $photo,
                 'instagram' => $identity?->instagram ?? $profile?->instagram,
                 'education_category' => $background?->education_category ?? $profile?->education_category,
                 'education_institution' => $background?->education_institution ?? $profile?->education_institution,
                 'education_degree' => $background?->education_degree ?? $profile?->education_degree,
                 'education_major' => $background?->education_major ?? $profile?->education_major,
-                'selection_status' => $profile?->selection_status,
+                'selection_status' => $registration?->selection_status,
                 'vote_instagram_profile_url' => $setting?->instagram_profile_url,
                 'vote_instagram_post_url' => $setting?->instagram_post_url,
                 'vote_official_like_count' => $setting?->official_like_count,

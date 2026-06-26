@@ -82,3 +82,9 @@ export function submitJudgeScore(token: string, payload: SubmitJudgeScorePayload
     body: payload,
   });
 }
+
+export function correctJudgeScore(token: string, scoreId: number, payload: { score: Score; note?: string; reason: string }) {
+  return apiRequest<SubmitJudgeScoreResponse>(`/super-admin/scoring/scores/${scoreId}/correct`, {
+    method: "PATCH", token, body: payload,
+  });
+}

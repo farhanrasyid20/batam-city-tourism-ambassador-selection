@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\PublicFinalistController;
 use App\Http\Controllers\Api\PublicVoteAdminController;
 use App\Http\Controllers\Api\SiteSettingController;
 use App\Http\Controllers\Api\UserManagementController;
+use App\Http\Controllers\Api\CompetitionEditionController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -48,6 +49,7 @@ Route::get('/public/site-settings/branding', [SiteSettingController::class, 'sho
 Route::get('/public/news', [NewsController::class, 'index']);
 Route::get('/public/finalists', [PublicFinalistController::class, 'index']);
 Route::get('/public/participant-resources', [ParticipantResourceController::class, 'showPublic']);
+Route::get('/public/competition-edition', [CompetitionEditionController::class, 'current']);
 
 /**
  * Endpoint khusus peserta terautentikasi.
@@ -59,6 +61,8 @@ Route::prefix('participant')->middleware(['jwt.auth', 'role:participant'])->grou
     Route::get('/documents', [ParticipantDocumentController::class, 'index']);
     Route::post('/documents/upload', [ParticipantDocumentController::class, 'upload']);
     Route::post('/documents/submit', [ParticipantDocumentController::class, 'submit']);
+    Route::get('/registration', [CompetitionEditionController::class, 'participantCurrent']);
+    Route::post('/registration/start', [CompetitionEditionController::class, 'startRegistration']);
 });
 
 /**
@@ -96,10 +100,15 @@ Route::prefix('super-admin')->middleware(['jwt.auth', 'role:super_admin,admin'])
     Route::post('/vote/candidates/{participantUserId}', [PublicVoteAdminController::class, 'updateCandidate']);
     Route::patch('/vote/jury', [PublicVoteAdminController::class, 'updateJuryWinners']);
     Route::patch('/scoring/final-adjustment', [JudgeScoreRecapController::class, 'updateAdjustment']);
+    Route::patch('/scoring/scores/{id}/correct', [JudgeScoreController::class, 'correct']);
     Route::get('/scoring/audition/top20-preview', [AuditionPromotionController::class, 'preview']);
     Route::post('/scoring/audition/top20-apply', [AuditionPromotionController::class, 'apply']);
     Route::post('/exports/upload', [ExportReportController::class, 'upload']);
     Route::post('/participant-resources', [ParticipantResourceController::class, 'update']);
+    Route::get('/competition-editions', [CompetitionEditionController::class, 'index']);
+    Route::post('/competition-editions', [CompetitionEditionController::class, 'store']);
+    Route::patch('/competition-editions/{id}', [CompetitionEditionController::class, 'update']);
+    Route::get('/competition-editions/{id}/registrations', [CompetitionEditionController::class, 'registrations']);
 });
 
 /**

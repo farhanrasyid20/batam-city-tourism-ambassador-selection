@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ParticipantDocument;
 use App\Models\ParticipantProfile;
 use App\Models\User;
+use App\Models\CompetitionEdition;
+use App\Models\ParticipantRegistration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,10 +50,25 @@ class ParticipantDocumentController extends Controller
         ]);
     }
 
+    private function activeEdition(): ?CompetitionEdition
+    {
+        return CompetitionEdition::active();
+    }
+
+    private function activeRegistration(User $user): ?ParticipantRegistration
+    {
+        $edition = $this->activeEdition();
+        return $edition ? ParticipantRegistration::query()->where('edition_id', $edition->id)->where('user_id', $user->id)->first() : null;
+    }
+
     private function participantPayload(User $user): array
     {
         $profile = $this->ensureProfile($user);
-        $documents = $user->participantDocuments()->orderBy('id')->get()->map(fn ($doc) => [
+        $edition = $this->activeEdition();
+        $registration = $this->activeRegistration($user);
+        $documents = $user->participantDocuments()
+            ->when($edition, fn ($query) => $query->where('edition_id', $edition->id))
+            ->orderBy('id')->get()->map(fn ($doc) => [
             'key' => $doc->document_key,
             'label' => $doc->label,
             'required' => (bool) $doc->is_required,
@@ -67,20 +84,23 @@ class ParticipantDocumentController extends Controller
 
         return [
             'id' => $user->id,
-            'participant_number' => $profile->participant_number ?: $profile->audition_number,
-            'audition_number' => $profile->audition_number ?: $profile->participant_number,
-            'participant_code' => $profile->participant_code,
-            'submitted_to_admin' => (bool) $profile->submitted_to_admin,
-            'submitted_to_admin_at' => $profile->submitted_to_admin_at?->toISOString(),
-            'eliminated_in_audition' => (bool) $profile->eliminated_in_audition,
-            'eliminated_at' => $profile->eliminated_at?->toISOString(),
+            'edition' => $edition ? ['id' => $edition->id, 'year' => $edition->year, 'name' => $edition->name, 'registration_is_open' => $edition->registrationIsOpen()] : null,
+            'registration_status' => $registration?->status,
+            'participant_number' => $registration?->participant_number ?: $registration?->audition_number,
+            'audition_number' => $registration?->audition_number ?: $registration?->participant_number,
+            'participant_code' => $registration?->participant_code,
+            'submitted_to_admin' => $registration?->status === 'submitted',
+            'submitted_to_admin_at' => $registration?->submitted_at?->toISOString(),
+            'eliminated_in_audition' => (bool) $registration?->eliminated_in_audition,
+            'eliminated_at' => $registration?->eliminated_at?->toISOString(),
             'documents' => $documents,
         ];
     }
 
-    private function nextAuditionNumber(): string
+    private function nextAuditionNumber(int $editionId): string
     {
-        $numbers = ParticipantProfile::query()
+        $numbers = ParticipantRegistration::query()
+            ->where('edition_id', $editionId)
             ->where(function ($query): void {
                 $query->whereNotNull('audition_number')
                     ->orWhereNotNull('participant_number');
@@ -132,6 +152,18 @@ class ParticipantDocumentController extends Controller
             return response()->json(['message' => 'Akses hanya untuk peserta.'], 403);
         }
 
+        $edition = $this->activeEdition();
+        $registration = $this->activeRegistration($user);
+        if (! $edition || ! $registration) {
+            return response()->json(['message' => 'Klik Daftar Edisi terlebih dahulu sebelum mengunggah dokumen.'], 422);
+        }
+        if (! $edition->registrationIsOpen()) {
+            return response()->json(['message' => 'Pendaftaran sedang ditutup.'], 422);
+        }
+        if ($registration->eliminated_in_audition) {
+            return response()->json(['message' => 'Anda sudah tereliminasi pada tahap audisi.'], 422);
+        }
+
         $validated = $request->validate([
             'document_key' => ['required', 'string'],
             'file' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,pdf,webp'],
@@ -161,6 +193,7 @@ class ParticipantDocumentController extends Controller
 
         /** @var ParticipantDocument|null $existing */
         $existing = $user->participantDocuments()
+            ->where('edition_id', $edition->id)
             ->where('document_key', $documentKey)
             ->first();
         if ($existing && is_string($existing->path) && $existing->path !== '') {
@@ -174,6 +207,7 @@ class ParticipantDocumentController extends Controller
         ParticipantDocument::query()->updateOrCreate(
             [
                 'user_id' => $user->id,
+                'edition_id' => $edition->id,
                 'document_key' => $documentKey,
             ],
             [
@@ -190,11 +224,9 @@ class ParticipantDocumentController extends Controller
             ]
         );
 
-        $profile = $this->ensureProfile($user);
-        $this->assertNotEliminated($profile);
-        $profile->submitted_to_admin = false;
-        $profile->submitted_to_admin_at = null;
-        $profile->save();
+        $registration->status = 'draft';
+        $registration->submitted_at = null;
+        $registration->save();
 
         return response()->json([
             'message' => 'Dokumen berhasil diupload.',
@@ -209,10 +241,14 @@ class ParticipantDocumentController extends Controller
             return response()->json(['message' => 'Akses hanya untuk peserta.'], 403);
         }
 
-        $profile = $this->ensureProfile($user);
-        $this->assertNotEliminated($profile);
+        $edition = $this->activeEdition();
+        $registration = $this->activeRegistration($user);
+        if (! $edition || ! $registration) return response()->json(['message' => 'Mulai pendaftaran edisi aktif terlebih dahulu.'], 422);
+        if (! $edition->registrationIsOpen()) return response()->json(['message' => 'Pendaftaran sedang ditutup oleh panitia.'], 422);
+        if ($registration->eliminated_in_audition) return response()->json(['message' => 'Anda sudah tereliminasi pada tahap audisi.'], 422);
 
         $documents = $user->participantDocuments()
+            ->where('edition_id', $edition->id)
             ->whereIn('document_key', array_keys(self::DOCUMENT_DEFINITIONS))
             ->get()
             ->keyBy('document_key');
@@ -239,33 +275,45 @@ class ParticipantDocumentController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($user): void {
+        DB::transaction(function () use ($user, $edition): void {
             User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-            /** @var ParticipantProfile $profile */
-            $profile = ParticipantProfile::query()
+            /** @var ParticipantRegistration $registration */
+            $registration = ParticipantRegistration::query()
+                ->where('edition_id', $edition->id)
                 ->where('user_id', $user->id)
                 ->lockForUpdate()
-                ->first();
+                ->firstOrFail();
 
-            if (! $profile) {
-                $profile = new ParticipantProfile(['user_id' => $user->id]);
-            }
-
-            if (! $profile->audition_number && ! $profile->participant_number) {
-                $auditionNumber = $this->nextAuditionNumber();
-                $profile->audition_number = $auditionNumber;
+            if (! $registration->audition_number && ! $registration->participant_number) {
+                $auditionNumber = $this->nextAuditionNumber($edition->id);
+                $registration->audition_number = $auditionNumber;
                 // Pertahankan field lama agar kompatibel dengan UI lama.
-                $profile->participant_number = $auditionNumber;
-            } elseif (! $profile->audition_number && $profile->participant_number) {
-                $profile->audition_number = $profile->participant_number;
-            } elseif ($profile->audition_number && ! $profile->participant_number) {
-                $profile->participant_number = $profile->audition_number;
+                $registration->participant_number = $auditionNumber;
+            } elseif (! $registration->audition_number && $registration->participant_number) {
+                $registration->audition_number = $registration->participant_number;
+            } elseif ($registration->audition_number && ! $registration->participant_number) {
+                $registration->participant_number = $registration->audition_number;
             }
 
-            $profile->submitted_to_admin = true;
-            $profile->submitted_to_admin_at = now();
-            $profile->save();
+            $profile = ParticipantProfile::query()->with(['identity', 'measurement', 'background', 'statement'])->where('user_id', $user->id)->first();
+            $registration->status = 'submitted';
+            $registration->submitted_at = now();
+            $registration->gender = $profile?->gender;
+            $registration->biodata_snapshot = [
+                'user' => $user->only(['name', 'email', 'phone']),
+                'profile' => $profile?->toArray(),
+            ];
+            $registration->save();
+
+            // Kompatibilitas sementara untuk bagian UI lama yang masih membaca profil akun.
+            if ($profile) {
+                $profile->participant_number = $registration->participant_number;
+                $profile->audition_number = $registration->audition_number;
+                $profile->submitted_to_admin = true;
+                $profile->submitted_to_admin_at = $registration->submitted_at;
+                $profile->save();
+            }
         });
 
         $fresh = $user->fresh();

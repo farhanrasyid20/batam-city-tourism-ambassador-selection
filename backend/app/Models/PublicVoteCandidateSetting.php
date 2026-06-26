@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PublicVoteCandidateSetting extends Model
 {
     protected $fillable = [
+        'edition_id',
         'participant_user_id',
         'publication_photo',
         'instagram_profile_url',
@@ -36,4 +37,3 @@ class PublicVoteCandidateSetting extends Model
         return $this->belongsTo(User::class, 'participant_user_id');
     }
 }
-

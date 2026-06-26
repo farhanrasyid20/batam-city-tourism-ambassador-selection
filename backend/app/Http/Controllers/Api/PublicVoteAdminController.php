@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\PublicVoteCandidateSetting;
 use App\Models\PublicVoteSetting;
 use App\Models\User;
+use App\Models\CompetitionEdition;
+use App\Models\ParticipantRegistration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -17,6 +19,49 @@ use Illuminate\Support\Facades\Validator;
 
 class PublicVoteAdminController extends Controller
 {
+    private function winnerParticipantUserIds(PublicVoteSetting $setting): array
+    {
+        $rows = array_merge($setting->judge_encik_winners ?? [], $setting->judge_puan_winners ?? []);
+
+        return collect($rows)
+            ->map(function ($row): ?int {
+                $raw = is_array($row) ? (string) ($row['participantId'] ?? '') : '';
+                if (preg_match('/(\d+)$/', $raw, $matches)) return (int) $matches[1];
+                return null;
+            })
+            ->filter(fn ($id) => is_int($id) && $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function syncWinnerSelectionStatuses(CompetitionEdition $edition, PublicVoteSetting $setting): void
+    {
+        $winnerUserIds = $this->winnerParticipantUserIds($setting);
+        $now = Carbon::now();
+
+        ParticipantRegistration::query()
+            ->where('edition_id', $edition->id)
+            ->where('selection_status', 'Winner')
+            ->when($winnerUserIds, fn ($query) => $query->whereNotIn('user_id', $winnerUserIds))
+            ->update([
+                'selection_status' => 'GrandFinal',
+                'selection_status_note' => 'Finalis Grand Final (bukan penerima gelar juara).',
+                'selection_status_updated_at' => $now,
+            ]);
+
+        if ($winnerUserIds) {
+            ParticipantRegistration::query()
+                ->where('edition_id', $edition->id)
+                ->whereIn('user_id', $winnerUserIds)
+                ->update([
+                    'selection_status' => 'Winner',
+                    'selection_status_note' => 'Ditetapkan sebagai juara melalui menu Juara Versi Juri.',
+                    'selection_status_updated_at' => $now,
+                ]);
+        }
+    }
+
     public function updatePublication(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -68,11 +113,12 @@ class PublicVoteAdminController extends Controller
             $payload['judge_pair_published'] = (bool) $request->boolean('judge_pair_published');
         }
 
+        $edition = CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
         $setting = PublicVoteSetting::query()->updateOrCreate(
-            ['id' => 1],
+            ['edition_id' => $edition->id],
             $payload
         );
-
         return response()->json([
             'message' => 'Status publikasi vote berhasil diperbarui.',
             'data' => [
@@ -142,10 +188,13 @@ class PublicVoteAdminController extends Controller
             }
         }
 
+        $edition = CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
         $setting = PublicVoteSetting::query()->updateOrCreate(
-            ['id' => 1],
+            ['edition_id' => $edition->id],
             $payload
         );
+        $this->syncWinnerSelectionStatuses($edition, $setting);
 
         return response()->json([
             'message' => 'Pengaturan juara versi juri berhasil disimpan.',
@@ -213,13 +262,15 @@ class PublicVoteAdminController extends Controller
         $authUser = $request->attributes->get('auth_user');
         $payload['updated_by_user_id'] = $authUser?->id;
 
+        $edition = CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
         $setting = PublicVoteCandidateSetting::query()->updateOrCreate(
-            ['participant_user_id' => $participantUserId],
+            ['edition_id' => $edition->id, 'participant_user_id' => $participantUserId],
             $payload
         );
 
         PublicVoteSetting::query()->updateOrCreate(
-            ['id' => 1],
+            ['edition_id' => $edition->id],
             [
                 'vote_top_published' => false,
                 'vote_ranking_published' => false,

@@ -40,6 +40,7 @@ type ScoringSidePanelProps = {
   scoreTotal: number;
   isScoreComplete: boolean;
   isScoreSaving: boolean;
+  isCorrectionMode: boolean;
   availableNoteStages: ParticipantNoteStageKey[];
   resolvedNoteStage: ParticipantNoteStageKey;
   noteDraft: NoteDraft;
@@ -50,6 +51,7 @@ type ScoringSidePanelProps = {
   onSelectJudge: (judgeId: string) => void;
   onScoreInputChange: (criterionKey: string, rawValue: string) => void;
   onSaveScore: () => void;
+  onStartCorrection: () => void;
   onSaveNote: () => void;
   onNoteDraftChange: (updater: (draft: NoteDraft) => NoteDraft) => void;
 };
@@ -86,6 +88,7 @@ export default function ScoringSidePanel({
   scoreTotal,
   isScoreComplete,
   isScoreSaving,
+  isCorrectionMode,
   availableNoteStages,
   resolvedNoteStage,
   noteDraft,
@@ -96,6 +99,7 @@ export default function ScoringSidePanel({
   onSelectJudge,
   onScoreInputChange,
   onSaveScore,
+  onStartCorrection,
   onSaveNote,
   onNoteDraftChange,
 }: ScoringSidePanelProps) {
@@ -294,13 +298,16 @@ export default function ScoringSidePanel({
                 </button>
 
                 {isScoreLocked ? (
-                  <p
-                    className="text-[11px]"
-                    style={{ color: "#F97316", fontFamily: "var(--font-poppins)" }}
-                  >
-                    Nilai juri ini sudah disubmit{scoreLockedAt ? ` (${formatDateTime(scoreLockedAt)})` : ""}. Pilih akun juri lain jika ingin input nilai.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-[11px]" style={{ color: "#F97316", fontFamily: "var(--font-poppins)" }}>
+                      Nilai juri ini sudah disubmit{scoreLockedAt ? ` (${formatDateTime(scoreLockedAt)})` : ""} dan tersimpan sebagai nilai resmi.
+                    </p>
+                    <button type="button" onClick={onStartCorrection} className="w-full px-3 py-2 rounded-xl text-xs font-semibold" style={{ border: "1px solid rgba(249,115,22,.5)", color: "#FDBA74" }}>
+                      Koreksi Nilai dengan Alasan
+                    </button>
+                  </div>
                 ) : null}
+                {isCorrectionMode ? <p className="text-[11px]" style={{ color: "#F5D06F" }}>Mode koreksi aktif. Nilai lama tetap tersimpan dalam riwayat audit.</p> : null}
               </div>
             ) : null}
 

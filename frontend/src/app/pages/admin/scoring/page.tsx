@@ -57,6 +57,7 @@ import {
 } from "../../../../lib/judge-note-api";
 import {
   fetchJudgeScores,
+  correctJudgeScore,
   submitJudgeScore,
   type BackendJudgeScore,
   type BackendJudgeScoreStage,
@@ -172,7 +173,9 @@ const toBackendSelectionStatus = (
     case "Grand Final":
       return "GrandFinal";
     case "Final Result":
-      return "Winner";
+      // Final Result adalah tampilan rekap nilai seluruh grand finalist, bukan status juara.
+      // Status Winner hanya ditetapkan dari menu Juara Versi Juri.
+      return "GrandFinal";
     default:
       return "Verified";
   }
@@ -350,6 +353,7 @@ export default function AdminScoresPage() {
   const [selectedJudgeId, setSelectedJudgeId] = useState<string>("");
   const [scoreInputs, setScoreInputs] = useState<Record<string, ScoreInputState>>({});
   const [scoreSubmitting, setScoreSubmitting] = useState(false);
+  const [correctionReason, setCorrectionReason] = useState<string | null>(null);
   const [top20Preview, setTop20Preview] = useState<AuditionTop20PreviewState | null>(null);
   const [isTop20Loading, setIsTop20Loading] = useState(false);
   const [isTop20Applying, setIsTop20Applying] = useState(false);
@@ -725,7 +729,9 @@ export default function AdminScoresPage() {
       return Number.isFinite(value) && value >= 0 && value <= 100;
     });
   }, [activeScoreCriteria, activeStage, selectedParticipant, selectedParticipantScore]);
-  const isSelectedParticipantScoreLocked = Boolean(selectedParticipantScoreRecord);
+  const isSelectedParticipantScoreLocked = Boolean(selectedParticipantScoreRecord) && !correctionReason;
+
+  useEffect(() => { setCorrectionReason(null); }, [selectedParticipantId, selectedJudgeId, activeStage]);
 
   const resolvedNoteStage = availableNoteStages.includes(noteDraft.stage)
     ? noteDraft.stage
@@ -1090,21 +1096,28 @@ export default function AdminScoresPage() {
 
     setScoreSubmitting(true);
     try {
-      const response = await submitJudgeScore(token, {
-        participant_id: selectedParticipant.id,
-        participant_name: selectedParticipant.name,
-        stage: activeStage as BackendJudgeScoreStage,
-        score_type: "official",
-        judge_user_id: selectedJudgeUserId,
-        score: selectedParticipantScore,
-      });
+      const backendScoreId = selectedParticipantScoreRecord?.id.startsWith("db-judge-score-")
+        ? Number(selectedParticipantScoreRecord.id.replace("db-judge-score-", "")) : null;
+      const response = correctionReason && backendScoreId
+        ? await correctJudgeScore(token, backendScoreId, { score: selectedParticipantScore, reason: correctionReason })
+        : await submitJudgeScore(token, {
+            participant_id: selectedParticipant.id,
+            participant_name: selectedParticipant.name,
+            stage: activeStage as BackendJudgeScoreStage,
+            score_type: "official",
+            judge_user_id: selectedJudgeUserId,
+            score: selectedParticipantScore,
+          });
 
       const mapped = toFrontendScoreRecord(response.data);
       setScoreList((prev) => mergeJudgeOfficialScores(prev, [mapped]));
 
       setSyncMessage(
-        `Nilai ${selectedParticipant.name} berhasil disimpan memakai akun juri ${response.data.judge_name ?? "terpilih"}.`,
+        correctionReason
+          ? `Nilai ${selectedParticipant.name} berhasil dikoreksi. Nilai lama disimpan dalam riwayat.`
+          : `Nilai ${selectedParticipant.name} berhasil disimpan memakai akun juri ${response.data.judge_name ?? "terpilih"}.`,
       );
+      setCorrectionReason(null);
     } catch (error) {
       setSyncMessage(`Gagal simpan nilai: ${getReadableApiError(error)}`);
     } finally {
@@ -1493,6 +1506,7 @@ export default function AdminScoresPage() {
           }
           isScoreComplete={isSelectedParticipantScoreComplete}
           isScoreSaving={scoreSubmitting}
+          isCorrectionMode={Boolean(correctionReason)}
           availableNoteStages={availableNoteStages}
           resolvedNoteStage={resolvedNoteStage}
           noteDraft={noteDraft}
@@ -1503,6 +1517,11 @@ export default function AdminScoresPage() {
           onSelectJudge={setSelectedJudgeId}
           onScoreInputChange={handleAdminScoreChange}
           onSaveScore={handleSubmitAdminScore}
+          onStartCorrection={() => {
+            const reason = window.prompt("Tuliskan alasan koreksi nilai (wajib):");
+            if (reason?.trim() && reason.trim().length >= 5) setCorrectionReason(reason.trim());
+            else if (reason !== null) setSyncMessage("Alasan koreksi minimal 5 karakter.");
+          }}
           onSaveNote={handleSaveNote}
           onNoteDraftChange={(updater) => setNoteDraft((prev) => updater(prev))}
         />

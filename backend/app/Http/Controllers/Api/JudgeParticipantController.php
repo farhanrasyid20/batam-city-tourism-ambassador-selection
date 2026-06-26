@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\CompetitionEdition;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 /**
@@ -65,23 +66,31 @@ class JudgeParticipantController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $edition = $request->filled('edition_id')
+            ? CompetitionEdition::query()->find((int) $request->query('edition_id'))
+            : CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba tidak ditemukan.', 'data' => [], 'total' => 0], 404);
+
         $participants = User::query()
             ->where('role', 'participant')
+            ->whereHas('participantRegistrations', fn ($query) => $query->where('edition_id', $edition->id))
             ->with([
                 'participantProfile:id,user_id,participant_number,audition_number,participant_code,gender,selection_status,selection_status_note,eliminated_in_audition,eliminated_at,submitted_to_admin,submitted_to_admin_at',
                 'participantProfile.identity:participant_profile_id,nickname,religion,national_id,current_status,birth_place,birth_date,domicile_address,ktp_address,instagram,tiktok,parent_phone,father_name,mother_name,photo',
                 'participantProfile.measurement:participant_profile_id,height_cm,weight_kg,shirt_size,chest_circumference_cm,waist_circumference_cm,hip_circumference_cm,pants_size,shoe_size',
                 'participantProfile.background:participant_profile_id,education_category,education_institution,education_degree,education_major,occupation,skills,hobbies,languages',
                 'participantProfile.statement:participant_profile_id,vision,mission,experience,achievement,agreement_no_agency,agency_name,agreement_parent_permission,agreement_all_stages,motivation_statement,contribution_idea,public_speaking_experience',
-                'participantDocuments:user_id,document_key,label,is_required,status,original_name,size_bytes,mime_type,path,url,uploaded_at,note',
+                'participantDocuments' => fn ($query) => $query->where('edition_id', $edition->id),
+                'participantRegistrations' => fn ($query) => $query->where('edition_id', $edition->id),
             ])
             ->orderByDesc('id')
             ->get(['id', 'name', 'email', 'phone', 'created_at']);
 
-        $data = $participants->map(function (User $user): array {
+        $data = $participants->map(function (User $user) use ($edition): array {
             $profile = $user->participantProfile;
-            $selectionStatus = $profile?->selection_status;
-            $eliminatedInAudition = (bool) $profile?->eliminated_in_audition;
+            $registration = $user->participantRegistrations->first();
+            $selectionStatus = $registration?->selection_status;
+            $eliminatedInAudition = (bool) $registration?->eliminated_in_audition;
             $documents = $user->participantDocuments
                 ->sortBy('document_key')
                 ->map(function ($doc): array {
@@ -144,10 +153,12 @@ class JudgeParticipantController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'registered_at' => $user->created_at?->toDateString(),
-                'participant_number' => $profile?->participant_number,
-                'audition_number' => $profile?->audition_number,
-                'participant_code' => $profile?->participant_code,
-                'gender' => $profile?->gender,
+                'edition_id' => $edition->id,
+                'edition_year' => $edition->year,
+                'participant_number' => $registration?->participant_number,
+                'audition_number' => $registration?->audition_number,
+                'participant_code' => $registration?->participant_code,
+                'gender' => $registration?->gender ?? $profile?->gender,
                 'nickname' => $profile?->nickname,
                 'religion' => $profile?->religion,
                 'national_id' => $profile?->national_id,
@@ -190,12 +201,12 @@ class JudgeParticipantController extends Controller
                 'contribution_idea' => $profile?->contribution_idea,
                 'public_speaking_experience' => $profile?->public_speaking_experience,
                 'selection_status' => $selectionStatus,
-                'selection_status_note' => $profile?->selection_status_note,
+                'selection_status_note' => $registration?->selection_status_note,
                 'selection_stage' => $this->mapSelectionStage($selectionStatus, $eliminatedInAudition),
                 'eliminated_in_audition' => $eliminatedInAudition,
-                'eliminated_at' => $profile?->eliminated_at?->toIso8601String(),
-                'submitted_to_admin' => (bool) $profile?->submitted_to_admin,
-                'submitted_to_admin_at' => $profile?->submitted_to_admin_at?->toIso8601String(),
+                'eliminated_at' => $registration?->eliminated_at?->toIso8601String(),
+                'submitted_to_admin' => $registration?->status === 'submitted',
+                'submitted_to_admin_at' => $registration?->submitted_at?->toIso8601String(),
                 'documents' => $documents,
             ];
         })->values();
@@ -204,6 +215,7 @@ class JudgeParticipantController extends Controller
             'message' => 'Data peserta untuk juri berhasil diambil.',
             'data' => $data,
             'total' => $data->count(),
+            'edition' => ['id' => $edition->id, 'year' => $edition->year, 'name' => $edition->name],
         ]);
     }
 }
