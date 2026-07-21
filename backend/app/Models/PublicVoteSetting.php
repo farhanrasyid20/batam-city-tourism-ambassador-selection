@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 class PublicVoteSetting extends Model
 {
     protected $fillable = [
+        'edition_id',
         'vote_top_published',
         'vote_ranking_published',
         'judge_encik_published',

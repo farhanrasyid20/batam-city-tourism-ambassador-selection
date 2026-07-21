@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\JudgeScore;
 use App\Models\ParticipantProfile;
 use App\Models\User;
+use App\Models\CompetitionEdition;
+use App\Models\ParticipantRegistration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -171,23 +173,27 @@ class JudgeScoreRecapController extends Controller
         }
 
         $payload = $validator->validated();
+        $edition = $request->filled('edition_id') ? CompetitionEdition::query()->find((int) $request->query('edition_id')) : CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba tidak ditemukan.'], 404);
 
         $participantQuery = User::query()
             ->where('role', 'participant')
+            ->whereHas('participantRegistrations', fn ($query) => $query->where('edition_id', $edition->id))
             ->with([
-                'participantProfile:user_id,participant_number,audition_number,participant_code,gender,admin_score_adjustment,admin_score_adjustment_note,admin_score_adjustment_updated_at',
+                'participantRegistrations' => fn ($query) => $query->where('edition_id', $edition->id),
             ])
             ->orderBy('name');
 
         if (array_key_exists('gender', $payload)) {
-            $participantQuery->whereHas('participantProfile', function ($query) use ($payload): void {
-                $query->where('gender', $payload['gender']);
+            $participantQuery->whereHas('participantRegistrations', function ($query) use ($payload, $edition): void {
+                $query->where('edition_id', $edition->id)->where('gender', $payload['gender']);
             });
         }
 
         $participants = $participantQuery->get(['id', 'name']);
 
         $allScores = JudgeScore::query()
+            ->where('edition_id', $edition->id)
             ->where('score_type', 'official')
             ->whereIn('stage', self::STAGES)
             ->orderByDesc('submitted_at')
@@ -232,7 +238,7 @@ class JudgeScoreRecapController extends Controller
         $scoreGroups = $allScores->groupBy('participant_id')->all();
 
         $rows = $participants->map(function (User $participant) use ($scoreGroups): array {
-            $profile = $participant->participantProfile;
+            $profile = $participant->participantRegistrations->first();
 
             $participantIdApi = 'P_API_'.$participant->id;
 
@@ -388,8 +394,11 @@ class JudgeScoreRecapController extends Controller
         $payload = $validator->validated();
         $authUser = $request->attributes->get('auth_user');
 
-        $profile = ParticipantProfile::query()->firstOrCreate(
-            ['user_id' => (int) $payload['participant_user_id']]
+        $edition = CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
+        $profile = ParticipantRegistration::query()->firstOrCreate(
+            ['edition_id' => $edition->id, 'user_id' => (int) $payload['participant_user_id']],
+            ['status' => 'draft']
         );
 
         $profile->admin_score_adjustment = round((float) $payload['admin_score_adjustment'], 2);

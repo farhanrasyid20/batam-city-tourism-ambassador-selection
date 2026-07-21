@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\JudgeNote;
 use App\Models\User;
+use App\Models\CompetitionEdition;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -56,7 +57,9 @@ class JudgeNoteController extends Controller
         }
 
         $payload = $validator->validated();
-        $query = JudgeNote::query()->with('author:id,name,judge_avatar');
+        $edition = $request->filled('edition_id') ? CompetitionEdition::query()->find((int) $request->query('edition_id')) : CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba tidak ditemukan.'], 404);
+        $query = JudgeNote::query()->with('author:id,name,judge_avatar')->where('edition_id', $edition->id);
 
         if ($authRole === 'judge') {
             // Juri boleh lihat semua catatan tahapan peserta untuk konteks penilaian.
@@ -108,6 +111,8 @@ class JudgeNoteController extends Controller
         }
 
         $payload = $validator->validated();
+        $edition = $request->filled('edition_id') ? CompetitionEdition::query()->find((int) $request->input('edition_id')) : CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
 
         $defaultAuthorRole = match ($authUser->role) {
             'judge' => 'judge',
@@ -116,6 +121,7 @@ class JudgeNoteController extends Controller
         };
 
         $note = JudgeNote::query()->create([
+            'edition_id' => $edition->id,
             'participant_id' => trim((string) $payload['participant_id']),
             'participant_name' => isset($payload['participant_name'])
                 ? trim((string) $payload['participant_name'])

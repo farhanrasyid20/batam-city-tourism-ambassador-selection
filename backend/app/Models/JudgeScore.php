@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class JudgeScore extends Model
 {
     protected $fillable = [
+        'edition_id',
         'participant_id',
         'participant_name',
         'judge_user_id',

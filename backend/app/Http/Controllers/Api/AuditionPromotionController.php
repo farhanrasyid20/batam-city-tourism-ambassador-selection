@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\JudgeScore;
-use App\Models\ParticipantProfile;
+use App\Models\ParticipantRegistration;
+use App\Models\CompetitionEdition;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
@@ -58,15 +59,21 @@ class AuditionPromotionController extends Controller
      */
     private function auditionCandidatesForPreview(): Collection
     {
+        $edition = CompetitionEdition::active();
+        if (! $edition) return collect();
         return User::query()
             ->where('role', 'participant')
-            ->whereHas('participantProfile', function ($query): void {
-                $query
+            ->whereHas('participantRegistrations', function ($query) use ($edition): void {
+                $query->where('edition_id', $edition->id)
+                    ->where(function ($inner): void {
+                    $inner
                     ->whereNull('selection_status')
                     ->orWhereIn('selection_status', self::PREVIEW_STATUSES);
+                    });
             })
             ->with([
-                'participantProfile:user_id,participant_code,audition_number,participant_number,gender,selection_status',
+                'participantRegistrations' => fn ($query) => $query->where('edition_id', $edition->id),
+                'participantProfile:id,user_id',
                 'participantProfile.identity:participant_profile_id,nickname',
             ])
             ->orderBy('name')
@@ -78,15 +85,21 @@ class AuditionPromotionController extends Controller
      */
     private function auditionCandidatesForApply(): Collection
     {
+        $edition = CompetitionEdition::active();
+        if (! $edition) return collect();
         return User::query()
             ->where('role', 'participant')
-            ->whereHas('participantProfile', function ($query): void {
-                $query
+            ->whereHas('participantRegistrations', function ($query) use ($edition): void {
+                $query->where('edition_id', $edition->id)
+                    ->where(function ($inner): void {
+                    $inner
                     ->whereNull('selection_status')
                     ->orWhereIn('selection_status', self::APPLY_STATUSES);
+                    });
             })
             ->with([
-                'participantProfile:user_id,participant_code,audition_number,participant_number,gender,selection_status',
+                'participantRegistrations' => fn ($query) => $query->where('edition_id', $edition->id),
+                'participantProfile:id,user_id',
                 'participantProfile.identity:participant_profile_id,nickname',
             ])
             ->orderBy('name')
@@ -98,7 +111,7 @@ class AuditionPromotionController extends Controller
      */
     private function buildCandidateKeys(User $participant): array
     {
-        $profile = $participant->participantProfile;
+        $profile = $participant->participantRegistrations->first();
         return array_values(array_filter([
             'P_API_'.$participant->id,
             $profile?->participant_code,
@@ -126,6 +139,7 @@ class AuditionPromotionController extends Controller
     private function buildPreviewPayload(Collection $participants): array
     {
         $allScores = JudgeScore::query()
+            ->where('edition_id', CompetitionEdition::active()?->id)
             ->where('stage', self::STAGE)
             ->where('score_type', self::SCORE_TYPE)
             ->orderByDesc('submitted_at')
@@ -142,7 +156,7 @@ class AuditionPromotionController extends Controller
         $scoreGroups = $allScores->groupBy('participant_id')->all();
 
         $rows = $participants->map(function (User $participant) use ($scoreGroups): array {
-            $profile = $participant->participantProfile;
+            $profile = $participant->participantRegistrations->first();
             $keys = $this->buildCandidateKeys($participant);
 
             $participantScores = collect();
@@ -227,6 +241,8 @@ class AuditionPromotionController extends Controller
     public function apply(): JsonResponse
     {
         $authUser = request()->attributes->get('auth_user');
+        $edition = CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
         $now = Carbon::now();
         $candidates = $this->auditionCandidatesForApply();
         $preview = $this->buildPreviewPayload($candidates);
@@ -266,10 +282,11 @@ class AuditionPromotionController extends Controller
             ->filter(fn (int $id): bool => ! $promotedUserIds->contains($id))
             ->values();
 
-        DB::transaction(function () use ($promotedUserIds, $rejectedUserIds, $now, $promotedCodeMap): void {
+        DB::transaction(function () use ($promotedUserIds, $rejectedUserIds, $now, $promotedCodeMap, $edition): void {
             if ($promotedUserIds->isNotEmpty()) {
                 foreach ($promotedUserIds as $userId) {
-                    ParticipantProfile::query()
+                    ParticipantRegistration::query()
+                        ->where('edition_id', $edition->id)
                         ->where('user_id', $userId)
                         ->update([
                             'participant_code' => $promotedCodeMap[$userId] ?? null,
@@ -283,7 +300,8 @@ class AuditionPromotionController extends Controller
             }
 
             if ($rejectedUserIds->isNotEmpty()) {
-                ParticipantProfile::query()
+                ParticipantRegistration::query()
+                    ->where('edition_id', $edition->id)
                     ->whereIn('user_id', $rejectedUserIds->all())
                     ->update([
                         'selection_status' => self::REJECTED_STATUS,

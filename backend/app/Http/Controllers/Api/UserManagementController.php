@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ParticipantDocument;
 use App\Models\ParticipantProfile;
 use App\Models\User;
+use App\Models\CompetitionEdition;
+use App\Models\ParticipantRegistration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -48,7 +50,6 @@ class UserManagementController extends Controller
         'PreCamp',
         'Camp',
         'GrandFinal',
-        'Winner',
     ];
 
     private const PARTICIPANT_CODE_ELIGIBLE_STATUSES = [
@@ -163,7 +164,9 @@ class UserManagementController extends Controller
         $normalizedGender = strtolower($gender) === 'puan' ? 'Puan' : 'Encik';
         $prefix = $normalizedGender === 'Puan' ? 'PUA' : 'ECK';
 
-        $codes = ParticipantProfile::query()
+        $edition = CompetitionEdition::active();
+        $codes = ParticipantRegistration::query()
+            ->when($edition, fn ($query) => $query->where('edition_id', $edition->id))
             ->where('gender', $normalizedGender)
             ->whereNotNull('participant_code')
             ->lockForUpdate()
@@ -491,10 +494,13 @@ class UserManagementController extends Controller
 
         $payload = $validator->validated();
 
-        /** @var ParticipantProfile $profile */
-        $profile = $participant->participantProfile()->firstOrCreate([
+        $edition = CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
+        /** @var ParticipantRegistration $profile */
+        $profile = ParticipantRegistration::query()->firstOrCreate([
+            'edition_id' => $edition->id,
             'user_id' => $participant->id,
-        ]);
+        ], ['status' => 'draft', 'gender' => $participant->participantProfile?->gender]);
 
         $profile->selection_status = $payload['selection_status'];
         $profile->selection_status_note = $payload['selection_status_note'] ?? null;
@@ -606,6 +612,8 @@ class UserManagementController extends Controller
         }
 
         $payload = $validator->validated();
+        $edition = CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
 
         foreach ($payload['documents'] as $docPayload) {
             $key = (string) $docPayload['key'];
@@ -617,12 +625,14 @@ class UserManagementController extends Controller
             /** @var ParticipantDocument|null $existing */
             $existing = ParticipantDocument::query()
                 ->where('user_id', $participant->id)
+                ->where('edition_id', $edition->id)
                 ->where('document_key', $key)
                 ->first();
 
             if (! $existing) {
                 ParticipantDocument::query()->create([
                     'user_id' => $participant->id,
+                    'edition_id' => $edition->id,
                     'document_key' => $key,
                     'label' => $meta['label'],
                     'is_required' => (bool) $meta['required'],
@@ -643,6 +653,7 @@ class UserManagementController extends Controller
 
         $updatedDocuments = ParticipantDocument::query()
             ->where('user_id', $participant->id)
+            ->where('edition_id', $edition->id)
             ->orderBy('document_key')
             ->get()
             ->map(function (ParticipantDocument $doc): array {

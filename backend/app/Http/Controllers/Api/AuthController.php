@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\EmailVerificationOtp;
 use App\Models\PasswordResetOtp;
 use App\Models\ParticipantProfile;
+use App\Models\CompetitionEdition;
+use App\Models\ParticipantRegistration;
 use App\Models\User;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Carbon;
@@ -353,6 +355,13 @@ class AuthController extends Controller
 
     public function register(Request $request): JsonResponse
     {
+        $activeEdition = CompetitionEdition::active();
+        if (! $activeEdition || ! $activeEdition->registrationIsOpen()) {
+            return response()->json([
+                'message' => 'Pendaftaran peserta belum dibuka atau sudah ditutup oleh panitia.',
+            ], 422);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
@@ -382,6 +391,14 @@ class AuthController extends Controller
             ['user_id' => $user->id],
             ['gender' => strtolower($request->string('gender')->toString()) === 'puan' ? 'Puan' : 'Encik']
         );
+
+        ParticipantRegistration::query()->firstOrCreate([
+            'edition_id' => $activeEdition->id,
+            'user_id' => $user->id,
+        ], [
+            'status' => 'draft',
+            'gender' => strtolower($request->string('gender')->toString()) === 'puan' ? 'Puan' : 'Encik',
+        ]);
 
         $response = [
             'message' => 'Registrasi berhasil. Akun peserta Anda sudah aktif dan siap digunakan.',

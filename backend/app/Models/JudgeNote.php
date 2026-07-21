@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class JudgeNote extends Model
 {
     protected $fillable = [
+        'edition_id',
         'participant_id',
         'participant_name',
         'author_user_id',

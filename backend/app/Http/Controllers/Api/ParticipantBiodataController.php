@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ParticipantProfile;
 use App\Models\User;
+use App\Models\CompetitionEdition;
+use App\Models\ParticipantRegistration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -103,7 +105,11 @@ class ParticipantBiodataController extends Controller
     private function biodataPayload(User $user): array
     {
         $profile = $this->ensureProfile($user);
-        $documents = $user->participantDocuments()->orderBy('id')->get()->map(fn ($doc) => [
+        $edition = CompetitionEdition::active();
+        $registration = $edition ? ParticipantRegistration::query()->where('edition_id', $edition->id)->where('user_id', $user->id)->first() : null;
+        $documents = $user->participantDocuments()
+            ->when($edition, fn ($query) => $query->where('edition_id', $edition->id))
+            ->orderBy('id')->get()->map(fn ($doc) => [
             'key' => $doc->document_key,
             'label' => $doc->label,
             'required' => (bool) $doc->is_required,
@@ -119,9 +125,11 @@ class ParticipantBiodataController extends Controller
 
         return [
             'id' => $user->id,
-            'participant_number' => $profile->participant_number ?: $profile->audition_number,
-            'audition_number' => $profile->audition_number ?: $profile->participant_number,
-            'participant_code' => $profile->participant_code,
+            'edition' => $edition ? ['id' => $edition->id, 'year' => $edition->year, 'name' => $edition->name, 'registration_is_open' => $edition->registrationIsOpen()] : null,
+            'registration_status' => $registration?->status,
+            'participant_number' => $registration?->participant_number ?: $registration?->audition_number,
+            'audition_number' => $registration?->audition_number ?: $registration?->participant_number,
+            'participant_code' => $registration?->participant_code,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
@@ -169,12 +177,12 @@ class ParticipantBiodataController extends Controller
             'public_speaking_experience' => $profile->public_speaking_experience,
             'account_status' => $user->account_status,
             'documents' => $documents,
-            'submitted_to_admin' => (bool) $profile->submitted_to_admin,
-            'submitted_to_admin_at' => $profile->submitted_to_admin_at?->toISOString(),
-            'selection_status' => $profile->selection_status,
-            'selection_status_updated_at' => $profile->selection_status_updated_at?->toISOString(),
-            'eliminated_in_audition' => (bool) $profile->eliminated_in_audition,
-            'eliminated_at' => $profile->eliminated_at?->toISOString(),
+            'submitted_to_admin' => $registration?->status === 'submitted',
+            'submitted_to_admin_at' => $registration?->submitted_at?->toISOString(),
+            'selection_status' => $registration?->selection_status,
+            'selection_status_updated_at' => $registration?->selection_status_updated_at?->toISOString(),
+            'eliminated_in_audition' => (bool) $registration?->eliminated_in_audition,
+            'eliminated_at' => $registration?->eliminated_at?->toISOString(),
         ];
     }
 

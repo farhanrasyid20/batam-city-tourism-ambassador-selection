@@ -81,4 +81,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(ParticipantDocument::class);
     }
+
+    public function participantRegistrations(): HasMany
+    {
+        return $this->hasMany(ParticipantRegistration::class);
+    }
 }

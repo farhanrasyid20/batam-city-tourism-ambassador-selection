@@ -13,6 +13,7 @@ class ParticipantDocument extends Model
 {
     protected $fillable = [
         'user_id',
+        'edition_id',
         'document_key',
         'label',
         'is_required',
@@ -40,4 +41,3 @@ class ParticipantDocument extends Model
         return $this->belongsTo(User::class);
     }
 }
-

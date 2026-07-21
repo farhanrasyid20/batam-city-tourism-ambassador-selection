@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\JudgeScore;
+use App\Models\CompetitionEdition;
+use App\Models\JudgeScoreRevision;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -239,7 +241,11 @@ class JudgeScoreController extends Controller
         }
 
         $payload = $validator->validated();
-        $query = JudgeScore::query()->with('judge:id,name');
+        $edition = $request->filled('edition_id')
+            ? CompetitionEdition::query()->find((int) $request->query('edition_id'))
+            : CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba tidak ditemukan.'], 404);
+        $query = JudgeScore::query()->with('judge:id,name')->where('edition_id', $edition->id);
 
         if ($authRole === 'judge') {
             $query->where('judge_user_id', $authUser?->id);
@@ -280,7 +286,13 @@ class JudgeScoreController extends Controller
             ], 403);
         }
 
+        $edition = $request->filled('edition_id')
+            ? CompetitionEdition::query()->find((int) $request->input('edition_id'))
+            : CompetitionEdition::active();
+        if (! $edition) return response()->json(['message' => 'Edisi lomba aktif tidak ditemukan.'], 422);
+
         $validator = Validator::make($request->all(), [
+            'edition_id' => ['nullable', 'integer', 'exists:competition_editions,id'],
             'participant_id' => ['required', 'string', 'max:100'],
             'participant_name' => ['nullable', 'string', 'max:255'],
             'stage' => ['required', Rule::in(self::ALLOWED_STAGES)],
@@ -353,6 +365,7 @@ class JudgeScoreController extends Controller
         $participantId = trim((string) $payload['participant_id']);
 
         $existingScore = JudgeScore::query()
+            ->where('edition_id', $edition->id)
             ->where('participant_id', $participantId)
             ->where('judge_user_id', (int) $targetJudge->id)
             ->where('stage', $stage)
@@ -368,8 +381,9 @@ class JudgeScoreController extends Controller
             ], 409);
         }
 
-        $record = DB::transaction(function () use ($payload, $participantId, $targetJudge, $stage, $scoreType, $scoreMap, $totalScore): JudgeScore {
+        $record = DB::transaction(function () use ($payload, $participantId, $targetJudge, $stage, $scoreType, $scoreMap, $totalScore, $edition): JudgeScore {
             $scoreRecord = JudgeScore::query()->create([
+                'edition_id' => $edition->id,
                 'participant_id' => $participantId,
                 'judge_user_id' => (int) $targetJudge->id,
                 'stage' => $stage,
@@ -394,5 +408,46 @@ class JudgeScoreController extends Controller
             'message' => 'Nilai juri berhasil disimpan ke database.',
             'data' => $this->toPayload($record),
         ], 201);
+    }
+
+    public function correct(Request $request, int $id): JsonResponse
+    {
+        $authUser = $request->attributes->get('auth_user');
+        $record = JudgeScore::query()->find($id);
+        if (! $record) return response()->json(['message' => 'Nilai tidak ditemukan.'], 404);
+
+        $validator = Validator::make($request->all(), [
+            'score' => ['required', 'array', 'min:1'],
+            'score.*' => ['required', 'numeric', 'min:0', 'max:100'],
+            'note' => ['nullable', 'string', 'max:5000'],
+            'reason' => ['required', 'string', 'min:5', 'max:3000'],
+        ]);
+        if ($validator->fails()) return response()->json(['message' => 'Validasi gagal.', 'errors' => $validator->errors()], 422);
+        $payload = $validator->validated();
+        $scoreMap = $payload['score'];
+        $criteriaErrors = $this->validateScoreByStage((string) $record->stage, $scoreMap);
+        if ($criteriaErrors) return response()->json(['message' => 'Validasi gagal.', 'errors' => $criteriaErrors], 422);
+        $totalScore = $this->calculateTotalByStage((string) $record->stage, $scoreMap);
+
+        DB::transaction(function () use ($record, $authUser, $payload, $scoreMap, $totalScore): void {
+            JudgeScoreRevision::query()->create([
+                'judge_score_id' => $record->id,
+                'edition_id' => $record->edition_id,
+                'actor_user_id' => $authUser?->id,
+                'old_score' => $record->score,
+                'old_total_score' => $record->total_score,
+                'old_note' => $record->note,
+                'reason' => trim((string) $payload['reason']),
+                'revised_at' => Carbon::now(),
+            ]);
+            $record->score = $scoreMap;
+            $record->total_score = $totalScore;
+            $record->note = isset($payload['note']) ? trim((string) $payload['note']) : $record->note;
+            $record->submitted_at = Carbon::now();
+            $record->save();
+            $this->syncScoreDetails($record, (string) $record->stage, (string) $record->score_type, $scoreMap);
+        });
+
+        return response()->json(['message' => 'Nilai berhasil dikoreksi dan nilai sebelumnya disimpan dalam riwayat.', 'data' => $this->toPayload($record->fresh()->load('judge:id,name'))]);
     }
 }
