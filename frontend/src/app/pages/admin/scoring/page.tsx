@@ -891,8 +891,12 @@ export default function AdminScoresPage() {
 
         const currentBackendStatus = participant.status as UpdateParticipantSelectionStatusPayload["selection_status"];
         const hasStatusChanged = currentBackendStatus !== nextBackendStatus;
+        const shouldForceGrandFinalSync =
+          activeStage === "Grand Final" && nextBackendStatus === "GrandFinal";
 
-        if (!hasProgressChanged && !hasStatusChanged) return null;
+        if (!hasProgressChanged && !hasStatusChanged && !shouldForceGrandFinalSync) {
+          return null;
+        }
         return { participant, nextProgress, nextSelectionStage, nextBackendStatus };
       })
       .filter(

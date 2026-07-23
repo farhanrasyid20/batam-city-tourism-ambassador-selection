@@ -43,9 +43,10 @@ export default function AdminDashboardPage() {
   const needsRevisionCount = participantList.filter(
     (participant) => getParticipantVerificationStatus(participant) === "NeedsRevision"
   ).length;
-  const grandFinalCount = participantList.filter(
-    (participant) => getParticipantSelectionStage(participant) === "Grand Final"
-  ).length;
+  const grandFinalCount = participantList.filter((participant) => {
+    const selectionStage = getParticipantSelectionStage(participant);
+    return selectionStage === "Grand Final" || selectionStage === "Final Result";
+  }).length;
   const verifiedCount = participantList.filter(
     (participant) => getParticipantVerificationStatus(participant) === "Verified"
   ).length;

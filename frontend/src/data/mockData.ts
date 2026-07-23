@@ -306,19 +306,30 @@ export const selectionStageLabels: Record<SelectionStageKey, string> = {
 export function buildParticipantStageProgress(selectionStage: SelectionStageKey): ParticipantStageProgress {
   return {
     "Technical Meeting":
+      selectionStage === "Technical Meeting" ||
       selectionStage === "Audition" ||
       selectionStage === "Pre Camp" ||
       selectionStage === "Camp" ||
       selectionStage === "Grand Final" ||
       selectionStage === "Final Result",
     Audition:
+      selectionStage === "Audition" ||
       selectionStage === "Pre Camp" ||
       selectionStage === "Camp" ||
       selectionStage === "Grand Final" ||
       selectionStage === "Final Result",
-    "Pre Camp": selectionStage === "Camp" || selectionStage === "Grand Final" || selectionStage === "Final Result",
-    Camp: selectionStage === "Grand Final" || selectionStage === "Final Result",
-    "Grand Final": selectionStage === "Final Result",
+    "Pre Camp":
+      selectionStage === "Pre Camp" ||
+      selectionStage === "Camp" ||
+      selectionStage === "Grand Final" ||
+      selectionStage === "Final Result",
+    Camp:
+      selectionStage === "Camp" ||
+      selectionStage === "Grand Final" ||
+      selectionStage === "Final Result",
+    "Grand Final":
+      selectionStage === "Grand Final" ||
+      selectionStage === "Final Result",
   };
 }
 
@@ -342,7 +353,7 @@ export function getSelectionStageFromStageProgress(
   if (!progress["Pre Camp"]) return "Pre Camp";
   if (!progress.Camp) return "Camp";
   if (!progress["Grand Final"]) return "Grand Final";
-  return "Final Result";
+  return "Grand Final";
 }
 
 export const stageCriteriaMap: Record<string, CriteriaItem[]> = {
